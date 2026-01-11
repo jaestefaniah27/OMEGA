@@ -4,7 +4,7 @@
 ## 📜 Resumen del Proyecto
 Omega es un ecosistema de productividad y gestión personal gamificado, diseñado con una estética de RPG medieval. El objetivo es centralizar todos los aspectos de la vida (estudio, gimnasio, ocio, salud) en una única base de datos modular, flexible y multiplataforma (iOS y Windows).
 
-A diferencia de las apps convencionales, Omega transforma la vida en un videojuego: los exámenes son "Jefes Finales", el gimnasio sube tus estadísticas de fuerza y distraerse con el móvil reduce tu vida. La app es consciente del contexto: sabe dónde estás y qué rutina te toca según ciclos complejos, adaptándose a ti automáticamente.
+A diferencia de las apps convencionales, Omega transforma la vida en un videojuego: los exámenes son "Jefes Finales", el gimnasio sube tus estadísticas de fuerza y distraerse con el móvil reduce tu vida. La app es consciente del contexto (ubicación, clima, estación del año) y narra tu progreso de forma épica mediante IA.
 
 ---
 
@@ -26,30 +26,34 @@ A diferencia de las apps convencionales, Omega transforma la vida en un videojue
 ### 🌲 Fase 2: Módulo de Enfoque y Contexto (Sentidos)
 - [ ] Programar lógica del Cronómetro (Timer) y `AppState` (bloqueo).
 - [ ] Implementar **Geofencing/GPS**: Detectar coordenadas del Gimnasio, Biblioteca y Casa.
-- [ ] Crear "Auto-Trigger": Abrir el módulo correspondiente automáticamente al entrar en la zona (ej: entrar al gym -> abrir Barracones).
-- [ ] Crear sistema de notificaciones locales ("¡Vuelve a la app!").
+- [ ] **Integración Climática:** Conectar API de OpenWeatherMap.
+- [ ] Lógica de Estaciones: Detectar hemisferio y estación actual (Invierno/Verano) para aplicar buffs pasivos.
+- [ ] Crear "Auto-Trigger": Abrir el módulo correspondiente automáticamente al entrar en la zona.
 
 ### ⚔️ Fase 3: Módulo de Entrenamiento (El Entrenador Inteligente)
 - [ ] Importar base de datos "semilla" (Wger/ExerciseDB) a Supabase.
 - [ ] Crear lógica de **Ciclos de Rutina**: Soporte para splits alternos (Semana A: PPL / Semana B: Arnold Split).
-- [ ] Interfaz de Registro (Logger): Mostrar "Peso Anterior" y "1RM Récord" junto al input actual.
+- [ ] Interfaz de Registro (Logger): Mostrar "Peso Anterior" y "1RM Récord".
 - [ ] Integrar SVG del cuerpo humano interactivo (Heatmap).
-- [ ] Programar lógica de coloreado según intensidad del entreno y descanso.
+- [ ] Programar lógica de coloreado del SVG según intensidad del entreno.
 
-### 🖥️ Fase 4: Módulo PC (La Torre de Vigilancia)
+### 🔮 Fase 4: Progresión y Narrativa (RPG Puro)
+- [ ] **Árbol de Talentos:** Crear visualización de constelaciones (Intelecto, Vigor, Carisma).
+- [ ] Lógica de XP: Asignar puntos de experiencia a cada tarea completada según su categoría.
+- [ ] **El Bardo (IA):** Configurar Edge Function en Supabase que envíe logs semanales a la API de Gemini.
+- [ ] Crear interfaz de "Crónicas": Un libro donde se guardan las historias generadas por la IA.
+
+### 🖥️ Fase 5: Módulo PC (La Torre de Vigilancia)
 - [ ] Implementar librería `active-win` en Electron.
 - [ ] Crear "listener" en segundo plano que detecte la ventana activa.
 - [ ] Lógica de filtrado (asignar `chrome.exe` a ocio o estudio).
 
-### 📅 Fase 5: Gestión de Misiones (Task Board RPG)
-- [ ] Crear sistema de clasificación de tareas:
-    - **Misiones Principales:** Obligatorias (Taller, Reuniones).
-    - **Misiones Secundarias:** Necesarias (Comprar, Felicitar).
-    - **Grind Diario:** Higiene/Repetitivas (Leer, Gym).
+### 📅 Fase 6: Gestión de Misiones (Task Board)
+- [ ] Crear sistema de clasificación de tareas (Principales/Secundarias/Diarias).
 - [ ] Desarrollar lógica de "Jefes Finales" (Exámenes) con cuenta atrás.
 - [ ] Implementar el "Inbox de Notificaciones" (Pergamino centralizado).
 
-### 🚀 Fase 6: Despliegue y Mantenimiento
+### 🚀 Fase 7: Despliegue y Mantenimiento
 - [ ] Instalar SideStore en dispositivo iOS.
 - [ ] Configurar OTA Updates para actualizaciones de código (JS).
 - [ ] (Futuro) Migración a NAS propio con Docker y Tailscale.
@@ -61,27 +65,40 @@ A diferencia de las apps convencionales, Omega transforma la vida en un videojue
 ### 1. El Mapa del Mundo y Contexto (Geofencing)
 La app "siente" dónde estás.
 * **Navegación Visual:** Biblioteca, Barracones, Teatro, Castillo.
-* **Auto-Apertura:** Si el GPS detecta que has entrado en tu gimnasio, la app salta la pantalla de inicio y abre directamente los "Barracones" con la rutina de hoy ya cargada. Lo mismo para la Biblioteca (Modo Estudio).
+* **Auto-Apertura:** Si el GPS detecta que has entrado en tu gimnasio, la app salta la pantalla de inicio y abre directamente los "Barracones".
 
-### 2. Gamificación y Castigo (Focus Mode)
-* **iOS:** Al estudiar, si sales de la app (distracción), pierdes vida.
-* **PC:** Registro pasivo de actividad en ventanas activas.
+### 2. Clima y Estaciones Dinámicas
+El mundo de Omega refleja el mundo real mediante la API de OpenWeatherMap.
+* **Visuales:** Si llueve fuera, llueve en el menú principal. Si es invierno, hay nieve en el mapa.
+* **Sistema de "Buffs" Estacionales:**
+    * **Invierno:** +10% XP en Estudio (Buff "Hogar Cálido").
+    * **Verano:** +10% XP en Actividades al aire libre (Buff "Espíritu Solar").
+    * **Lluvia:** +15% Enfoque (Bonus de concentración por mal tiempo).
+    * **Calor Extremo:** Penalización de energía en el Gym (Debuff "Fatiga").
 
-### 3. Gimnasio Inteligente (Smart Coach)
+### 3. Árbol de Talentos (Constelaciones)
+Tu progreso no es solo un número, es una constelación que se dibuja en el cielo de tu app.
+* **Intelecto (Azul):** Sube completando horas de estudio y exámenes. Desbloquea títulos como "Erudito".
+* **Vigor (Rojo):** Sube con sesiones de gym y 1RMs superados. Desbloquea skins de armadura.
+* **Carisma (Verde):** Sube completando tareas sociales (cumpleaños, eventos).
+* **Destreza (Amarillo):** Sube con hobbies técnicos (Piano, Arte).
+
+### 4. El Bardo (IA Narrativa)
+Tu vida es una historia épica, y Omega la escribe por ti.
+* **Crónicas Semanales:** Cada domingo, una IA (Gemini) analiza tus logs de la semana (qué entrenaste, cuánto estudiaste, qué tareas hiciste) y redacta un resumen narrativo medieval.
+    * *Ejemplo:* "En la segunda luna de Enero, Sir Usuario libró una dura batalla en la Biblioteca, resistiendo el asedio de las Matemáticas durante 4 horas..."
+* **Archivo:** Estas historias se guardan en el "Libro de Crónicas" para que puedas releer tu año como si fuera una novela.
+
+### 5. Gimnasio Inteligente (Smart Coach)
 Omega gestiona tu memoria muscular y tu calendario.
-* **Ciclos Complejos:** Soporta rotaciones no semanales. Ej: *Ciclo híbrido PPL x Arnold*. La app sabe automáticamente que si hoy es Lunes de la "Semana 2", toca "Pecho/Espalda" (Arnold) y no "Push" (PPL).
-* **Referencia Histórica:** Al hacer una serie, la app te muestra en gris pequeño: *"La última vez hiciste 12 reps con 80kg"*. Así sabes si estás progresando o estancado.
+* **Ciclos Complejos:** Soporta rotaciones no semanales (ej: PPL x Arnold Split).
+* **Referencia Histórica:** Muestra tus pesos anteriores para motivarte a la sobrecarga progresiva.
 * **Heatmap:** El cuerpo humano se ilumina según el volumen de carga real calculado con fórmulas de 1RM.
 
-### 4. Sistema de Tareas (Quest Board)
-Las tareas se clasifican por importancia rpg:
-* **Misiones Principales (Obligatorias):** Si no se completan en el día, el personaje sufre penalización crítica o bloqueo de funciones de ocio. (Ej: Reuniones, Coche).
-* **Misiones Secundarias (Necesarias):** Dan experiencia y oro, pero no penalizan gravemente. (Ej: Comprar regalo).
-* **Misiones Diarias (Hygiene):** Se resetean cada día. Mantienen los "buffs" del personaje. (Ej: Leer, Creatina, Gym).
-
-### 5. Jefes Finales (Exámenes)
-* **Cuenta atrás inteligente:** La app aumenta la insistencia de los recordatorios conforme se acerca la fecha.
-* **Input Manual:** El usuario puede invocar nuevos Jefes (añadir exámenes) y definir su dificultad (HP del Boss).
+### 6. Sistema de Tareas y Jefes
+* **Misiones Principales:** Obligatorias (Taller, Reuniones). Penalización crítica si fallan.
+* **Misiones Secundarias:** Necesarias. Dan oro y XP.
+* **Jefes Finales (Exámenes):** Cuentas atrás con "Modo Alerta" que aumentan la intensidad de los recordatorios.
 
 ---
 
@@ -89,18 +106,19 @@ Las tareas se clasifican por importancia rpg:
 
 ### Stack Tecnológico
 * **Frontend Móvil:** React Native + Expo.
-    * *Librería Clave:* `expo-location` (Geofencing/GPS).
+    * *Librerías Clave:* `expo-location` (GPS), `react-native-svg` (Árbol/Heatmap).
 * **Frontend Desktop:** Electron + React.
 * **Lenguaje:** TypeScript / JavaScript.
 * **Estilos:** Componentes propios basados en imágenes (`ImageBackground`) para estética medieval.
 
 ### Backend & Datos (Supabase)
 * **Base de Datos:** PostgreSQL.
+* **Edge Functions:** Para ejecutar la lógica del **Bardo** (conectar con API de Gemini) y actualizaciones de **Clima** programadas.
 * **Tablas Clave:**
-    * `tasks`: con columna `type` ('main', 'side', 'daily').
-    * `routines`: lógica de `cycle_type` ('weekly', 'biweekly_split') y `last_performed`.
-    * `workout_logs`: historial para referencia visual.
-* **Estrategia:** *Cloud-first* con migración a NAS.
+    * `tasks`: clasificación y xp_reward.
+    * `skills`: tabla para guardar el progreso del árbol de talentos.
+    * `chronicles`: historial de textos generados por IA.
+    * `routines`: lógica de ciclos de gym.
 
 ### Code Sharing (Monorepo)
 * `packages/ui`: Componentes visuales compartidos.
@@ -108,7 +126,7 @@ Las tareas se clasifican por importancia rpg:
 * `apps/desktop`: Lógica de active-win.
 
 ### Desarrollo (CI/CD)
-* **IDE:** Google Antigravity (Agentes de IA).
+* **IDE:** Google Antigravity (Agentes de IA para scripts de automatización).
 * **Control de Versiones:** GitHub.
 * **Actualizaciones:** EAS Update + SideStore.
 

@@ -17,14 +17,14 @@ Omega no es una simple lista de tareas. Es un **Sistema Operativo Vital Gamifica
 
 ### 🛠️ Fase 0: La Fundación Técnica (Infraestructura)
 *Objetivo: Tener el "esqueleto" del código listo, escalable y conectado a la nube.*
-- [ ] **Configuración del Monorepo:** Implementar Turborepo. Estructura de carpetas:
+- [x] **Configuración del Monorepo:** Implementar Turborepo. Estructura de carpetas:
     - `packages/ui`: Componentes visuales compartidos (botones, estilos).
     - `apps/movil`: Proyecto Expo (compila para iOS y Android).
     - `apps/desktop`: Proyecto Electron (Windows).
 - [ ] **Base de Datos:** Crear proyecto en **Supabase** (Free Tier).
     - Configurar tablas iniciales (`users`, `tasks`, `projects`, `logs`).
     - Copiar claves API al `.env`.
-- [ ] **Entorno de Desarrollo:** Vincular repositorio GitHub con **Google Antigravity** para utilizar Agentes de IA en la generación de código repetitivo.
+- [x] **Entorno de Desarrollo:** Vincular repositorio GitHub con **Google Antigravity** para utilizar Agentes de IA en la generación de código repetitivo.
 
 ### 🎨 Fase 1: Arte, UI y el HUD (La Cara del Juego)
 *Objetivo: Definir la identidad visual y la navegación rápida.*

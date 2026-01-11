@@ -1,11 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import { MedievalButton } from '@omega/ui'
+import { supabase } from '@omega/db'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [dbStatus, setDbStatus] = useState<string>('Esperando...')
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const { error } = await supabase.from('profiles').select('count');
+        if (error) throw error;
+        setDbStatus('✅ Conectado a Supabase');
+      } catch (err) {
+        setDbStatus('❌ Error de conexión (revisa el .env)');
+      }
+    };
+    testConnection();
+  }, []);
 
   return (
     <>
@@ -19,6 +34,7 @@ function App() {
       </div>
       <h1>Vite + React + Electron</h1>
       <div className="card">
+        <p>Base de Datos: <strong>{dbStatus}</strong></p>
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>

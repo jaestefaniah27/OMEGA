@@ -1,0 +1,16 @@
+
+> desktop@0.0.0 build
+> tsc -b && vite build
+
+../../packages/db/src/index.ts(8,13): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(8,40): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(9,13): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(9,40): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(13,13): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(13,40): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(14,13): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+../../packages/db/src/index.ts(14,40): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+npm ERR! Lifecycle script `build` failed with error: 
+npm ERR! Error: command failed 
+npm ERR!   in workspace: desktop@0.0.0 
+npm ERR!   at location: C:\Users\jaest\OneDrive\Documentos\GITHUB_PROJECTS\OMEGA\OMEGA\apps\desktop 

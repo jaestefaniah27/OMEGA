@@ -58,11 +58,17 @@ Gamificación de la vida real y conexión con el entorno.
     - **Móvil:** Implementar `expo-location`. Definir "Geofences" (radios de coordenadas) para Casa, Gym y Uni.
     - **Clima:** Conectar API gratuita de OpenWeatherMap para obtener el estado del clima local al iniciar la app.
 
-### 🚀 Fase 5: Despliegue y Ciclo de Vida
-Cómo llevamos la app del código al dispositivo real.
-- [ ] **Instalación Nativa:** Configurar SideStore en el iPhone y generar la primera *Development Build* (`.ipa`) con las librerías nativas necesarias (GPS, FileSystem).
-- [ ] **Estrategia de Actualización:** Configurar `eas.json` para permitir actualizaciones OTA (Over-The-Air). Esto permitirá modificar lógica de React y UI sin reinstalar la app.
-
+### 📅 Fase 5: Gestión de Misiones y Calendario (El Pergamino)
+- [ ] **Sincronización de Calendario Nativo:**
+    - [ ] Implementar librería `expo-calendar`.
+    - [ ] **Lectura:** Importar eventos del móvil a la "Mesa de Guerra" para detectar conflictos de horario.
+    - [ ] **Escritura:** Exportar "Jefes Finales" (Exámenes) y "Misiones Críticas" al calendario de iOS/Google automáticamente.
+- [ ] **Sistema de Clasificación de Tareas:**
+    - **Misiones Principales:** Obligatorias (Taller, Reuniones) -> Penalización grave.
+    - **Misiones Secundarias:** Necesarias (Comprar, Felicitar) -> Recompensa media.
+    - **Grind Diario:** Higiene/Repetitivas (Leer, Gym) -> Mantener buffs.
+- [ ] **Jefes Finales (Exámenes):** Lógica de cuenta atrás y "Modo Alerta" progresivo.
+- [ ] **Inbox Unificado:** Centralizar notificaciones del juego y eventos del calendario real.
 ### 🔮 Fase 6: Narrativa y Extras (IA)
 La capa final que da "alma" al proyecto.
 - [ ] **El Bardo (Generación de Texto):** Crear una Edge Function en Supabase que se ejecute cada domingo (Cron Job). Esta función debe:
@@ -124,7 +130,8 @@ El puente entre el juego y la realidad.
 * **React Native + Expo:** Permite iterar rapidísimo. Usamos el sistema de *Over-The-Air Updates* (EAS) para arreglar bugs sin tener que reinstalar la app manualmente cada vez.
 * **Electron:** Permite reutilizar el 90% del código de la interfaz del móvil en el PC, pero con acceso a APIs de Windows (como detectar ventanas activas) que una web normal no tendría.
 * **Supabase:** Es un "Backend-as-a-Service". Nos da Base de Datos, Autenticación y Almacenamiento de archivos sin tener que configurar servidores complejos de Linux por ahora.
-
+* *Librerías Clave:* `expo-location` (GPS), `react-native-svg` (Heatmap), `expo-calendar` (Sincronización de eventos).
+  
 ### Estrategia de Datos
 * **Cloud-First:** Inicialmente, todo se sincroniza con la nube de Supabase para asegurar que el iPad, el iPhone y el PC vean los mismos datos al instante.
 * **Migración Futura:** La arquitectura está diseñada para ser dockerizada. En el futuro, se podrá desplegar una instancia de Supabase en un NAS casero (Raspberry Pi) y cambiar la URL de la API en la app para lograr soberanía total de datos.

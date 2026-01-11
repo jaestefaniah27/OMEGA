@@ -1,137 +1,139 @@
 # ⚔️ OMEGA: The Life RPG
 > *El Alfa y el Omega. Una aplicación para gobernarlas a todas.*
 
-## 📜 Resumen del Proyecto
-Omega es un ecosistema de productividad y gestión personal gamificado, diseñado con una estética de RPG medieval. El objetivo es centralizar todos los aspectos de la vida (estudio, gimnasio, ocio, salud) en una única base de datos modular, flexible y multiplataforma (iOS y Windows).
+## 📜 Visión y Filosofía del Proyecto
+Omega no es simplemente una "To-Do List". Es un ecosistema de gestión vital gamificado (Life RPG) que busca resolver la fricción de la productividad mediante narrativa y mecánicas de juego.
 
-A diferencia de las apps convencionales, Omega transforma la vida en un videojuego: los exámenes son "Jefes Finales", el gimnasio sube tus estadísticas de fuerza y distraerse con el móvil reduce tu vida. La app es consciente del contexto: sabe dónde estás, recuerda tus pesos anteriores en el gym y se adapta a tus ciclos de rutina automáticamente.
-
----
-
-## 🗺️ Hoja de Ruta (Roadmap)
-
-### 🛠️ Fase 0: Configuración del Entorno (La Fundación)
-- [ ] Configurar Monorepo (Turborepo/Yarn Workspaces) con estructura `apps/` y `packages/`.
-- [ ] Inicializar proyecto React Native (Expo) en `apps/movil` y Electron en `apps/desktop`.
-- [ ] Crear proyecto en Supabase (Free Tier) y conectar credenciales.
-- [ ] Configurar repositorio en GitHub y conectar con Google Antigravity.
-- [ ] Configurar EAS (Expo Application Services) para OTAs.
-
-### 🎨 Fase 1: Arte y UI (La Estética Medieval)
-- [ ] Generar assets con IA (Midjourney/DALL-E) para fondos, texturas y mapa.
-- [ ] Limpiar assets (PNGs transparentes) para botones e iconos.
-- [ ] Crear componentes base: `MedievalButton`, `ParchmentCard` y `QuestItem`.
-- [ ] Diseñar el "Mapa del Mundo" (Home Screen) con zonas interactivas (Castillo, Barracones, etc.).
-
-### 🌲 Fase 2: Módulo de Enfoque y Contexto (Sentidos)
-- [ ] Programar lógica del Cronómetro (Timer) y `AppState` (bloqueo/castigo).
-- [ ] Implementar **Geofencing/GPS**: Detectar coordenadas del Gimnasio, Biblioteca y Casa.
-- [ ] Crear "Auto-Trigger": Abrir el módulo correspondiente automáticamente al entrar en la zona (ej: entrar al gym -> abrir Barracones).
-- [ ] Crear sistema de notificaciones locales ("¡Vuelve a la app o pierdes vida!").
-
-### ⚔️ Fase 3: Módulo de Entrenamiento (El Entrenador Inteligente)
-- [ ] Importar base de datos "semilla" (Wger/ExerciseDB) a Supabase.
-- [ ] Crear lógica de **Ciclos de Rutina**: Soporte para splits alternos complejos (Semana A: PPL / Semana B: Arnold Split).
-- [ ] Interfaz de Registro (Logger): Mostrar "Peso Anterior" (referencia histórica) y "1RM Récord" junto al input actual.
-- [ ] Integrar SVG del cuerpo humano interactivo (Heatmap).
-- [ ] Programar lógica de coloreado del SVG según intensidad del entreno.
-
-### 🖥️ Fase 4: Módulo PC (La Torre de Vigilancia)
-- [ ] Implementar librería `active-win` en Electron.
-- [ ] Crear "listener" en segundo plano que detecte la ventana activa.
-- [ ] Lógica de filtrado automática (asignar `chrome.exe` a ocio o estudio según título de ventana).
-
-### 📅 Fase 5: Gestión de Misiones (Task Board RPG)
-- [ ] Crear sistema de clasificación de tareas:
-    - **Misiones Principales:** Obligatorias (Taller, Reuniones) -> Penalización grave.
-    - **Misiones Secundarias:** Necesarias (Comprar, Felicitar) -> Recompensa media.
-    - **Grind Diario:** Higiene/Repetitivas (Leer, Gym) -> Mantener buffs.
-- [ ] Desarrollar lógica de "Jefes Finales" (Exámenes) con cuenta atrás.
-- [ ] Implementar el "Inbox de Notificaciones" (Pergamino centralizado).
-
-### 🚀 Fase 6: Despliegue y Mantenimiento
-- [ ] Instalar SideStore en dispositivo iOS.
-- [ ] Configurar OTA Updates para actualizaciones de código (JS) sin cables.
-- [ ] (Futuro) Migración a NAS propio con Docker y Tailscale.
-
-### 🔮 Fase 8: EXTRAS (Expansion Packs RPG)
-- [ ] **Tienda del Alquimista (Economía):** Sistema para canjear Oro ganado por recompensas reales (Pizza, Videojuegos).
-- [ ] **Árbol de Talentos:** Visualización de constelaciones (Intelecto, Vigor, Carisma) que suben según la categoría de la tarea.
-- [ ] **El Bardo (IA Narrativa):** Edge Function que envía logs semanales a Gemini para generar crónicas épicas de tu semana.
-- [ ] **Clima Dinámico:** Conexión con API OpenWeatherMap para sincronizar lluvia/nieve en el juego y aplicar buffs estacionales.
+El objetivo central es la **centralización absoluta**: fusionar las funcionalidades dispersas de apps como *Forest* (bloqueo), *Strong* (gym), *Notion* (notas) y *Habitica* (RPG) en una única base de datos modular. La app es contextualmente inteligente: utiliza geolocalización, clima y horarios para adaptarse al usuario, eliminando la necesidad de navegar por menús complejos.
 
 ---
 
-## 💎 Funcionalidades Detalladas
+## 🗺️ Hoja de Ruta de Desarrollo (Roadmap Detallado)
 
-### 1. El Mapa del Mundo y Contexto (Geofencing)
-La app "siente" dónde estás.
-* **Navegación Visual:** Biblioteca, Barracones, Teatro, Castillo.
-* **Auto-Apertura:** Si el GPS detecta que has entrado en tu gimnasio, la app salta la pantalla de inicio y abre directamente los "Barracones" con la rutina de hoy ya cargada.
+### 🛠️ Fase 0: La Fundación Técnica (Infraestructura)
+Esta fase establece los cimientos para que el código sea escalable y compartido entre PC y Móvil.
+- [ ] **Configuración del Monorepo:** Implementar Turborepo para gestionar múltiples paquetes. Crear carpeta `packages/ui` para compartir botones y estilos entre `apps/movil` (React Native) y `apps/desktop` (Electron).
+- [ ] **Inicialización de Proyectos:**
+    - Generar la app móvil con `npx create-expo-app`.
+    - Generar la app de escritorio con un boilerplate de Electron + React.
+- [ ] **Conexión de Base de Datos (Supabase):**
+    - Crear proyecto en Supabase (Free Tier).
+    - Configurar las tablas iniciales y copiar las claves API (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) en las variables de entorno `.env`.
+- [ ] **Entorno de Desarrollo (Antigravity):** Vincular el repositorio de GitHub con Google Antigravity para habilitar el uso de Agentes de IA en el flujo de trabajo.
 
-### 2. Gimnasio Inteligente (Smart Coach)
-Omega gestiona tu memoria muscular y tu calendario.
-* **Ciclos Complejos:** Soporta rotaciones no semanales. Ej: *Ciclo híbrido PPL x Arnold*. La app sabe automáticamente que si hoy es Lunes de la "Semana 2", toca "Pecho/Espalda" (Arnold) y no "Push" (PPL).
-* **Referencia Histórica:** Al hacer una serie, la app te muestra en gris pequeño: *"La última vez hiciste 12 reps con 80kg"*.
-* **Heatmap:** El cuerpo humano se ilumina según el volumen de carga real calculado con fórmulas de 1RM.
+### 🎨 Fase 1: Arte, UI y el HUD (La Interfaz Viva)
+Aquí definimos la identidad visual. No usamos componentes estándar de iOS/Android; creamos un motor gráfico propio basado en imágenes.
+- [ ] **Pipeline de Assets:** Utilizar Midjourney/DALL-E para generar fondos isométricos o ilustraciones planas para cada ubicación (Castillo, Biblioteca, etc.).
+- [ ] **Sistema de Componentes:** Programar `MedievalButton` (un componente que acepta una imagen de fondo y texto con tipografía antigua) y `ParchmentCard` (contenedores de texto con bordes irregulares).
+- [ ] **Programación del HUD (Heads-Up Display):** Crear una capa de interfaz flotante (`absolute positioning`) que persista sobre cualquier pantalla, conteniendo:
+    - *El Pergamino:* Overlay deslizante para checkear tareas rápidas.
+    - *El Cuervo:* Icono con indicador numérico (badge) para notificaciones.
+    - *El Zurrón:* Botón de acción flotante (FAB) que despliega un menú radial de acciones rápidas.
 
-### 3. Sistema de Tareas y Jefes
-* **Misiones Principales (Obligatorias):** Si no se completan en el día, el personaje sufre penalización crítica.
-* **Jefes Finales (Exámenes):** Cuentas atrás con "Modo Alerta" que aumentan la intensidad de los recordatorios (bloqueo de ocio a T-3 días).
+### 🌲 Fase 2: Módulo de Enfoque (Biblioteca y Castillo)
+Desarrollo de la lógica de productividad pura y gestión de archivos.
+- [ ] **Lógica de Gestión (Castillo):**
+    - Crear vista de Calendario ("Mesa de Guerra") que filtre eventos por tipo "Jefe Final" (Exámenes).
+    - Conectar Supabase Storage para permitir la subida y listado de PDFs ("Archivos Reales").
+- [ ] **Lógica de Estudio (Biblioteca):**
+    - Implementar `AppState` en React Native para detectar cuándo la app pasa a segundo plano.
+    - Programar el "Castigo": Si `AppState` cambia a `background` durante una sesión activa, disparar notificación local y restar HP en la base de datos tras 10 segundos.
 
-### 4. Expansion Packs (Fase 8)
-* **El Bardo:** Cada domingo, una IA analiza tus datos y escribe una historia: *"Sir Usuario derrotó a la Bestia de los Pectorales..."*.
-* **Economía Real:** Gamificación de la culpa. Gana oro estudiando para "comprar" el derecho a pedir comida basura el fin de semana.
-* **Clima:** Si llueve en tu ciudad, llueve en Omega y ganas un buff de +10% XP en Estudio (invita a quedarse en casa).
+### ⚔️ Fase 3: Módulo Físico (Barracones y Salud)
+El módulo más complejo a nivel de datos. Requiere lógica matemática para el fitness.
+- [ ] **Importación de Datos Semilla:** Escribir un script (Python/JS) que descargue el dataset de Wger/ExerciseDB, lo limpie de duplicados y lo inserte en la tabla `exercises` de Supabase.
+- [ ] **Motor de Rutinas (Smart Coach):** Programar la lógica que determine qué rutina cargar basándose en la fecha actual y el tipo de ciclo (ej: si `week % 2 == 0` cargar Arnold Split).
+- [ ] **Visualización Corporal (Heatmap):**
+    - Integrar un SVG del cuerpo humano con IDs por grupo muscular.
+    - Crear función que mapee `ejercicio_realizado` -> `musculos_afectados` -> `cambiar_color_SVG`.
+- [ ] **Sub-módulos de Salud:** Crear contadores simples con persistencia diaria para Hidratación (Taberna) y Sueño (Templo).
+
+### 🎭 Fase 4: Ocio, Economía y Contexto
+Gamificación de la vida real y conexión con el entorno.
+- [ ] **Sistema de Economía:**
+    - Crear tabla `shop_items` con costes en oro.
+    - Programar lógica de transacción: `user_gold - item_cost`.
+- [ ] **Sensores del Dispositivo:**
+    - **PC:** Implementar librería `active-win` en un proceso de fondo de Electron para registrar el título de la ventana activa cada 5 segundos.
+    - **Móvil:** Implementar `expo-location`. Definir "Geofences" (radios de coordenadas) para Casa, Gym y Uni.
+    - **Clima:** Conectar API gratuita de OpenWeatherMap para obtener el estado del clima local al iniciar la app.
+
+### 🚀 Fase 5: Despliegue y Ciclo de Vida
+Cómo llevamos la app del código al dispositivo real.
+- [ ] **Instalación Nativa:** Configurar SideStore en el iPhone y generar la primera *Development Build* (`.ipa`) con las librerías nativas necesarias (GPS, FileSystem).
+- [ ] **Estrategia de Actualización:** Configurar `eas.json` para permitir actualizaciones OTA (Over-The-Air). Esto permitirá modificar lógica de React y UI sin reinstalar la app.
+
+### 🔮 Fase 6: Narrativa y Extras (IA)
+La capa final que da "alma" al proyecto.
+- [ ] **El Bardo (Generación de Texto):** Crear una Edge Function en Supabase que se ejecute cada domingo (Cron Job). Esta función debe:
+    1. Leer los logs de la semana del usuario.
+    2. Formatearlos en un prompt para Gemini Flash.
+    3. Guardar la respuesta narrativa en la tabla `chronicles`.
 
 ---
 
-## 🧪 Guía de Desarrollo y Testing
+## 💎 Profundización en las Funcionalidades
 
-### 📱 Pruebas en Móvil (iOS)
-* **Nivel A (Rápido - UI/Lógica):** Usar **Expo Go**.
-    * Ejecutar `npx expo start` en terminal.
-    * Escanear QR con iPhone.
-    * Permite *Hot Reloading* instantáneo para cambios visuales.
-* **Nivel B (Nativo - GPS/Background):** Usar **Development Build**.
-    * Necesario para probar Geofencing, AppState y Bloqueo.
-    * Ejecutar `eas build --profile development --platform ios`.
-    * Instalar el `.ipa` resultante mediante **SideStore**.
-    * Permite debugging real de funciones nativas manteniendo el *Hot Reloading*.
+### 1. El HUD (Interfaz Siempre Visible)
+Para evitar la fricción de navegar por menús tipo videojuego cuando necesitas algo rápido, el HUD actúa como tu cinturón de herramientas.
+* **📜 El Pergamino (Tareas):** Una lista semitransparente que se despliega sobre la pantalla actual. Permite marcar "Misiones del Día" (Principales, Secundarias, Diarias) como completadas sin romper el flujo de lo que estés haciendo.
+* **🐦 El Cuervo (Avisos):** El centro de notificaciones unificado. Aquí llegan los avisos de "Jefes cercanos" (exámenes), las nuevas historias generadas por El Bardo y recordatorios de salud.
+* **🎒 El Zurrón (Quick Add):** Un botón de captura rápida. Al pulsarlo, permite registrar un pensamiento fugaz, un gasto imprevisto o una tarea nueva en segundos.
 
-### 💻 Pruebas en Escritorio (Windows)
-* Ejecutar en modo desarrollo (Web/Electron wrapper): `yarn dev:desktop`.
-* Abre una ventana nativa de Windows con acceso a DevTools (`Ctrl+Shift+I`).
-* Usar para probar la librería `active-win` y la detección de ventanas.
+### 2. Ubicaciones del Mapa y sus Funciones
 
-### 🐞 Debugging
-* **En Móvil:** Agitar el dispositivo (Shake Gesture) para abrir el menú de desarrollador (Inspector de elementos, Logs).
-* **Consola Unificada:** Todos los `console.log` del móvil y del PC aparecen centralizados en la terminal de Google Antigravity.
+#### 🏰 El Castillo (Gestión Central)
+El centro de mando.
+* **Sala del Trono (Dashboard):** Tu estado vital. Si has cumplido tus tareas, el trono se ve majestuoso y brillante. Si tienes tareas atrasadas, aparecen telarañas o grietas visuales.
+* **Mesa de Guerra (Planificación):** Calendario táctico. Los exámenes no son eventos, son "Batallas". Puedes ver la dificultad (HP del jefe) y los días restantes.
+* **Archivos Reales:** Interfaz visual para navegar por tus apuntes en la nube.
+
+#### 🏛️ La Biblioteca (Intelecto y Foco)
+* **La Sección Prohibida:** El modo "Do Not Disturb" definitivo. Al entrar, la app bloquea la navegación a otras zonas. Si sales de la app, recibes daño masivo. Ideal para Pomodoros estrictos.
+* **Atril del Escriba:** Sistema de repaso espaciado (Flashcards) integrado para memorizar conceptos antes de una batalla (examen).
+* **Grimorio de Sabiduría:** Visualización del Árbol de Talentos. Las horas de estudio se convierten en puntos para desbloquear constelaciones de "Sabiduría".
+
+#### ⚔️ Los Barracones (Fuerza y Físico)
+* **La Forja:** Un constructor de rutinas flexible. Permite configurar ciclos complejos (ej: Rotación de 4 días A-B-C-D) que no dependen de los días de la semana.
+* **El Coliseo:** Visualización de progreso. Muestra gráficas de tus levantamientos históricos comparados con tu 1RM teórico actual.
+* **El Espejo Mágico (Heatmap):** Un modelo anatómico interactivo. Los músculos brillan en rojo intenso si han recibido estímulo reciente y alto volumen. Se apagan a gris/azul si llevan días sin entrenar (atrofia visual).
+
+#### 🍺 La Taberna (Vitalidad - Nutrición)
+Un enfoque RPG a la dieta.
+* **La Barra:** Registro de hidratación mediante jarras visuales.
+* **El Despensero:** Registro de macros simplificado. La comida saludable regenera HP; la comida basura penaliza estadísticas pero sube la "Moral" (Ocio).
+
+#### ⛪ El Templo (Espíritu - Salud Mental)
+* **El Altar:** Registro de gratitud diario. Obliga al usuario a pausar y escribir 3 cosas positivas para ganar el buff de "Claridad Mental".
+* **La Cripta:** Tracker de sueño manual o sincronizado con Apple Health. Dormir poco aplica un debuff de "Fatiga" que reduce la XP ganada al día siguiente.
+
+#### 🎭 El Teatro (Carisma - Ocio)
+* **Los Camerinos:** Herramientas para práctica deliberada de hobbies (Metrónomo, Cronómetro de práctica).
+* **La Taquilla:** Tienda de Ocio. Aquí es donde gastas el oro ganado con esfuerzo. "Comprar" una hora de serie cuesta 100 monedas de oro. Gamifica la culpa del ocio pasivo.
+
+#### ⚖️ El Mercado (Economía Real)
+El puente entre el juego y la realidad.
+* **Tienda del Alquimista:** Un catálogo configurable por el usuario. Puedes poner recompensas reales (ej: "Pedir Pizza", "Comprar videojuego de 60€").
+* **Mecánica:** Estas recompensas cuestan cantidades altas de oro del juego, obligándote a ser productivo durante semanas para "permitirte" un capricho real sin remordimientos.
 
 ---
 
-## ⚙️ Arquitectura Técnica
+## ⚙️ Arquitectura Técnica Explicada
 
-### Stack Tecnológico
-* **Frontend Móvil:** React Native + Expo.
-    * *Librerías Clave:* `expo-location` (GPS), `react-native-svg` (Heatmap/Árbol).
-* **Frontend Desktop:** Electron + React.
-* **Lenguaje:** TypeScript / JavaScript.
-* **Estilos:** Componentes propios basados en `ImageBackground` para estética medieval.
+### Stack Tecnológico: ¿Por qué estas herramientas?
+* **React Native + Expo:** Permite iterar rapidísimo. Usamos el sistema de *Over-The-Air Updates* (EAS) para arreglar bugs sin tener que reinstalar la app manualmente cada vez.
+* **Electron:** Permite reutilizar el 90% del código de la interfaz del móvil en el PC, pero con acceso a APIs de Windows (como detectar ventanas activas) que una web normal no tendría.
+* **Supabase:** Es un "Backend-as-a-Service". Nos da Base de Datos, Autenticación y Almacenamiento de archivos sin tener que configurar servidores complejos de Linux por ahora.
 
-### Backend & Datos (Supabase)
-* **Base de Datos:** PostgreSQL.
-* **Tablas Clave:**
-    * `tasks`: column `type` ('main', 'side', 'daily').
-    * `routines`: lógica de `cycle_type` ('weekly', 'biweekly_split').
-    * `shop_items`: catálogo de recompensas reales.
-    * `chronicles`: historial generado por el Bardo.
-* **Estrategia:** *Cloud-first* con migración a NAS.
+### Estrategia de Datos
+* **Cloud-First:** Inicialmente, todo se sincroniza con la nube de Supabase para asegurar que el iPad, el iPhone y el PC vean los mismos datos al instante.
+* **Migración Futura:** La arquitectura está diseñada para ser dockerizada. En el futuro, se podrá desplegar una instancia de Supabase en un NAS casero (Raspberry Pi) y cambiar la URL de la API en la app para lograr soberanía total de datos.
 
-### Desarrollo (CI/CD)
-* **IDE:** Google Antigravity (Agentes de IA para automatización).
-* **Control de Versiones:** GitHub.
-* **Actualizaciones:** EAS Update (Cambios JS) + SideStore (Cambios Nativos).
+### Desarrollo con IA (Google Antigravity)
+Utilizamos un IDE potenciado por agentes para automatizar la "fontanería" del código:
+* Los agentes se encargan de escribir los scripts de migración de base de datos.
+* Los agentes generan los tipos de TypeScript basados en las tablas SQL.
+* Nosotros nos centramos en la lógica de juego y la experiencia de usuario.
 
 ---
 *Hecho con sangre, sudor y código.* 🛡️

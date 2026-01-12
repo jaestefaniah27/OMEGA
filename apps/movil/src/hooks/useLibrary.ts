@@ -178,21 +178,49 @@ export const useLibrary = () => {
     }, []);
 
     useEffect(() => {
-        if (!selectedSubject && subjects.length > 0) {
-            AsyncStorage.getItem(SESSION_STORAGE_KEY).then(saved => {
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    const sub = subjects.find(s => s.id === data.subjectId);
-                    if (sub) {
-                        setSelectedSubject(sub);
-                        setIsSessionActive(true);
-                    }
+        const initSelection = async () => {
+            const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+            let recoveredBookId: string | undefined;
+            let recoveredSubjectId: string | undefined;
+
+            if (saved) {
+                const data = JSON.parse(saved);
+                recoveredBookId = data.bookId;
+                recoveredSubjectId = data.subjectId;
+                if (!isSessionActive) setIsSessionActive(true);
+            }
+
+            // --- SUBJECT SELECTION ---
+            if (!selectedSubject && subjects.length > 0) {
+                const sub = subjects.find(s => s.id === recoveredSubjectId);
+                if (sub) {
+                    setSelectedSubject(sub);
                 } else if (!isSessionActive) {
                     setSelectedSubject(subjects.filter(s => !s.is_completed)[0] || null);
                 }
-            });
-        }
-    }, [subjects, isSessionActive]);
+            }
+
+            // --- BOOK SELECTION ---
+            if (!selectedBook && books.length > 0) {
+                const book = books.find(b => b.id === recoveredBookId);
+                if (book) {
+                    setSelectedBook(book);
+                } else if (!isSessionActive) {
+                    // Default to most advanced book
+                    const activeBooks = books
+                        .filter(b => !b.is_finished)
+                        .sort((a, b) => {
+                            const progA = a.current_page / (a.total_pages || 1);
+                            const progB = b.current_page / (b.total_pages || 1);
+                            return progB - progA;
+                        });
+                    setSelectedBook(activeBooks[0] || null);
+                }
+            }
+        };
+
+        initSelection();
+    }, [subjects, books, isSessionActive]);
 
     // 2. Timer Heartbeat
     useEffect(() => {
@@ -483,6 +511,7 @@ export const useLibrary = () => {
             current_page: 0,
             cover_color: '#8b4513',
             is_finished: false,
+            finished_at: null,
             user_id: user.id,
             created_at: new Date().toISOString()
         };
@@ -509,7 +538,8 @@ export const useLibrary = () => {
         const isFinished = current_page >= book.total_pages;
         const updates: Partial<Book> = {
             current_page,
-            is_finished: isFinished
+            is_finished: isFinished,
+            finished_at: isFinished ? (book.finished_at || new Date().toISOString()) : null
         };
 
         // Optimistic Update
@@ -527,12 +557,19 @@ export const useLibrary = () => {
         const book = books.find(b => b.id === id);
         if (!book) return;
 
+        const finishedAt = new Date().toISOString();
         // Optimistic Update
-        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: true, current_page: b.total_pages } : b));
+        setBooks(prev => prev.map(b => b.id === id ? {
+            ...b,
+            is_finished: true,
+            current_page: b.total_pages,
+            finished_at: finishedAt
+        } : b));
 
         const { error } = await supabase.from('books').update({
             is_finished: true,
-            current_page: book.total_pages
+            current_page: book.total_pages,
+            finished_at: finishedAt
         }).eq('id', id);
 
         if (error) {
@@ -543,9 +580,12 @@ export const useLibrary = () => {
 
     const reactivateBook = async (id: string) => {
         // Optimistic Update
-        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: false } : b));
+        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: false, finished_at: null } : b));
 
-        const { error } = await supabase.from('books').update({ is_finished: false }).eq('id', id);
+        const { error } = await supabase.from('books').update({
+            is_finished: false,
+            finished_at: null
+        }).eq('id', id);
 
         if (error) {
             await fetchSubjects();
@@ -611,8 +651,20 @@ export const useLibrary = () => {
         subjects, books, bookStats,
         activeSubjects: subjects.filter(s => !s.is_completed),
         completedSubjects: subjects.filter(s => s.is_completed),
-        activeBooks: books.filter(b => !b.is_finished),
-        finishedBooks: books.filter(b => b.is_finished),
+        activeBooks: books
+            .filter(b => !b.is_finished)
+            .sort((a, b) => {
+                const progA = a.current_page / (a.total_pages || 1);
+                const progB = b.current_page / (b.total_pages || 1);
+                return progB - progA; // Highest percentage on top
+            }),
+        finishedBooks: books
+            .filter(b => b.is_finished)
+            .sort((a, b) => {
+                const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
+                const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+                return dateB - dateA; // Most recent on top
+            }),
         loading, error,
         addSubject, updateSubject, completeSubject, reactivateSubject,
         addBook, updateBookProgress, completeBook, reactivateBook,

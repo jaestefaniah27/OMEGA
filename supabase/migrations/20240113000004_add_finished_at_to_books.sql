@@ -1,0 +1,3 @@
+-- ADD finished_at TO BOOKS
+ALTER TABLE public.books 
+    ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP WITH TIME ZONE;

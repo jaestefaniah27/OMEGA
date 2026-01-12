@@ -34,6 +34,7 @@ export interface Book {
     current_page: number;
     cover_color: string;
     is_finished: boolean;
+    finished_at: string | null;
     created_at: string;
 }
 

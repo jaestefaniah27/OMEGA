@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -11,11 +11,7 @@ import {
     TouchableOpacity,
     Alert,
     FlatList,
-    AppState,
-    AppStateStatus
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -38,215 +34,94 @@ import { Subject } from '../types/supabase';
 const { width, height } = Dimensions.get('window');
 
 const SUBJECT_COLORS = ['#8b4513', '#2c3e50', '#27ae60', '#8e44ad', '#d35400', '#c0392b', '#16a085'];
-const SESSION_STORAGE_KEY = '@omega_active_session';
-
-// Notification Setup
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
 
 export const LibraryScreen: React.FC = () => {
     const navigation = useNavigation();
     const {
+        subjects, // <--- Use all subjects for course lookup
         activeSubjects,
         completedSubjects,
         addSubject,
         completeSubject,
-        logStudySession,
-        loading
+        reactivateSubject,
+        loading,
+        // Session Master Logic from Hook
+        isSessionActive,
+        elapsedSeconds,
+        studyMode,
+        setStudyMode,
+        difficulty,
+        setDifficulty,
+        targetMinutes,
+        setTargetMinutes,
+        selectedSubject,
+        setSelectedSubject,
+        startSession,
+        stopSession,
     } = useLibrary();
 
-    // UI States
+    // UI-only States
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-    const [isSessionActive, setIsSessionActive] = useState(false);
     const [isSubjectPickerVisible, setIsSubjectPickerVisible] = useState(false);
-
-    // Form States
     const [newSubjectName, setNewSubjectName] = useState('');
+    const [newSubjectCourse, setNewSubjectCourse] = useState('');
     const [selectedColor, setSelectedColor] = useState(SUBJECT_COLORS[0]);
 
-    // Session Config States
-    const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-    const [studyMode, setStudyMode] = useState<'TIMER' | 'STOPWATCH'>('STOPWATCH');
-    const [difficulty, setDifficulty] = useState<'EXPLORER' | 'CRUSADE'>('EXPLORER');
-    const [targetMinutes, setTargetMinutes] = useState('25');
-
-    // Active Session States (Synchronized via timestamps)
-    const [elapsedSeconds, setElapsedSeconds] = useState(0);
-    const [startTime, setStartTime] = useState<number | null>(null);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const appState = useRef(AppState.currentState);
-    const backgroundTimeRef = useRef<number | null>(null);
-
-    // 1. Initial Load & Recovery
-    useEffect(() => {
-        const loadPersistedSession = async () => {
-            const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
-            if (saved) {
-                const sessionData = JSON.parse(saved);
-                const start = sessionData.startTime;
-                const now = Date.now();
-                const elapsed = Math.floor((now - start) / 1000);
-
-                // Set initial states
-                setStartTime(start);
-                setElapsedSeconds(elapsed);
-                setStudyMode(sessionData.mode);
-                setDifficulty(sessionData.difficulty);
-                setTargetMinutes(sessionData.targetMinutes);
-
-                // Recovery subject match
-                const subject = activeSubjects.find(s => s.id === sessionData.subjectId);
-                if (subject) setSelectedSubject(subject);
-
-                setIsSessionActive(true);
+    // Effect to set default course from most recent subject
+    React.useEffect(() => {
+        if (isAddModalVisible && !newSubjectName && !newSubjectCourse && subjects.length > 0) {
+            // subjects are ordered by created_at DESC in the hook
+            const lastCourse = subjects[0]?.course;
+            if (lastCourse) {
+                setNewSubjectCourse(lastCourse);
             }
-        };
-
-        if (!loading && activeSubjects.length > 0) {
-            loadPersistedSession();
         }
+    }, [isAddModalVisible, subjects]);
 
-        requestPermissions();
-    }, [loading, activeSubjects]);
-
-    // Initial subject selection
-    useEffect(() => {
-        if (!selectedSubject && activeSubjects.length > 0) {
-            setSelectedSubject(activeSubjects[0]);
-        }
-    }, [activeSubjects]);
-
-    const requestPermissions = async () => {
-        const { status } = await Notifications.getPermissionsAsync();
-        if (status !== 'granted') {
-            await Notifications.requestPermissionsAsync();
-        }
-    };
-
-    // 2. Timer Heartbeat (Calculated against absolute startTime)
-    useEffect(() => {
-        if (isSessionActive && startTime) {
-            timerRef.current = setInterval(() => {
-                const now = Date.now();
-                const elapsed = Math.floor((now - startTime) / 1000);
-                setElapsedSeconds(elapsed);
-
-                // Timer completion notification
-                if (studyMode === 'TIMER') {
-                    const targetSecs = parseInt(targetMinutes) * 60;
-                    if (elapsed === targetSecs) {
-                        sendLocalNotification('⌛ ¡Tiempo Cumplido!', 'Has alcanzado tu objetivo de estudio. Puedes finalizar o seguir en overtime.');
-                    }
-                }
-            }, 1000);
-        } else {
-            if (timerRef.current) clearInterval(timerRef.current);
-        }
-
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [isSessionActive, startTime, studyMode, targetMinutes]);
-
-    // 3. AppState Detection (Iron Will - Crusade Mode)
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
-        return () => subscription.remove();
-    }, [isSessionActive, difficulty, startTime]);
-
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-        if (!isSessionActive || difficulty !== 'CRUSADE') return;
-
-        if (appState.current.match(/active/) && nextAppState === 'background') {
-            backgroundTimeRef.current = Date.now();
-            sendLocalNotification('⚠️ ¡VUELVE COBARDE!', 'Tu honor está en juego. Si tardas más de 10 segundos fuera, la sesión fallará.');
-        }
-
-        if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-            if (backgroundTimeRef.current) {
-                const diff = (Date.now() - backgroundTimeRef.current) / 1000;
-                if (diff > 10) {
-                    failSession();
-                }
-            }
-            backgroundTimeRef.current = null;
-        }
-
-        appState.current = nextAppState;
-    };
-
-    const sendLocalNotification = async (title: string, body: string) => {
-        await Notifications.scheduleNotificationAsync({
-            content: { title, body, sound: true },
-            trigger: null,
-        });
-    };
-
-    const failSession = async () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        setIsSessionActive(false);
-        const start = startTime;
-        const sub = selectedSubject;
-        const mode = studyMode;
-
-        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-
+    const handleAddSubject = async () => {
+        if (!newSubjectName.trim()) return;
         try {
-            await logStudySession({
-                subject_id: sub!.id,
-                start_time: new Date(start!).toISOString(),
-                end_time: new Date().toISOString(),
-                duration_minutes: 0,
-                mode: mode,
-                status: 'ABANDONED',
-                difficulty: 'CRUSADE',
-                notes: 'Sesión fallida por salir del campo de batalla (Deshonra).'
-            });
-            Alert.alert(
-                '💀 Deshonra',
-                'Has huido del campo de batalla. Tu esfuerzo se ha disipado en el éter y tu honor ha sido manchado.',
-                [{ text: 'Lamentable', onPress: () => closeSession() }]
-            );
+            await addSubject(newSubjectName.trim(), selectedColor, newSubjectCourse.trim() || undefined);
+            setNewSubjectName('');
+            setNewSubjectCourse('');
+            setIsAddModalVisible(false);
         } catch (error: any) {
-            console.error(error);
-            closeSession();
+            Alert.alert('Error', error.message);
         }
     };
 
-    // 4. Session Control
-    const startSession = async () => {
-        if (!selectedSubject) {
-            Alert.alert('🧙‍♂️ Sabio consejo', 'Debes elegir un pergamino (asignatura) antes de empezar.');
-            return;
-        }
-        const now = Date.now();
-        setElapsedSeconds(0);
-        setStartTime(now);
-        setIsSessionActive(true);
+    const formatElapsedTime = (seconds: number) => {
+        if (studyMode === 'TIMER') {
+            const targetSecs = parseInt(targetMinutes) * 60;
+            const diff = targetSecs - seconds;
 
-        // Persist
-        const sessionData = {
-            startTime: now,
-            subjectId: selectedSubject.id,
-            mode: studyMode,
-            difficulty,
-            targetMinutes
-        };
-        await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+            if (diff >= 0) {
+                const mins = Math.floor(diff / 60);
+                const secs = diff % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                const overtime = Math.abs(diff);
+                const mins = Math.floor(overtime / 60);
+                const secs = overtime % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+        } else {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+    };
+
+    const formatTimeDisplay = (minutes: number) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        if (hours === 0) return `${mins}m`;
+        return `${hours}h ${mins}m`;
     };
 
     const handleStopPress = () => {
-        const totalMinutes = Math.floor(elapsedSeconds / 60);
         const targetSecs = parseInt(targetMinutes) * 60;
 
-        // Regla de Sesiones Precoces (< 1 min)
         if (elapsedSeconds < 60) {
             Alert.alert(
                 '⏳ Sesión Precoz',
@@ -280,208 +155,140 @@ export const LibraryScreen: React.FC = () => {
         }
     };
 
-    const stopSession = async (abandoned = false, skipLog = false) => {
-        if (timerRef.current) clearInterval(timerRef.current);
-
-        if (skipLog) {
-            await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-            closeSession();
-            return;
-        }
-
-        const totalMinutes = Math.floor(elapsedSeconds / 60);
-        const start = startTime;
-        const sub = selectedSubject;
-        const mode = studyMode;
-        const diff = difficulty;
-
-        try {
-            await logStudySession({
-                subject_id: sub!.id,
-                start_time: new Date(start!).toISOString(),
-                end_time: new Date().toISOString(),
-                duration_minutes: abandoned ? 0 : (totalMinutes || 1),
-                mode: mode,
-                status: abandoned ? 'ABANDONED' : 'COMPLETED',
-                difficulty: diff,
-                notes: abandoned ? 'Sesión abandonada voluntariamente' : 'Estudio completado con éxito'
-            });
-
-            if (!abandoned) {
-                Alert.alert('✨ Misión Cumplida', `Has sumado ${totalMinutes || 1} minutos de conocimiento.`);
-            }
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
-        } finally {
-            await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-            closeSession();
-        }
-    };
-
-    const closeSession = () => {
-        setIsSessionActive(false);
-        setElapsedSeconds(0);
-        setStartTime(null);
-    };
-
-    const handleAddSubject = async () => {
-        if (!newSubjectName.trim()) return;
-        try {
-            await addSubject(newSubjectName, selectedColor);
-            setNewSubjectName('');
-            setIsAddModalVisible(false);
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
-        }
-    };
-
-    const formatElapsedTime = (seconds: number) => {
-        if (studyMode === 'TIMER') {
-            const targetSecs = parseInt(targetMinutes) * 60;
-            const diff = targetSecs - seconds;
-
-            if (diff >= 0) {
-                // Countdown
-                const mins = Math.floor(diff / 60);
-                const secs = diff % 60;
-                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            } else {
-                // Overtime (positive display of elapsed extra time)
-                const overtime = Math.abs(diff);
-                const mins = Math.floor(overtime / 60);
-                const secs = overtime % 60;
-                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            }
-        } else {
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-    };
-
-    const formatTimeDisplay = (minutes: number) => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours === 0) return `${mins}m`;
-        return `${hours}h ${mins}m`;
-    };
-
     const SubjectCard = ({ item }: { item: Subject }) => (
         <ParchmentCard style={styles.subjectCard}>
             <View style={[styles.colorTab, { backgroundColor: item.color }]} />
             <View style={styles.subjectInfo}>
                 <Text style={styles.subjectName}>{item.name}</Text>
-                <View style={styles.subjectStats}>
-                    <Clock size={12} color="#8b4513" style={{ marginRight: 4 }} />
-                    <Text style={styles.subjectTime}>{formatTimeDisplay(item.total_minutes_studied)}</Text>
+                <View style={styles.subjectMetaRow}>
+                    {item.course && (
+                        <View style={styles.courseBadge}>
+                            <Compass size={10} color="#8b4513" style={{ marginRight: 3 }} />
+                            <Text style={styles.courseText}>{item.course}</Text>
+                        </View>
+                    )}
+                    <View style={styles.subjectStats}>
+                        <Clock size={12} color="#8b4513" style={{ marginRight: 4 }} />
+                        <Text style={styles.subjectTime}>{formatTimeDisplay(item.total_minutes_studied)}</Text>
+                    </View>
                 </View>
             </View>
-            {!item.is_completed && (
-                <TouchableOpacity
-                    onPress={() => {
-                        Alert.alert(
-                            '🎓 ¿Asignatura Completada?',
-                            `¿Confirmas que has adquirido todo el conocimiento de ${item.name}?`,
-                            [
-                                { text: 'No aún', style: 'cancel' },
-                                { text: 'Sí, Completada', onPress: () => completeSubject(item.id) }
-                            ]
-                        );
-                    }}
-                    style={styles.completeBtn}
-                >
-                    <CheckCircle size={24} color="#27ae60" />
-                </TouchableOpacity>
-            )}
-            {item.is_completed && <Award size={24} color="#d4af37" />}
+            <View style={styles.cardActions}>
+                {item.is_completed ? (
+                    <TouchableOpacity
+                        style={styles.reactivateBtn}
+                        onPress={() => reactivateSubject(item.id)}
+                    >
+                        <History size={20} color="#8b4513" opacity={0.6} />
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.completeBtn}
+                        onPress={() => completeSubject(item.id)}
+                    >
+                        <CheckCircle size={20} color="#27ae60" />
+                    </TouchableOpacity>
+                )}
+            </View>
         </ParchmentCard>
     );
 
     return (
         <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.headerTitle}>🏛️ LA GRAN BIBLIOTECA</Text>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>🏰 LA GRAN BIBLIOTECA</Text>
+                    <Text style={styles.headerSubtitle}>El conocimiento es el tesoro del reino</Text>
+                </View>
 
-                {/* EL ATRIL - Configuración */}
+                {/* EL ATRIL - Session Configuration */}
                 <ParchmentCard style={styles.atrilCard}>
-                    <Text style={styles.sectionTitle}>📜 EL ATRIL DE ESTUDIO</Text>
+                    <View style={styles.atrilHeader}>
+                        <Award size={24} color="#8b4513" />
+                        <Text style={styles.atrilTitle}>EL ATRIL DE ESTUDIO</Text>
+                    </View>
 
                     <TouchableOpacity
-                        style={styles.pickerButton}
+                        style={styles.subjectSelector}
                         onPress={() => setIsSubjectPickerVisible(true)}
                     >
-                        <BookOpen size={20} color="#3d2b1f" />
-                        <Text style={styles.pickerText}>
-                            {selectedSubject ? selectedSubject.name : 'Elegir Asignatura...'}
-                        </Text>
-                        <ChevronDown size={20} color="#3d2b1f" />
+                        <View style={styles.subjectSelectorLeft}>
+                            <BookText size={20} color="#8b4513" />
+                            <Text style={styles.subjectSelectorText}>
+                                {selectedSubject ? selectedSubject.name : 'Seleccionar Asignatura'}
+                            </Text>
+                        </View>
+                        <ChevronDown size={20} color="#8b4513" />
                     </TouchableOpacity>
 
-                    <View style={styles.modeToggle}>
+                    <View style={styles.modeTabs}>
                         <TouchableOpacity
-                            style={[styles.modeBtn, studyMode === 'STOPWATCH' && styles.modeBtnActive]}
+                            style={[styles.modeTab, studyMode === 'STOPWATCH' && styles.activeModeTab]}
                             onPress={() => setStudyMode('STOPWATCH')}
                         >
-                            <History size={18} color={studyMode === 'STOPWATCH' ? '#fff' : '#3d2b1f'} />
-                            <Text style={[styles.modeBtnText, studyMode === 'STOPWATCH' && styles.modeBtnTextActive]}>Cronómetro</Text>
+                            <History size={18} color={studyMode === 'STOPWATCH' ? '#fff' : '#8b4513'} />
+                            <Text style={[styles.modeTabText, studyMode === 'STOPWATCH' && styles.activeModeTabText]}>Cronómetro</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.modeBtn, studyMode === 'TIMER' && styles.modeBtnActive]}
+                            style={[styles.modeTab, studyMode === 'TIMER' && styles.activeModeTab]}
                             onPress={() => setStudyMode('TIMER')}
                         >
-                            <TimerIcon size={18} color={studyMode === 'TIMER' ? '#fff' : '#3d2b1f'} />
-                            <Text style={[styles.modeBtnText, studyMode === 'TIMER' && styles.modeBtnTextActive]}>Temporizador</Text>
+                            <TimerIcon size={18} color={studyMode === 'TIMER' ? '#fff' : '#8b4513'} />
+                            <Text style={[styles.modeTabText, studyMode === 'TIMER' && styles.activeModeTabText]}>Temporizador</Text>
                         </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.difficultyContainer}>
+                        <Text style={styles.diffLabel}>DIFICULTAD:</Text>
+                        <View style={styles.diffGroup}>
+                            <TouchableOpacity
+                                style={[styles.diffBtn, difficulty === 'EXPLORER' && styles.diffActiveExplorer]}
+                                onPress={() => setDifficulty('EXPLORER')}
+                            >
+                                <Compass size={14} color={difficulty === 'EXPLORER' ? '#fff' : '#8b4513'} />
+                                <Text style={[styles.diffBtnText, difficulty === 'EXPLORER' && styles.textWhite]}>Explorador</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.diffBtn, difficulty === 'CRUSADE' && styles.diffActiveCrusade]}
+                                onPress={() => setDifficulty('CRUSADE')}
+                            >
+                                <Shield size={14} color={difficulty === 'CRUSADE' ? '#fff' : '#8b4513'} />
+                                <Text style={[styles.diffBtnText, difficulty === 'CRUSADE' && styles.textWhite]}>Cruzada</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {studyMode === 'TIMER' && (
-                        <View style={styles.timerInputContainer}>
-                            <Text style={styles.timerInputLabel}>Minutos Objetivo:</Text>
+                        <View style={styles.timerConfig}>
+                            <Clock size={16} color="#8b4513" />
                             <TextInput
-                                style={styles.timerInput}
-                                keyboardType="numeric"
+                                style={styles.minutesInput}
                                 value={targetMinutes}
                                 onChangeText={setTargetMinutes}
+                                keyboardType="number-pad"
                                 maxLength={3}
                             />
+                            <Text style={styles.minutesLabel}>minutos de compromiso</Text>
                         </View>
                     )}
 
-                    {/* Selector de Dificultad */}
-                    <View style={styles.diffContainer}>
-                        <TouchableOpacity
-                            style={[styles.diffBtn, difficulty === 'EXPLORER' && styles.diffBtnActiveExplorer]}
-                            onPress={() => setDifficulty('EXPLORER')}
-                        >
-                            <Compass size={18} color={difficulty === 'EXPLORER' ? '#fff' : '#27ae60'} />
-                            <Text style={[styles.diffBtnText, difficulty === 'EXPLORER' && { color: '#fff' }]}>Explorador</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.diffBtn, difficulty === 'CRUSADE' && styles.diffBtnActiveCrusade]}
-                            onPress={() => setDifficulty('CRUSADE')}
-                        >
-                            <Shield size={18} color={difficulty === 'CRUSADE' ? '#fff' : '#c0392b'} />
-                            <Text style={[styles.diffBtnText, difficulty === 'CRUSADE' && { color: '#fff' }]}>Cruzada</Text>
-                        </TouchableOpacity>
-                    </View>
-
                     <MedievalButton
-                        title="COMENZAR ESTUDIO"
+                        title="INICIAR MISIÓN DE ESTUDIO"
                         onPress={startSession}
                         style={styles.startBtn}
                     />
                 </ParchmentCard>
 
-                {/* ESTANTERÍAS */}
-                <View style={styles.shelfHeader}>
-                    <Text style={styles.shelfTitle}>📚 TUS ESTANTERÍAS</Text>
-                    <TouchableOpacity onPress={() => setIsAddModalVisible(true)}>
-                        <Plus size={24} color="#FFD700" />
+                {/* ARCHIVOS REALES - Subjects List */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>📜 ARCHIVOS REALES</Text>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
+                        <Plus size={24} color="#d4af37" />
                     </TouchableOpacity>
                 </View>
 
                 {activeSubjects.length === 0 && !loading && (
-                    <Text style={styles.emptyText}>Tus estanterías están vacías. Añade un pergamino para comenzar.</Text>
+                    <Text style={styles.emptyText}>No hay pergaminos de estudio activos.</Text>
                 )}
 
                 {activeSubjects.map(subject => (
@@ -490,7 +297,9 @@ export const LibraryScreen: React.FC = () => {
 
                 {completedSubjects.length > 0 && (
                     <>
-                        <Text style={styles.shelfTitleSecondary}>🎓 CONOCIMIENTO ADQUIRIDO</Text>
+                        <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                            <Text style={styles.sectionTitle}>🏆 MISIONES COMPLETADAS</Text>
+                        </View>
                         {completedSubjects.map(subject => (
                             <SubjectCard key={subject.id} item={subject} />
                         ))}
@@ -499,33 +308,32 @@ export const LibraryScreen: React.FC = () => {
 
                 <MedievalButton
                     title="VOLVER AL MAPA"
-                    onPress={() => navigation.goBack()}
                     variant="danger"
+                    onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 />
 
-                <View style={{ height: 120 }} />
+                <View style={{ height: 40 }} />
             </ScrollView>
 
-            {/* MODAL: Sesión Activa (Iron Will) */}
-            <Modal visible={isSessionActive} animationType="slide" transparent={false}>
-                <View style={[styles.sessionContainer, { backgroundColor: selectedSubject?.color || '#1a1a1a' }]}>
-                    <View style={styles.sessionOverlay}>
-                        <View style={styles.sessionHeaderIcon}>
-                            {difficulty === 'CRUSADE' ? <Shield size={80} color="#fff" /> : <BookText size={80} color="#fff" opacity={0.3} />}
-                        </View>
-                        <Text style={styles.sessionSubjectName}>{selectedSubject?.name}</Text>
-
-                        <View style={styles.difficultyBadge}>
-                            {difficulty === 'CRUSADE' ? (
-                                <View style={styles.crusadeBadge}>
-                                    <AlertTriangle size={14} color="#fff" style={{ marginRight: 5 }} />
-                                    <Text style={styles.badgeText}>MODO CRUZADA: NO SALIR</Text>
+            {/* MODAL: Active Session */}
+            <Modal visible={isSessionActive} transparent animationType="slide">
+                <View style={styles.sessionOverlay}>
+                    <View style={styles.sessionContent}>
+                        <View style={styles.sessionHeaderBox}>
+                            <View style={styles.sessionSubjectBox}>
+                                <BookOpen size={20} color="#FFD700" />
+                                <Text style={styles.sessionSubjectName}>{selectedSubject?.name}</Text>
+                            </View>
+                            <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
+                                {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
+                                <Text style={styles.badgeText}>{difficulty}</Text>
+                            </View>
+                            {difficulty === 'CRUSADE' && (
+                                <View style={styles.warnBox}>
+                                    <AlertTriangle size={14} color="#e74c3c" />
+                                    <Text style={styles.warnText}>Iron Will Activo</Text>
                                 </View>
-                            ) : (
-                                <Text style={styles.sessionMode}>
-                                    {studyMode === 'TIMER' ? `Objetivo: ${targetMinutes}m` : 'Explorando saberes...'}
-                                </Text>
                             )}
                         </View>
 
@@ -563,6 +371,8 @@ export const LibraryScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <ParchmentCard style={styles.addModal}>
                         <Text style={styles.modalTitle}>NUEVO PERGAMINO</Text>
+
+                        <Text style={styles.inputLabel}>Asignatura:</Text>
                         <TextInput
                             style={styles.modalInput}
                             placeholder="Nombre de la Asignatura"
@@ -570,6 +380,15 @@ export const LibraryScreen: React.FC = () => {
                             onChangeText={setNewSubjectName}
                             autoFocus
                         />
+
+                        <Text style={styles.inputLabel}>Curso:</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="ej: 1º Bach, 2024"
+                            value={newSubjectCourse}
+                            onChangeText={setNewSubjectCourse}
+                        />
+
                         <View style={styles.colorPalette}>
                             {SUBJECT_COLORS.map(color => (
                                 <TouchableOpacity
@@ -625,246 +444,319 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: 'center',
     },
+    topHeader: {
+        width: '100%',
+        alignItems: 'center',
+        marginTop: Platform.OS === 'ios' ? 60 : 40,
+        marginBottom: 30,
+    },
     headerTitle: {
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: 'bold',
         color: '#FFD700',
-        marginTop: 40,
-        marginBottom: 30,
         textAlign: 'center',
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowColor: 'rgba(0,0,0,0.8)',
         textShadowOffset: { width: 2, height: 2 },
-        textShadowRadius: 5,
+        textShadowRadius: 4,
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: '#d4af37',
+        opacity: 0.8,
+        marginTop: 5,
+        fontStyle: 'italic',
     },
     atrilCard: {
         width: width * 0.9,
         padding: 20,
+        alignItems: 'center',
         marginBottom: 30,
+        elevation: 5,
     },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#3d2b1f',
-        marginBottom: 15,
-        textAlign: 'center',
-        letterSpacing: 1,
-    },
-    pickerButton: {
+    atrilHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.4)',
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(61,43,31,0.2)',
-        marginBottom: 15,
-    },
-    pickerText: {
-        flex: 1,
-        fontSize: 16,
-        color: '#3d2b1f',
-        marginLeft: 10,
-        fontWeight: '500',
-    },
-    modeToggle: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(61,43,31,0.1)',
-        borderRadius: 8,
-        padding: 4,
-        marginBottom: 15,
-    },
-    modeBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        borderRadius: 6,
-    },
-    modeBtnActive: {
-        backgroundColor: '#3d2b1f',
-    },
-    modeBtnText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#3d2b1f',
-        marginLeft: 6,
-    },
-    modeBtnTextActive: {
-        color: '#fff',
-    },
-    timerInputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 15,
-    },
-    timerInputLabel: {
-        fontSize: 14,
-        color: '#3d2b1f',
-        marginRight: 10,
-    },
-    timerInput: {
-        backgroundColor: 'white',
-        width: 60,
-        height: 40,
-        borderRadius: 8,
-        textAlign: 'center',
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#3d2b1f',
-        borderWidth: 1,
-        borderColor: '#3d2b1f',
-    },
-    diffContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
         marginBottom: 20,
     },
-    diffBtn: {
-        flex: 0.48,
+    atrilTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        marginLeft: 10,
+    },
+    subjectSelector: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 15,
+        backgroundColor: 'rgba(255,255,255,0.4)',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.2)',
+        marginBottom: 20,
+    },
+    subjectSelectorLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    subjectSelectorText: {
+        marginLeft: 10,
+        color: '#3d2b1f',
+        fontWeight: 'bold',
+    },
+    modeTabs: {
+        flexDirection: 'row',
+        width: '100%',
+        marginBottom: 20,
+    },
+    modeTab: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
+        padding: 12,
+        backgroundColor: 'rgba(0,0,0,0.05)',
         borderRadius: 8,
-        borderWidth: 1.5,
-        borderColor: 'rgba(61,43,31,0.1)',
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        marginHorizontal: 5,
     },
-    diffBtnActiveExplorer: {
-        backgroundColor: '#27ae60',
-        borderColor: '#2e7d32',
+    activeModeTab: {
+        backgroundColor: '#8b4513',
     },
-    diffBtnActiveCrusade: {
-        backgroundColor: '#c0392b',
-        borderColor: '#b71c1c',
+    modeTabText: {
+        color: '#8b4513',
+        fontWeight: 'bold',
+        marginLeft: 8,
+        fontSize: 12,
+    },
+    activeModeTabText: {
+        color: '#fff',
+    },
+    difficultyContainer: {
+        width: '100%',
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+    diffLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        marginBottom: 8,
+    },
+    diffGroup: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 20,
+        padding: 4,
+    },
+    diffBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
     diffBtnText: {
         fontSize: 12,
         fontWeight: 'bold',
-        marginLeft: 6,
-        color: '#3d2b1f',
+        color: '#8b4513',
+        marginLeft: 5,
+    },
+    diffActiveExplorer: {
+        backgroundColor: '#2980b9',
+    },
+    diffActiveCrusade: {
+        backgroundColor: '#c0392b',
+    },
+    textWhite: {
+        color: '#fff',
+    },
+    timerConfig: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        padding: 10,
+        borderRadius: 8,
+    },
+    minutesInput: {
+        width: 40,
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        borderBottomWidth: 1,
+        borderBottomColor: '#8b4513',
+        marginHorizontal: 10,
+    },
+    minutesLabel: {
+        color: '#8b4513',
+        fontSize: 12,
     },
     startBtn: {
         width: '100%',
+        marginTop: 10,
     },
-    shelfHeader: {
+    sectionHeader: {
         width: width * 0.9,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 15,
     },
-    shelfTitle: {
-        fontSize: 18,
+    sectionTitle: {
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#FFD700',
+        color: '#d4af37',
     },
-    shelfTitleSecondary: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#FFD700',
-        marginTop: 30,
-        marginBottom: 15,
-        width: '100%',
-    },
-    emptyText: {
-        color: '#aaa',
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginVertical: 20,
+    addBtn: {
+        padding: 5,
     },
     subjectCard: {
         width: width * 0.9,
+        padding: 15,
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        marginBottom: 10,
-        overflow: 'hidden',
+        marginBottom: 12,
     },
     colorTab: {
         width: 10,
-        height: '150%',
-        position: 'absolute',
-        left: 0,
+        height: 40,
+        borderRadius: 5,
+        marginRight: 15,
     },
     subjectInfo: {
         flex: 1,
-        marginLeft: 10,
     },
     subjectName: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#3d2b1f',
     },
-    subjectStats: {
+    subjectMetaRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 4,
+    },
+    courseBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(139, 69, 19, 0.1)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginRight: 10,
+    },
+    courseText: {
+        fontSize: 10,
+        color: '#8b4513',
+        fontWeight: 'bold',
+    },
+    subjectStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     subjectTime: {
         fontSize: 12,
         color: '#8b4513',
     },
+    cardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     completeBtn: {
-        padding: 5,
+        padding: 10,
+    },
+    reactivateBtn: {
+        padding: 10,
+    },
+    emptyText: {
+        color: '#fff',
+        opacity: 0.5,
+        fontStyle: 'italic',
+        marginTop: 20,
     },
     backButton: {
         width: width * 0.9,
         marginTop: 40,
     },
-    sessionContainer: {
-        flex: 1,
-    },
     sessionOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: '#1a1a1a',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 30,
     },
-    sessionHeaderIcon: {
-        marginBottom: 20,
-    },
-    sessionSubjectName: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#fff',
-        textAlign: 'center',
-    },
-    difficultyBadge: {
-        marginTop: 15,
-        height: 30,
+    sessionContent: {
+        width: width,
+        height: height,
+        alignItems: 'center',
         justifyContent: 'center',
+        padding: 20,
     },
-    crusadeBadge: {
+    sessionHeaderBox: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    sessionSubjectBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#c0392b',
+        marginBottom: 10,
+    },
+    sessionSubjectName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        marginLeft: 10,
+    },
+    difficultyBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 4,
-        borderRadius: 20,
+        borderRadius: 12,
+    },
+    badgeExplorer: {
+        backgroundColor: '#2980b9',
+    },
+    badgeCrusade: {
+        backgroundColor: '#c0392b',
     },
     badgeText: {
         color: '#fff',
-        fontWeight: 'bold',
         fontSize: 12,
-        letterSpacing: 1,
+        fontWeight: 'bold',
+        marginLeft: 4,
+        textTransform: 'uppercase',
     },
-    sessionMode: {
-        fontSize: 16,
-        color: '#FFD700',
-        fontStyle: 'italic',
+    warnBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    warnText: {
+        color: '#e74c3c',
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 6,
     },
     sessionTimerBox: {
-        marginVertical: 40,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        paddingHorizontal: 40,
-        paddingVertical: 20,
-        borderRadius: 20,
-        borderWidth: 2,
+        width: width * 0.8,
+        height: width * 0.8,
+        borderRadius: width * 0.4,
+        borderWidth: 8,
         borderColor: '#FFD700',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 40,
+        backgroundColor: 'rgba(212, 175, 55, 0.05)',
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
     },
     sessionTimeText: {
         fontSize: 54,
@@ -874,38 +766,48 @@ const styles = StyleSheet.create({
     },
     overtimeText: {
         color: '#FFD700',
+        fontSize: 14,
         fontWeight: 'bold',
         marginBottom: 30,
-        textAlign: 'center',
+        fontStyle: 'italic',
     },
     stopBtn: {
-        width: '100%',
+        width: width * 0.7,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
+        backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     addModal: {
         width: width * 0.85,
-        padding: 25,
+        padding: 20,
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#3d2b1f',
+        color: '#8b4513',
         textAlign: 'center',
         marginBottom: 20,
     },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        marginBottom: 5,
+        marginLeft: 2,
+        opacity: 0.8,
+    },
     modalInput: {
         backgroundColor: 'rgba(255,255,255,0.5)',
-        height: 50,
+        padding: 12,
         borderRadius: 8,
-        paddingHorizontal: 15,
         fontSize: 16,
         color: '#3d2b1f',
-        marginBottom: 20,
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.2)',
     },
     colorPalette: {
         flexDirection: 'row',
@@ -914,16 +816,17 @@ const styles = StyleSheet.create({
         marginBottom: 25,
     },
     colorOption: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        margin: 5,
+        width: 35,
+        height: 35,
+        borderRadius: 18,
+        margin: 6,
         borderWidth: 2,
         borderColor: 'transparent',
     },
     colorActive: {
-        borderColor: '#FFD700',
-        transform: [{ scale: 1.2 }],
+        borderColor: '#fff',
+        scaleX: 1.2,
+        scaleY: 1.2,
     },
     modalBtns: {
         flexDirection: 'row',
@@ -936,9 +839,9 @@ const styles = StyleSheet.create({
     pickerItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 15,
+        padding: 15,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(61,43,31,0.1)',
+        borderBottomColor: 'rgba(139, 69, 19, 0.1)',
     },
     colorDot: {
         width: 12,
@@ -947,8 +850,8 @@ const styles = StyleSheet.create({
         marginRight: 15,
     },
     pickerItemText: {
-        fontSize: 18,
+        fontSize: 16,
         color: '#3d2b1f',
-        fontWeight: '500',
+        fontWeight: '600',
     }
 });

@@ -8,12 +8,15 @@
         "lint": "tsc --noEmit"
     },
     "devDependencies": {
-        "typescript": "^5.0.0",
         "react": "^18.0.0",
-        "react-native": "0.73.4"
+        "react-native": "0.73.4",
+        "typescript": "^5.0.0"
     },
     "peerDependencies": {
         "react": "*",
         "react-native": "*"
+    },
+    "dependencies": {
+        "lucide-react-native": "^0.562.0"
     }
 }

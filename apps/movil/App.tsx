@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { GameHUD } from '@omega/ui';
 import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
         <AppNavigator />
         <StatusBar style="light" />
       </NavigationContainer>
+      <GameHUD />
     </SafeAreaProvider>
   );
 }

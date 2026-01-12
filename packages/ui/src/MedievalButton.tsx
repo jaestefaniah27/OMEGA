@@ -14,6 +14,7 @@ interface MedievalButtonProps {
     title: string;
     variant?: 'primary' | 'danger';
     style?: ViewStyle;
+    disabled?: boolean;
 }
 
 /**
@@ -25,19 +26,21 @@ export const MedievalButton: React.FC<MedievalButtonProps> = ({
     onPress,
     title,
     variant = 'primary',
-    style
+    style,
+    disabled
 }) => {
     const isPrimary = variant === 'primary';
 
     const containerStyle = [
         styles.button,
         isPrimary ? styles.primary : styles.danger,
+        disabled && styles.disabled,
         style
     ];
 
     const content = (
         <View style={styles.innerContainer}>
-            <Text style={styles.text}>{title.toUpperCase()}</Text>
+            <Text style={[styles.text, disabled && styles.disabledText]}>{title.toUpperCase()}</Text>
         </View>
     );
 
@@ -46,6 +49,7 @@ export const MedievalButton: React.FC<MedievalButtonProps> = ({
             onPress={onPress}
             activeOpacity={0.8}
             style={containerStyle}
+            disabled={disabled}
         >
             {/* 
         TODO: Once assets are available, wrap content in ImageBackground:
@@ -102,5 +106,14 @@ const styles = StyleSheet.create({
     },
     imageStyle: {
         resizeMode: 'cover',
+    },
+    disabled: {
+        opacity: 0.5,
+        backgroundColor: '#666',
+        borderColor: '#999',
+    },
+    disabledText: {
+        color: '#ccc',
+        textShadowColor: 'transparent',
     }
 });

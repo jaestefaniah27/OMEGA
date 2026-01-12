@@ -26,38 +26,52 @@ import {
     Award,
     Shield,
     Compass,
-    AlertTriangle
+    AlertTriangle,
+    Sword,
+    Scroll,
+    Map
 } from 'lucide-react-native';
 import { useLibrary } from '../hooks/useLibrary';
-import { Subject } from '../types/supabase';
+import { Subject, Book } from '../types/supabase';
 
 const { width, height } = Dimensions.get('window');
 
 const SUBJECT_COLORS = ['#8b4513', '#2c3e50', '#27ae60', '#8e44ad', '#d35400', '#c0392b', '#16a085'];
+const BOOK_COLORS = ['#8b4513', '#2c3e50', '#27ae60', '#8e44ad', '#d35400', '#c0392b', '#16a085'];
 
 export const LibraryScreen: React.FC = () => {
     const navigation = useNavigation();
     const {
-        subjects, // <--- Use all subjects for course lookup
+        subjects,
         activeSubjects,
         completedSubjects,
         addSubject,
         completeSubject,
         reactivateSubject,
-        loading,
-        // Session Master Logic from Hook
         isSessionActive,
+        startTime,
         elapsedSeconds,
+        selectedSubject,
+        setSelectedSubject,
+        selectedBook,
+        setSelectedBook,
         studyMode,
         setStudyMode,
         difficulty,
         setDifficulty,
-        targetMinutes,
-        setTargetMinutes,
-        selectedSubject,
-        setSelectedSubject,
         startSession,
         stopSession,
+        targetMinutes,
+        setTargetMinutes,
+        loading,
+        books,
+        activeBooks,
+        finishedBooks,
+        addBook,
+        updateBookProgress,
+        completeBook,
+        reactivateBook,
+        bookStats
     } = useLibrary();
 
     // UI-only States
@@ -67,10 +81,20 @@ export const LibraryScreen: React.FC = () => {
     const [newSubjectCourse, setNewSubjectCourse] = useState('');
     const [selectedColor, setSelectedColor] = useState(SUBJECT_COLORS[0]);
 
+    // NEW: Dual Mode States
+    const [viewMode, setViewMode] = useState<'STUDY' | 'READING'>('STUDY');
+    const [isAddBookVisible, setIsAddBookVisible] = useState(false);
+    const [isBookPickerVisible, setIsBookPickerVisible] = useState(false);
+    const [newBookTitle, setNewBookTitle] = useState('');
+    const [newBookAuthor, setNewBookAuthor] = useState('');
+    const [newBookTotalPages, setNewBookTotalPages] = useState('');
+    const [newBookCoverColor, setNewBookCoverColor] = useState(BOOK_COLORS[0]);
+    const [isReadingStopModalVisible, setIsReadingStopModalVisible] = useState(false);
+    const [endPageInput, setEndPageInput] = useState('');
+
     // Effect to set default course from most recent subject
     React.useEffect(() => {
         if (isAddModalVisible && !newSubjectName && !newSubjectCourse && subjects.length > 0) {
-            // subjects are ordered by created_at DESC in the hook
             const lastCourse = subjects[0]?.course;
             if (lastCourse) {
                 setNewSubjectCourse(lastCourse);
@@ -78,6 +102,7 @@ export const LibraryScreen: React.FC = () => {
         }
     }, [isAddModalVisible, subjects]);
 
+    // --- HANDLERS: SUBJECTS ---
     const handleAddSubject = async () => {
         if (!newSubjectName.trim()) return;
         try {
@@ -90,8 +115,51 @@ export const LibraryScreen: React.FC = () => {
         }
     };
 
+    // --- HANDLERS: BOOKS ---
+    const handleAddBook = async () => {
+        if (!newBookTitle.trim() || !newBookTotalPages.trim() || isNaN(Number(newBookTotalPages))) {
+            Alert.alert('Error', 'Por favor, introduce un título y un número de páginas válido.');
+            return;
+        }
+        try {
+            await addBook(newBookTitle.trim(), newBookAuthor.trim() || 'Desconocido', parseInt(newBookTotalPages));
+            setNewBookTitle('');
+            setNewBookAuthor('');
+            setNewBookTotalPages('');
+            setIsAddBookVisible(false);
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
+    const handleStartReading = () => {
+        if (!selectedBook) {
+            Alert.alert('Atención', 'Selecciona un tomo para leer.');
+            return;
+        }
+        startSession('BOOK');
+    };
+
+    const handleStopReadingPress = () => {
+        setIsReadingStopModalVisible(true);
+        // Default to current page + some guess? No, just current.
+        setEndPageInput(selectedBook?.current_page.toString() || '0');
+    };
+
+    const confirmStopReading = async () => {
+        const page = parseInt(endPageInput);
+        if (isNaN(page)) {
+            Alert.alert('Error', 'Página inválida.');
+            return;
+        }
+        await stopSession(false, false, page);
+        setIsReadingStopModalVisible(false);
+    };
+
+
+    // --- FORMATTERS ---
     const formatElapsedTime = (seconds: number) => {
-        if (studyMode === 'TIMER') {
+        if (studyMode === 'TIMER' && viewMode === 'STUDY') {
             const targetSecs = parseInt(targetMinutes) * 60;
             const diff = targetSecs - seconds;
 
@@ -119,15 +187,24 @@ export const LibraryScreen: React.FC = () => {
         return `${hours}h ${mins}m`;
     };
 
-    const handleStopPress = () => {
+    // --- HANDLERS: SESSION ---
+    const handleStartStudyPress = async () => {
+        if (!selectedSubject) {
+            Alert.alert('¡Alto ahí!', 'Debes seleccionar un pergamino (asignatura) antes de comenzar.');
+            return;
+        }
+        await startSession('SUBJECT');
+    };
+
+    const handleStopStudyPress = () => {
         const targetSecs = parseInt(targetMinutes) * 60;
 
         if (elapsedSeconds < 60) {
             Alert.alert(
                 '⏳ Sesión Precoz',
-                'Las sesiones de menos de un minuto no cuentan en los anales del reino. ¡Aguanta un poco más, soldado!',
+                'Las sesiones de menos de un minuto no cuentan. ¡Aguanta un poco más!',
                 [
-                    { text: 'Seguir Estudiando', style: 'cancel' },
+                    { text: 'Seguir', style: 'cancel' },
                     { text: 'Salir sin Registrar', onPress: () => stopSession(false, true) }
                 ]
             );
@@ -137,7 +214,7 @@ export const LibraryScreen: React.FC = () => {
         if (studyMode === 'TIMER' && elapsedSeconds < targetSecs) {
             Alert.alert(
                 '⚔️ ¿Romper tu Juramento?',
-                `Te comprometiste a estudiar ${targetMinutes} minutos y aún faltan ${Math.ceil((targetSecs - elapsedSeconds) / 60)}s. Abandonar ahora manchará tu honor.`,
+                `Te faltan ${Math.ceil((targetSecs - elapsedSeconds) / 60)} min. ¿Abandonar?`,
                 [
                     { text: 'Mantener Honor', style: 'cancel' },
                     { text: 'Aceptar Deshonra', onPress: () => stopSession(true) }
@@ -146,15 +223,16 @@ export const LibraryScreen: React.FC = () => {
         } else {
             Alert.alert(
                 '📜 Finalizar Sesión',
-                '¿Deseas registrar esta sesión de estudio en los archivos reales?',
+                '¿Registrar sesión en los archivos?',
                 [
-                    { text: 'Seguir Estudiando', style: 'cancel' },
+                    { text: 'Seguir', style: 'cancel' },
                     { text: 'Registrar', onPress: () => stopSession(false) }
                 ]
             );
         }
     };
 
+    // --- CARDS ---
     const SubjectCard = ({ item }: { item: Subject }) => (
         <ParchmentCard style={styles.subjectCard}>
             <View style={[styles.colorTab, { backgroundColor: item.color }]} />
@@ -163,7 +241,7 @@ export const LibraryScreen: React.FC = () => {
                 <View style={styles.subjectMetaRow}>
                     {item.course && (
                         <View style={styles.courseBadge}>
-                            <Compass size={10} color="#8b4513" style={{ marginRight: 3 }} />
+                            <Map size={10} color="#8b4513" style={{ marginRight: 3 }} />
                             <Text style={styles.courseText}>{item.course}</Text>
                         </View>
                     )}
@@ -193,168 +271,347 @@ export const LibraryScreen: React.FC = () => {
         </ParchmentCard>
     );
 
-    return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.topHeader}>
-                    <Text style={styles.headerTitle}>🏰 LA GRAN BIBLIOTECA</Text>
-                    <Text style={styles.headerSubtitle}>El conocimiento es el tesoro del reino</Text>
+    const BookCard = ({ item }: { item: Book }) => (
+        <ParchmentCard style={styles.subjectCard}>
+            <View style={[styles.colorTab, { backgroundColor: item.cover_color || '#8b4513' }]} />
+            <View style={styles.subjectInfo}>
+                <Text style={styles.subjectName}>{item.title}</Text>
+                <View style={styles.subjectMetaRow}>
+                    <Text style={styles.courseText}>{item.author || "Anónimo"}</Text>
                 </View>
-
-                {/* EL ATRIL - Session Configuration */}
-                <ParchmentCard style={styles.atrilCard}>
-                    <View style={styles.atrilHeader}>
-                        <Award size={24} color="#8b4513" />
-                        <Text style={styles.atrilTitle}>EL ATRIL DE ESTUDIO</Text>
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.subjectSelector}
-                        onPress={() => setIsSubjectPickerVisible(true)}
-                    >
-                        <View style={styles.subjectSelectorLeft}>
-                            <BookText size={20} color="#8b4513" />
-                            <Text style={styles.subjectSelectorText}>
-                                {selectedSubject ? selectedSubject.name : 'Seleccionar Asignatura'}
+                {/* Book Progress */}
+                <View style={styles.progressBarBg}>
+                    <View
+                        style={[
+                            styles.progressBarFill,
+                            { width: `${Math.min(100, (item.current_page / item.total_pages) * 100)}%` }
+                        ]}
+                    />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <Text style={styles.progressText}>
+                        {Math.round((item.current_page / (item.total_pages || 1)) * 100)}% ({item.current_page}/{item.total_pages})
+                    </Text>
+                    {bookStats[item.id] > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Clock size={10} color="#8b4513" style={{ marginRight: 2 }} />
+                            <Text style={[styles.progressText, { marginTop: 0 }]}>
+                                {formatTimeDisplay(bookStats[item.id] || 0)}
                             </Text>
                         </View>
-                        <ChevronDown size={20} color="#8b4513" />
-                    </TouchableOpacity>
-
-                    <View style={styles.modeTabs}>
-                        <TouchableOpacity
-                            style={[styles.modeTab, studyMode === 'STOPWATCH' && styles.activeModeTab]}
-                            onPress={() => setStudyMode('STOPWATCH')}
-                        >
-                            <History size={18} color={studyMode === 'STOPWATCH' ? '#fff' : '#8b4513'} />
-                            <Text style={[styles.modeTabText, studyMode === 'STOPWATCH' && styles.activeModeTabText]}>Cronómetro</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.modeTab, studyMode === 'TIMER' && styles.activeModeTab]}
-                            onPress={() => setStudyMode('TIMER')}
-                        >
-                            <TimerIcon size={18} color={studyMode === 'TIMER' ? '#fff' : '#8b4513'} />
-                            <Text style={[styles.modeTabText, studyMode === 'TIMER' && styles.activeModeTabText]}>Temporizador</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.difficultyContainer}>
-                        <Text style={styles.diffLabel}>DIFICULTAD:</Text>
-                        <View style={styles.diffGroup}>
-                            <TouchableOpacity
-                                style={[styles.diffBtn, difficulty === 'EXPLORER' && styles.diffActiveExplorer]}
-                                onPress={() => setDifficulty('EXPLORER')}
-                            >
-                                <Compass size={14} color={difficulty === 'EXPLORER' ? '#fff' : '#8b4513'} />
-                                <Text style={[styles.diffBtnText, difficulty === 'EXPLORER' && styles.textWhite]}>Explorador</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.diffBtn, difficulty === 'CRUSADE' && styles.diffActiveCrusade]}
-                                onPress={() => setDifficulty('CRUSADE')}
-                            >
-                                <Shield size={14} color={difficulty === 'CRUSADE' ? '#fff' : '#8b4513'} />
-                                <Text style={[styles.diffBtnText, difficulty === 'CRUSADE' && styles.textWhite]}>Cruzada</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {studyMode === 'TIMER' && (
-                        <View style={styles.timerConfig}>
-                            <Clock size={16} color="#8b4513" />
-                            <TextInput
-                                style={styles.minutesInput}
-                                value={targetMinutes}
-                                onChangeText={setTargetMinutes}
-                                keyboardType="number-pad"
-                                maxLength={3}
-                            />
-                            <Text style={styles.minutesLabel}>minutos de compromiso</Text>
-                        </View>
                     )}
+                </View>
+            </View>
+            <View style={styles.cardActions}>
+                {item.is_finished ? (
+                    <TouchableOpacity
+                        style={styles.reactivateBtn}
+                        onPress={() => reactivateBook(item.id)}
+                    >
+                        <History size={20} color="#8b4513" opacity={0.6} />
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.completeBtn}
+                        onPress={() => completeBook(item.id)}
+                    >
+                        <CheckCircle size={20} color="#27ae60" />
+                    </TouchableOpacity>
+                )}
+            </View>
+        </ParchmentCard>
+    );
 
-                    <MedievalButton
-                        title="INICIAR MISIÓN DE ESTUDIO"
-                        onPress={startSession}
-                        style={styles.startBtn}
-                    />
-                </ParchmentCard>
+    // --- VIEWS ---
+    const StudyView = () => (
+        <>
+            <View style={styles.topHeader}>
+                <Text style={styles.headerTitle}>BIBLIOTECA REAL</Text>
+                <Text style={styles.headerSubtitle}>"Donde se forjan los sabios"</Text>
+            </View>
 
-                {/* ARCHIVOS REALES - Subjects List */}
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>📜 ARCHIVOS REALES</Text>
-                    <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
-                        <Plus size={24} color="#d4af37" />
+            <ParchmentCard style={styles.atrilCard}>
+                <View style={styles.atrilHeader}>
+                    <Award size={24} color="#8b4513" />
+                    <Text style={styles.atrilTitle}>ATRIL DE ESTUDIO</Text>
+                </View>
+
+                <TouchableOpacity
+                    style={styles.subjectSelector}
+                    onPress={() => setIsSubjectPickerVisible(true)}
+                >
+                    <View style={styles.subjectSelectorLeft}>
+                        <BookText size={20} color="#8b4513" />
+                        <Text style={styles.subjectSelectorText}>
+                            {selectedSubject ? selectedSubject.name : 'Seleccionar Asignatura'}
+                        </Text>
+                    </View>
+                    <ChevronDown size={20} color="#8b4513" />
+                </TouchableOpacity>
+
+                <View style={styles.modeTabs}>
+                    <TouchableOpacity
+                        style={[styles.modeTab, studyMode === 'STOPWATCH' && styles.activeModeTab]}
+                        onPress={() => setStudyMode('STOPWATCH')}
+                    >
+                        <History size={18} color={studyMode === 'STOPWATCH' ? '#fff' : '#8b4513'} />
+                        <Text style={[styles.modeTabText, studyMode === 'STOPWATCH' && styles.activeModeTabText]}>Cronómetro</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.modeTab, studyMode === 'TIMER' && styles.activeModeTab]}
+                        onPress={() => setStudyMode('TIMER')}
+                    >
+                        <TimerIcon size={18} color={studyMode === 'TIMER' ? '#fff' : '#8b4513'} />
+                        <Text style={[styles.modeTabText, studyMode === 'TIMER' && styles.activeModeTabText]}>Temporizador</Text>
                     </TouchableOpacity>
                 </View>
 
-                {activeSubjects.length === 0 && !loading && (
-                    <Text style={styles.emptyText}>No hay pergaminos de estudio activos.</Text>
+                <View style={styles.difficultyContainer}>
+                    <Text style={styles.diffLabel}>DIFICULTAD:</Text>
+                    <View style={styles.diffGroup}>
+                        <TouchableOpacity
+                            style={[styles.diffBtn, difficulty === 'EXPLORER' && styles.diffActiveExplorer]}
+                            onPress={() => setDifficulty('EXPLORER')}
+                        >
+                            <Compass size={14} color={difficulty === 'EXPLORER' ? '#fff' : '#8b4513'} />
+                            <Text style={[styles.diffBtnText, difficulty === 'EXPLORER' && styles.textWhite]}>Explorador</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.diffBtn, difficulty === 'CRUSADE' && styles.diffActiveCrusade]}
+                            onPress={() => setDifficulty('CRUSADE')}
+                        >
+                            <Shield size={14} color={difficulty === 'CRUSADE' ? '#fff' : '#8b4513'} />
+                            <Text style={[styles.diffBtnText, difficulty === 'CRUSADE' && styles.textWhite]}>Cruzada</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {studyMode === 'TIMER' && (
+                    <View style={styles.timerConfig}>
+                        <Clock size={16} color="#8b4513" />
+                        <TextInput
+                            style={styles.minutesInput}
+                            value={targetMinutes}
+                            onChangeText={setTargetMinutes}
+                            keyboardType="number-pad"
+                            maxLength={3}
+                        />
+                        <Text style={styles.minutesLabel}>min.</Text>
+                    </View>
                 )}
 
-                {activeSubjects.map(subject => (
-                    <SubjectCard key={subject.id} item={subject} />
-                ))}
+                <MedievalButton
+                    title="INICIAR MISIÓN"
+                    onPress={handleStartStudyPress}
+                    disabled={isSessionActive}
+                    style={styles.startBtn}
+                />
+            </ParchmentCard>
 
-                {completedSubjects.length > 0 && (
-                    <>
-                        <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-                            <Text style={styles.sectionTitle}>🏆 MISIONES COMPLETADAS</Text>
-                        </View>
-                        {completedSubjects.map(subject => (
-                            <SubjectCard key={subject.id} item={subject} />
-                        ))}
-                    </>
-                )}
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>📜 ARCHIVOS REALES</Text>
+                <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
+                    <Plus size={24} color="#d4af37" />
+                </TouchableOpacity>
+            </View>
 
+            {activeSubjects.length === 0 && !loading && (
+                <Text style={styles.emptyText}>No hay pergaminos activos.</Text>
+            )}
+
+            {activeSubjects.map(subject => (
+                <SubjectCard key={subject.id} item={subject} />
+            ))}
+
+            {completedSubjects.length > 0 && (
+                <>
+                    <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                        <Text style={styles.sectionTitle}>🏆 COMPLETADOS</Text>
+                    </View>
+                    {completedSubjects.map(subject => (
+                        <SubjectCard key={subject.id} item={subject} />
+                    ))}
+                </>
+            )}
+        </>
+    );
+
+    const ReadingView = () => (
+        <>
+            <View style={styles.topHeader}>
+                <Text style={styles.headerTitle}>SALA DE LECTURA</Text>
+                <Text style={styles.headerSubtitle}>"El conocimiento es poder"</Text>
+            </View>
+
+            <ParchmentCard style={styles.atrilCard}>
+                <View style={styles.atrilHeader}>
+                    <BookText size={24} color="#8b4513" />
+                    <Text style={styles.atrilTitle}>LECTURA</Text>
+                </View>
+
+                <TouchableOpacity
+                    style={styles.subjectSelector}
+                    onPress={() => setIsBookPickerVisible(true)}
+                >
+                    <View style={styles.subjectSelectorLeft}>
+                        <View style={[styles.colorDot, { backgroundColor: selectedBook?.cover_color || '#8b4513' }]} />
+                        <Text style={styles.subjectSelectorText}>
+                            {selectedBook ? selectedBook.title : "Selecciona un Tomo..."}
+                        </Text>
+                    </View>
+                    <ChevronDown size={20} color="#8b4513" />
+                </TouchableOpacity>
+
+                <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>Pág. Actual</Text>
+                        <Text style={styles.statValue}>{selectedBook?.current_page || 0}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>Total</Text>
+                        <Text style={styles.statValue}>{selectedBook?.total_pages || 0}</Text>
+                    </View>
+                </View>
+
+                <MedievalButton
+                    title="📖 INICIAR LECTURA"
+                    onPress={handleStartReading}
+                    disabled={isSessionActive}
+                    style={styles.startBtn}
+                />
+            </ParchmentCard>
+
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>📚 TUS GRIMORIOS</Text>
+                <TouchableOpacity onPress={() => setIsAddBookVisible(true)} style={styles.addBtn}>
+                    <Plus size={24} color="#d4af37" />
+                </TouchableOpacity>
+            </View>
+
+            {activeBooks.length === 0 && !loading && (
+                <Text style={styles.emptyText}>No hay tomos en tu grimorio.</Text>
+            )}
+
+            {activeBooks.map(book => (
+                <BookCard key={book.id} item={book} />
+            ))}
+
+            {finishedBooks.length > 0 && (
+                <>
+                    <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                        <Text style={styles.sectionTitle}>🏆 COMPLETADOS</Text>
+                    </View>
+                    {finishedBooks.map(book => (
+                        <BookCard key={book.id} item={book} />
+                    ))}
+                </>
+            )}
+        </>
+    );
+
+
+    return (
+        <View style={styles.container}>
+            {/* MODE SELECTOR */}
+            <View style={styles.modeSelector}>
+                <TouchableOpacity
+                    style={[styles.modeBtn, viewMode === 'STUDY' && styles.modeBtnActive]}
+                    onPress={() => setViewMode('STUDY')}
+                >
+                    <Sword size={20} color={viewMode === 'STUDY' ? '#FFD700' : '#8b4513'} />
+                    <Text style={[styles.modeBtnText, viewMode === 'STUDY' && styles.modeBtnTextActive]}>
+                        ARCANA
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.modeBtn, viewMode === 'READING' && styles.modeBtnActive]}
+                    onPress={() => setViewMode('READING')}
+                >
+                    <Scroll size={20} color={viewMode === 'READING' ? '#FFD700' : '#8b4513'} />
+                    <Text style={[styles.modeBtnText, viewMode === 'READING' && styles.modeBtnTextActive]}>
+                        SABIDURÍA
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {viewMode === 'STUDY' ? <StudyView /> : <ReadingView />}
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* MODAL: Active Session */}
+            {/* MODAL: Active Session (Unified) */}
             <Modal visible={isSessionActive} transparent animationType="slide">
                 <View style={styles.sessionOverlay}>
                     <View style={styles.sessionContent}>
-                        <View style={styles.sessionHeaderBox}>
-                            <View style={styles.sessionSubjectBox}>
-                                <BookOpen size={20} color="#FFD700" />
-                                <Text style={styles.sessionSubjectName}>{selectedSubject?.name}</Text>
+                        {isReadingStopModalVisible ? (
+                            // --- VIEW: STOP READING INPUT ---
+                            <View style={styles.stopReadingContainer}>
+                                <Text style={styles.modalTitle}>FIN DE LECTURA</Text>
+                                <Text style={styles.startBtn}>¿En qué página te has quedado?</Text>
+                                <TextInput
+                                    style={[styles.modalInput, { textAlign: 'center', fontSize: 30, width: 100 }]}
+                                    value={endPageInput}
+                                    onChangeText={setEndPageInput}
+                                    keyboardType="number-pad"
+                                    autoFocus
+                                />
+                                <MedievalButton
+                                    title="GUARDAR PROGRESO"
+                                    onPress={confirmStopReading}
+                                    style={{ width: '100%', marginTop: 20 }}
+                                />
+                                <TouchableOpacity onPress={() => setIsReadingStopModalVisible(false)} style={{ marginTop: 20 }}>
+                                    <Text style={{ color: '#d4af37', textDecorationLine: 'underline' }}>Cancelar</Text>
+                                </TouchableOpacity>
                             </View>
-                            <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
-                                {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
-                                <Text style={styles.badgeText}>{difficulty}</Text>
-                            </View>
-                            {difficulty === 'CRUSADE' && (
-                                <View style={styles.warnBox}>
-                                    <AlertTriangle size={14} color="#e74c3c" />
-                                    <Text style={styles.warnText}>Iron Will Activo</Text>
+                        ) : (
+                            // --- VIEW: TIMER / STOPWATCH ---
+                            <>
+                                <View style={styles.sessionHeaderBox}>
+                                    <View style={styles.sessionSubjectBox}>
+                                        {selectedBook ? <Scroll size={20} color="#FFD700" /> : <BookOpen size={20} color="#FFD700" />}
+                                        <Text style={styles.sessionSubjectName}>
+                                            {selectedBook ? selectedBook.title : selectedSubject?.name}
+                                        </Text>
+                                    </View>
+
+                                    {!selectedBook && (
+                                        <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
+                                            {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
+                                            <Text style={styles.badgeText}>{difficulty}</Text>
+                                        </View>
+                                    )}
+
+                                    {!selectedBook && difficulty === 'CRUSADE' && (
+                                        <View style={styles.warnBox}>
+                                            <AlertTriangle size={14} color="#e74c3c" />
+                                            <Text style={styles.warnText}>Iron Will Activo</Text>
+                                        </View>
+                                    )}
                                 </View>
-                            )}
-                        </View>
 
-                        <View style={styles.sessionTimerBox}>
-                            <Text style={styles.sessionTimeText}>
-                                {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 ? '+' : ''}
-                                {formatElapsedTime(elapsedSeconds)}
-                            </Text>
-                        </View>
+                                <View style={styles.sessionTimerBox}>
+                                    <Text style={styles.sessionTimeText}>
+                                        {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && !selectedBook ? '+' : ''}
+                                        {formatElapsedTime(elapsedSeconds)}
+                                    </Text>
+                                </View>
 
-                        {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
-                            <Text style={styles.overtimeText}>✨ ¡Misión Cumplida! Entrando en OVERTIME...</Text>
+                                {!selectedBook && studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
+                                    <Text style={styles.overtimeText}>✨ ¡Objetivo Cumplido! Extra...</Text>
+                                )}
+
+                                <MedievalButton
+                                    title={selectedBook ? "FINALIZAR LECTURA" : (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60 ? "RENDIRSE" : "FINALIZAR")}
+                                    onPress={selectedBook ? handleStopReadingPress : handleStopStudyPress}
+                                    variant={!selectedBook && ((studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE') ? "danger" : "primary"}
+                                    style={styles.stopBtn}
+                                />
+                            </>
                         )}
 
-                        <MedievalButton
-                            title={
-                                studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60
-                                    ? "📜 RENDIRSE"
-                                    : "📜 FINALIZAR"
-                            }
-                            onPress={handleStopPress}
-                            variant={
-                                (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE'
-                                    ? "danger"
-                                    : "primary"
-                            }
-                            style={styles.stopBtn}
-                        />
+
+
                     </View>
                 </View>
             </Modal>
@@ -368,7 +625,7 @@ export const LibraryScreen: React.FC = () => {
                         <Text style={styles.inputLabel}>Asignatura:</Text>
                         <TextInput
                             style={styles.modalInput}
-                            placeholder="Nombre de la Asignatura"
+                            placeholder="Nombre"
                             value={newSubjectName}
                             onChangeText={setNewSubjectName}
                             autoFocus
@@ -377,7 +634,7 @@ export const LibraryScreen: React.FC = () => {
                         <Text style={styles.inputLabel}>Curso:</Text>
                         <TextInput
                             style={styles.modalInput}
-                            placeholder="ej: 1º Bach, 2024"
+                            placeholder="ej: 1º Bach"
                             value={newSubjectCourse}
                             onChangeText={setNewSubjectCourse}
                         />
@@ -399,6 +656,34 @@ export const LibraryScreen: React.FC = () => {
                 </View>
             </Modal>
 
+            {/* MODAL: Book Picker */}
+            <Modal visible={isBookPickerVisible} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <ParchmentCard style={styles.pickerModal}>
+                        <Text style={styles.modalTitle}>TUS GRIMORIOS</Text>
+                        <FlatList
+                            data={activeBooks}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.pickerItem}
+                                    onPress={() => {
+                                        setSelectedBook(item);
+                                        setIsBookPickerVisible(false);
+                                    }}
+                                >
+                                    <View style={[styles.colorDot, { backgroundColor: item.cover_color || '#8b4513' }]} />
+                                    <Text style={styles.pickerItemText}>{item.title}</Text>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
+                        />
+                        <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsBookPickerVisible(false)} />
+                    </ParchmentCard>
+                </View>
+            </Modal>
+
+            {/* MODAL: Subject Picker */}
             <Modal visible={isSubjectPickerVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <ParchmentCard style={styles.pickerModal}>
@@ -418,12 +703,64 @@ export const LibraryScreen: React.FC = () => {
                                     <Text style={styles.pickerItemText}>{item.name}</Text>
                                 </TouchableOpacity>
                             )}
-                            ListEmptyComponent={<Text style={styles.emptyText}>No hay pergaminos activos.</Text>}
+                            ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
                         />
                         <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsSubjectPickerVisible(false)} />
                     </ParchmentCard>
                 </View>
             </Modal>
+
+            {/* MODAL: Add Book */}
+            <Modal visible={isAddBookVisible} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <ParchmentCard style={styles.addModal}>
+                        <Text style={styles.modalTitle}>NUEVO TOMO</Text>
+
+                        <Text style={styles.inputLabel}>Título:</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Título"
+                            value={newBookTitle}
+                            onChangeText={setNewBookTitle}
+                            autoFocus
+                        />
+
+                        <Text style={styles.inputLabel}>Autor:</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Autor (opcional)"
+                            value={newBookAuthor}
+                            onChangeText={setNewBookAuthor}
+                        />
+
+                        <Text style={styles.inputLabel}>Páginas:</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Total"
+                            value={newBookTotalPages}
+                            onChangeText={setNewBookTotalPages}
+                            keyboardType="number-pad"
+                        />
+
+                        <View style={styles.colorPalette}>
+                            {BOOK_COLORS.map(color => (
+                                <TouchableOpacity
+                                    key={color}
+                                    style={[styles.colorOption, { backgroundColor: color }, newBookCoverColor === color && styles.colorActive]}
+                                    onPress={() => setNewBookCoverColor(color)}
+                                />
+                            ))}
+                        </View>
+
+
+                        <View style={styles.modalBtns}>
+                            <MedievalButton title="AÑADIR" onPress={handleAddBook} style={{ flex: 1, marginRight: 10 }} />
+                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddBookVisible(false)} style={{ flex: 1 }} />
+                        </View>
+                    </ParchmentCard>
+                </View>
+            </Modal>
+
         </View>
     );
 };
@@ -433,6 +770,37 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#1a1a1a',
     },
+    modeSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: 15,
+        backgroundColor: '#3d2b1f',
+        borderBottomWidth: 2,
+        borderBottomColor: '#8b4513',
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    },
+    modeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    modeBtnActive: {
+        backgroundColor: 'rgba(139, 69, 19, 0.4)',
+        borderColor: '#FFD700',
+        borderWidth: 1,
+    },
+    modeBtnText: {
+        color: '#8b4513',
+        marginLeft: 8,
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    modeBtnTextActive: {
+        color: '#FFD700',
+    },
     scrollContent: {
         padding: 20,
         alignItems: 'center',
@@ -440,7 +808,7 @@ const styles = StyleSheet.create({
     topHeader: {
         width: '100%',
         alignItems: 'center',
-        marginTop: Platform.OS === 'ios' ? 60 : 40,
+        marginTop: 10,
         marginBottom: 30,
     },
     headerTitle: {
@@ -497,6 +865,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         color: '#3d2b1f',
         fontWeight: 'bold',
+        maxWidth: width * 0.5,
     },
     modeTabs: {
         flexDirection: 'row',
@@ -668,10 +1037,6 @@ const styles = StyleSheet.create({
         opacity: 0.5,
         fontStyle: 'italic',
         marginTop: 20,
-    },
-    backButton: {
-        width: width * 0.9,
-        marginTop: 40,
     },
     sessionOverlay: {
         flex: 1,
@@ -846,5 +1211,51 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#3d2b1f',
         fontWeight: '600',
-    }
+    },
+    // Reading new styles
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginBottom: 20,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    statItem: {
+        alignItems: 'center',
+    },
+    statLabel: {
+        fontSize: 10,
+        color: '#8b4513',
+        marginBottom: 3,
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    progressBarBg: {
+        height: 8,
+        width: '100%',
+        backgroundColor: 'rgba(139, 69, 19, 0.1)',
+        borderRadius: 4,
+        marginTop: 8,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#27ae60',
+        borderRadius: 4,
+    },
+    progressText: {
+        fontSize: 10,
+        color: '#8b4513',
+        marginTop: 4,
+        alignSelf: 'flex-end',
+    },
+    stopReadingContainer: {
+        width: '100%',
+        alignItems: 'center',
+        padding: 20,
+    },
 });

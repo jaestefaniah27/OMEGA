@@ -3,7 +3,7 @@ import { AppState, AppStateStatus, Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
-import { Subject, StudySession } from '../types/supabase';
+import { Subject, StudySession, Book } from '../types/supabase';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
@@ -20,6 +20,7 @@ Notifications.setNotificationHandler({
 
 export const useLibrary = () => {
     const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,7 @@ export const useLibrary = () => {
     const [difficulty, setDifficulty] = useState<'EXPLORER' | 'CRUSADE'>('EXPLORER');
     const [targetMinutes, setTargetMinutes] = useState('25');
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+    const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
     // --- IRON WILL HEURISTIC REFS ---
     const appState = useRef(AppState.currentState);
@@ -44,6 +46,10 @@ export const useLibrary = () => {
     const isHonorableLock = useRef<boolean>(false);
     const warningNotificationId = useRef<string | null>(null);
 
+    const [bookStats, setBookStats] = useState<Record<string, number>>({});
+
+    // ... (rest of state)
+
     const fetchSubjects = async () => {
         try {
             setLoading(true);
@@ -55,8 +61,35 @@ export const useLibrary = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
+            const { data: booksData, error: booksError } = await supabase
+                .from('books')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            // Fetch book sessions for stats
+            const { data: sessionData, error: sessionError } = await supabase
+                .from('study_sessions')
+                .select('book_id, duration_minutes')
+                .eq('user_id', user.id)
+                .not('book_id', 'is', null);
+
             if (fetchError) throw fetchError;
+            if (booksError) throw booksError;
+            if (sessionError) throw sessionError;
+
+            // Aggregate Stats
+            const stats: Record<string, number> = {};
+            if (sessionData) {
+                sessionData.forEach(session => {
+                    if (session.book_id) {
+                        stats[session.book_id] = (stats[session.book_id] || 0) + session.duration_minutes;
+                    }
+                });
+            }
+            setBookStats(stats);
+
             setSubjects(data || []);
+            setBooks(booksData || []);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -112,6 +145,24 @@ export const useLibrary = () => {
                             }
                             else if (payload.eventType === 'DELETE') {
                                 setSubjects(prev => prev.filter(s => s.id === payload.old.id));
+                            }
+                        }
+                    )
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'books', filter: `user_id=eq.${user.id}` },
+                        (payload: any) => {
+                            if (payload.eventType === 'INSERT') {
+                                setBooks(prev => {
+                                    if (prev.some(b => b.id === payload.new.id)) return prev;
+                                    return [payload.new as Book, ...prev];
+                                });
+                            }
+                            else if (payload.eventType === 'UPDATE') {
+                                setBooks(prev => prev.map(b => b.id === payload.new.id ? payload.new as Book : b));
+                            }
+                            else if (payload.eventType === 'DELETE') {
+                                setBooks(prev => prev.filter(b => b.id === payload.old.id));
                             }
                         }
                     )
@@ -361,31 +412,37 @@ export const useLibrary = () => {
         }
     };
 
-    const startSession = async () => {
-        if (!selectedSubject) return;
+    const startSession = async (type: 'SUBJECT' | 'BOOK' = 'SUBJECT') => {
+        if (type === 'SUBJECT' && !selectedSubject) return;
+        if (type === 'BOOK' && !selectedBook) return;
+
         const now = Date.now();
         setElapsedSeconds(0);
         setStartTime(now);
         setIsSessionActive(true);
         await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
             startTime: now,
-            subjectId: selectedSubject.id,
+            subjectId: type === 'SUBJECT' ? selectedSubject?.id : undefined,
+            bookId: type === 'BOOK' ? selectedBook?.id : undefined,
+            type,
             mode: studyMode,
             difficulty,
             targetMinutes
         }));
     };
 
-    const stopSession = async (abandoned = false, skipLog = false) => {
+    const stopSession = async (abandoned = false, skipLog = false, endPage?: number) => {
         if (timerRef.current) clearInterval(timerRef.current);
         const totalMinutes = Math.floor(elapsedSeconds / 60);
         const start = startTime;
         const subId = selectedSubject?.id;
+        const bookId = selectedBook?.id;
 
         try {
-            if (!skipLog && subId && start) {
+            if (!skipLog && start && (subId || bookId)) {
                 await logStudySession({
                     subject_id: subId,
+                    book_id: bookId,
                     start_time: new Date(start).toISOString(),
                     end_time: new Date().toISOString(),
                     duration_minutes: abandoned ? 0 : (totalMinutes || 1),
@@ -394,6 +451,12 @@ export const useLibrary = () => {
                     difficulty: difficulty,
                     notes: abandoned ? 'Abandono voluntario' : 'Éxito'
                 });
+
+                // Update Book Progress if applicable
+                if (bookId && endPage !== undefined) {
+                    await updateBookProgress(bookId, endPage);
+                }
+
                 if (!abandoned) {
                     Alert.alert('✨ Misión Cumplida', `Has sumado ${totalMinutes || 1} minutos.`);
                 }
@@ -403,6 +466,90 @@ export const useLibrary = () => {
             setIsSessionActive(false);
             setElapsedSeconds(0);
             setStartTime(null);
+        }
+    };
+
+    const addBook = async (title: string, author: string, total_pages: number) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuario no autenticado');
+
+        // Optimistic UI for adding book (optional but good)
+        const idTemp = Math.random().toString(36).substring(7);
+        const newBook: Book = {
+            id: idTemp,
+            title,
+            author,
+            total_pages,
+            current_page: 0,
+            cover_color: '#8b4513',
+            is_finished: false,
+            user_id: user.id,
+            created_at: new Date().toISOString()
+        };
+        setBooks(prev => [newBook, ...prev]);
+
+        const { data, error } = await supabase.from('books').insert([{
+            title, author, total_pages, user_id: user.id
+        }]).select().single();
+
+        if (error) {
+            setBooks(prev => prev.filter(b => b.id !== idTemp));
+            throw error;
+        }
+
+        // Replace optimistic book with real one
+        setBooks(prev => prev.map(b => b.id === idTemp ? data as Book : b));
+        return data;
+    };
+
+    const updateBookProgress = async (id: string, current_page: number) => {
+        const book = books.find(b => b.id === id);
+        if (!book) return;
+
+        const isFinished = current_page >= book.total_pages;
+        const updates: Partial<Book> = {
+            current_page,
+            is_finished: isFinished
+        };
+
+        // Optimistic Update
+        setBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+
+        const { error } = await supabase.from('books').update(updates).eq('id', id);
+        if (error) {
+            // Rollback
+            await fetchSubjects();
+            throw error;
+        }
+    };
+
+    const completeBook = async (id: string) => {
+        const book = books.find(b => b.id === id);
+        if (!book) return;
+
+        // Optimistic Update
+        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: true, current_page: b.total_pages } : b));
+
+        const { error } = await supabase.from('books').update({
+            is_finished: true,
+            current_page: book.total_pages
+        }).eq('id', id);
+
+        if (error) {
+            await fetchSubjects();
+            throw error;
+        }
+    };
+
+    const reactivateBook = async (id: string) => {
+        // Optimistic Update
+        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: false } : b));
+
+        const { error } = await supabase.from('books').update({ is_finished: false }).eq('id', id);
+
+        if (error) {
+            await fetchSubjects();
+            throw error;
         }
     };
 
@@ -436,12 +583,19 @@ export const useLibrary = () => {
         const { error: sessionError } = await supabase.from('study_sessions').insert([{ ...session, user_id: user.id }]);
         if (sessionError) throw sessionError;
 
-        if (session.status === 'COMPLETED') {
+        if (session.status === 'COMPLETED' && session.subject_id) {
             const { data: subject } = await supabase.from('subjects').select('total_minutes_studied').eq('id', session.subject_id).single();
             if (subject) {
                 const newTotalSubject = (subject.total_minutes_studied || 0) + session.duration_minutes;
                 await updateSubject(session.subject_id, { total_minutes_studied: newTotalSubject });
             }
+        }
+
+        if (session.status === 'COMPLETED' && session.book_id) {
+            setBookStats(prev => ({
+                ...prev,
+                [session.book_id as string]: (prev[session.book_id as string] || 0) + session.duration_minutes
+            }));
         }
 
         if (session.status === 'ABANDONED') {
@@ -454,10 +608,19 @@ export const useLibrary = () => {
     };
 
     return {
-        subjects, activeSubjects: subjects.filter(s => !s.is_completed), completedSubjects: subjects.filter(s => s.is_completed),
-        loading, error, addSubject, updateSubject, completeSubject, logStudySession, refresh: fetchSubjects,
+        subjects, books, bookStats,
+        activeSubjects: subjects.filter(s => !s.is_completed),
+        completedSubjects: subjects.filter(s => s.is_completed),
+        activeBooks: books.filter(b => !b.is_finished),
+        finishedBooks: books.filter(b => b.is_finished),
+        loading, error,
+        addSubject, updateSubject, completeSubject, reactivateSubject,
+        addBook, updateBookProgress, completeBook, reactivateBook,
+        logStudySession, refresh: fetchSubjects,
         isSessionActive, startTime, elapsedSeconds, studyMode, setStudyMode, difficulty, setDifficulty,
-        targetMinutes, setTargetMinutes, selectedSubject, setSelectedSubject, startSession, stopSession, failSession,
-        reactivateSubject
+        targetMinutes, setTargetMinutes,
+        selectedSubject, setSelectedSubject,
+        selectedBook, setSelectedBook,
+        startSession, stopSession, failSession,
     };
 };

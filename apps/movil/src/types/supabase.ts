@@ -25,10 +25,23 @@ export interface Subject {
     created_at: string;
 }
 
+export interface Book {
+    id: string;
+    user_id: string;
+    title: string;
+    author: string | null;
+    total_pages: number;
+    current_page: number;
+    cover_color: string;
+    is_finished: boolean;
+    created_at: string;
+}
+
 export interface StudySession {
     id: string;
     user_id: string;
-    subject_id: string;
+    subject_id?: string; // Now optional (nullable)
+    book_id?: string;    // New field
     start_time: string;
     end_time: string | null;
     duration_minutes: number;

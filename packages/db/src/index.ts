@@ -12,10 +12,15 @@ const getEnv = (key: string): string => {
     }
 
     // 2. Check import.meta.env (Vite)
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
+    // We use a try-catch and a string check to avoid Hermes syntax errors if transform fails
+    try {
         // @ts-ignore
-        return import.meta.env[key];
+        if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
+            // @ts-ignore
+            return import.meta.env[key];
+        }
+    } catch (e) {
+        // Fallback for environments where import.meta is a syntax error
     }
 
     return "";

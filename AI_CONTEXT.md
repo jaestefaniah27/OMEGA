@@ -19,12 +19,15 @@ Cuando generes código, sigue estas reglas estrictas:
 
 ## 3. Prompts Maestros (Copia y Pega)
 
-### 🎨 Para generar Assets (Midjourney)
-> "Isometric game asset, [NOMBRE DEL LUGAR], medieval fantasy style, hand painted texture, blizzard/warcraft style, isolated on black background, high resolution, 4k"
+### 🎨 Para generar Assets (Bing Image Creator / Leonardo.ai)
+Usa este estilo para mantener coherencia visual. Bing funciona mejor con descripciones descriptivas:
+
+> "Isometric game asset representing [NOMBRE DEL LUGAR], video game style, medieval fantasy aesthetic, hand painted texture similar to Blizzard games, lighting from top-left, dark background, high definition, 3d render"
 
 *Ejemplos:*
-- Torre de Hechicería: "Magical wizard tower with floating purple crystals and arcane runes"
-- Barracones: "Medieval training grounds with wooden dummies and iron weights"
+- **Torre de Hechicería:** "Isometric wizard tower, purple glowing crystals floating around, arcane runes on the floor, mystical atmosphere, dark background"
+- **Barracones:** "Isometric medieval training grounds, wooden practice dummies, iron weights, weapon rack, stone floor, dark background"
+- **Textura Botón:** "Square stone texture for UI button, ancient grey rock, cracks, rpg game interface element, isolated"
 
 ### 🧙‍♂️ Para "El Bardo" (Narrativa)
 > "Eres El Bardo. Narra la vida de Sir Usuario basándote en sus logs. Usa tono épico. Metáforas de batalla para estudio/gym. Sé motivador pero severo."

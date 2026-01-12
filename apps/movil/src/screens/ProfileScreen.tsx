@@ -13,7 +13,7 @@ import {
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
-import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock } from 'lucide-react-native';
 import { useUserStats } from '../hooks/useUserStats';
 
 const { width } = Dimensions.get('window');
@@ -246,6 +246,27 @@ export const ProfileScreen: React.FC = () => {
                             </View>
                         )}
                     </View>
+
+                    {/* Stats de Estudio */}
+                    <View style={styles.statsSeparator} />
+
+                    <View style={styles.statsRow}>
+                        <View style={styles.statBox}>
+                            <Clock size={20} color="#8b4513" />
+                            <Text style={styles.statLabel}>Tiempo Total</Text>
+                            <Text style={styles.statValue}>
+                                {Math.floor((profile?.total_study_minutes || 0) / 60)}h {(profile?.total_study_minutes || 0) % 60}m
+                            </Text>
+                        </View>
+
+                        <View style={styles.statBox}>
+                            <Shield size={20} color="#c0392b" />
+                            <Text style={styles.statLabel}>Deshonras</Text>
+                            <Text style={[styles.statValue, { color: '#c0392b' }]}>
+                                {profile?.shame_count || 0}
+                            </Text>
+                        </View>
+                    </View>
                 </ParchmentCard>
 
                 <MedievalButton
@@ -434,6 +455,33 @@ const styles = StyleSheet.create({
         padding: 10,
         backgroundColor: 'rgba(39, 174, 96, 0.1)',
         borderRadius: 8,
+    },
+    statsSeparator: {
+        width: '100%',
+        height: 1,
+        backgroundColor: 'rgba(61, 43, 31, 0.1)',
+        marginVertical: 15,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        width: '100%',
+        justifyContent: 'space-around',
+    },
+    statBox: {
+        alignItems: 'center',
+    },
+    statLabel: {
+        fontSize: 10,
+        color: '#8b4513',
+        fontWeight: 'bold',
+        marginTop: 5,
+        textTransform: 'uppercase',
+    },
+    statValue: {
+        fontSize: 18,
+        color: '#3d2b1f',
+        fontWeight: 'bold',
+        marginTop: 2,
     },
     logoutButton: {
         width: width * 0.9,

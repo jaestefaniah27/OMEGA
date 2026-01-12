@@ -4,24 +4,29 @@ import { createClient } from '@supabase/supabase-js';
  * Utility to get environment variables across different platforms (Expo, Vite, Node)
  */
 const getEnv = (key: string): string => {
-    const global = globalThis as any;
-
     // 1. Check process.env (Node / Expo)
-    if (global.process?.env?.[key]) {
-        return global.process.env[key];
-    }
+    try {
+        if (typeof process !== 'undefined' && process.env?.[key]) {
+            return process.env[key] as string;
+        }
+    } catch (e) { }
 
-    // 2. Check import.meta.env (Vite)
-    // We use a try-catch and a string check to avoid Hermes syntax errors if transform fails
+    // 2. Check global.process.env
+    const globalAny = globalThis as any;
+    try {
+        if (globalAny.process?.env?.[key]) {
+            return globalAny.process.env[key];
+        }
+    } catch (e) { }
+
+    // 3. Check import.meta.env (Vite)
     try {
         // @ts-ignore
         if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
             // @ts-ignore
             return import.meta.env[key];
         }
-    } catch (e) {
-        // Fallback for environments where import.meta is a syntax error
-    }
+    } catch (e) { }
 
     return "";
 };

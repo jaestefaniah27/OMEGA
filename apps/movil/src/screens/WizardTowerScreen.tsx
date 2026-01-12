@@ -61,12 +61,6 @@ export const WizardTowerScreen: React.FC = () => {
                         style={styles.manaButton}
                     />
 
-                    <MedievalButton
-                        title="VOLVER AL MAPA"
-                        onPress={() => navigation.goBack()}
-                        variant="danger"
-                        style={styles.backButton}
-                    />
 
                     <View style={{ height: 100 }} />
                 </ScrollView>

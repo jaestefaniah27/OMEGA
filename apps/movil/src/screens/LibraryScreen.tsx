@@ -306,14 +306,7 @@ export const LibraryScreen: React.FC = () => {
                     </>
                 )}
 
-                <MedievalButton
-                    title="VOLVER AL MAPA"
-                    variant="danger"
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                />
-
-                <View style={{ height: 40 }} />
+                <View style={{ height: 100 }} />
             </ScrollView>
 
             {/* MODAL: Active Session */}

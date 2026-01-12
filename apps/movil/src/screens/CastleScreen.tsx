@@ -110,13 +110,6 @@ export const CastleScreen: React.FC = () => {
                         />
                     </View>
 
-                    <MedievalButton
-                        title="VOLVER AL MAPA"
-                        onPress={() => navigation.goBack()}
-                        variant="danger"
-                        style={styles.backButton}
-                    />
-
                     {/* Padding for HUD */}
                     <View style={{ height: 100 }} />
 

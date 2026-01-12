@@ -59,12 +59,6 @@ export const TheatreScreen: React.FC = () => {
                         </View>
                     </ParchmentCard>
 
-                    <MedievalButton
-                        title="VOLVER AL MAPA"
-                        onPress={() => navigation.goBack()}
-                        variant="danger"
-                        style={styles.backButton}
-                    />
 
                     <View style={{ height: 100 }} />
                 </ScrollView>

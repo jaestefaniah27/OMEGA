@@ -39,7 +39,16 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     }
   };
 
+  const handleMapPress = () => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Home' as any);
+    }
+  };
+
   return (
-    <GameHUD onProfilePress={handleProfilePress} />
+    <GameHUD
+      onProfilePress={handleProfilePress}
+      onMapPress={handleMapPress}
+    />
   );
 }

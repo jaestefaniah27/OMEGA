@@ -6,7 +6,7 @@ import {
     Dimensions,
     Platform
 } from 'react-native';
-import { ScrollText, Bell, Plus, User } from 'lucide-react-native';
+import { ScrollText, Map, Plus, User } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -42,7 +42,10 @@ const HUDButton: React.FC<HUDButtonProps> = ({
     );
 };
 
-export const GameHUD: React.FC<{ onProfilePress?: () => void }> = ({ onProfilePress }) => {
+export const GameHUD: React.FC<{
+    onProfilePress?: () => void;
+    onMapPress?: () => void;
+}> = ({ onProfilePress, onMapPress }) => {
     return (
         <View style={styles.container}>
             <View style={styles.hudBar}>
@@ -51,9 +54,8 @@ export const GameHUD: React.FC<{ onProfilePress?: () => void }> = ({ onProfilePr
                     icon={ScrollText}
                 />
                 <HUDButton
-                    onPress={() => console.log('Notifications')}
-                    icon={Bell}
-                    hasBadge
+                    onPress={() => onMapPress?.()}
+                    icon={Map}
                 />
 
                 {/* Helper view to make space for the floating Zurrón */}

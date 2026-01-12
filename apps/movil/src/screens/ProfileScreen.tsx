@@ -177,12 +177,6 @@ export const ProfileScreen: React.FC = () => {
                         />
                     </ParchmentCard>
 
-                    <MedievalButton
-                        title="VOLVER AL MAPA"
-                        variant="danger"
-                        onPress={() => navigation.goBack()}
-                        style={styles.backButton}
-                    />
                 </ScrollView>
             </View>
         );
@@ -276,11 +270,6 @@ export const ProfileScreen: React.FC = () => {
                     style={styles.logoutButton}
                 />
 
-                <MedievalButton
-                    title="VOLVER AL MAPA"
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                />
 
                 <View style={{ height: 100 }} />
             </ScrollView>

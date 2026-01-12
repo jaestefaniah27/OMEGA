@@ -4,16 +4,30 @@ import {
     Text,
     StyleSheet,
     ScrollView,
-    Dimensions
+    Dimensions,
+    ActivityIndicator
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { useNavigation } from '@react-navigation/native';
 import { Trophy, Coins, Star, CheckSquare, Square } from 'lucide-react-native';
+import { useUserStats } from '../hooks/useUserStats';
 
 const { width } = Dimensions.get('window');
 
 export const CastleScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { profile, loading } = useUserStats();
+
+    // Valores por defecto si no hay perfil o está cargando
+    const stats = {
+        level: profile?.level ?? 1,
+        gold: profile?.gold ?? 0,
+        xp: profile?.current_xp ?? 0,
+        maxXp: profile?.max_xp ?? 1000,
+        class: profile?.class ?? 'Novato'
+    };
+
+    const xpPercentage = (stats.xp / stats.maxXp) * 100;
 
     return (
         <View style={styles.container}>
@@ -29,26 +43,35 @@ export const CastleScreen: React.FC = () => {
                             <Text style={styles.sectionTitle}>ESTADO DEL REINO</Text>
                         </View>
 
-                        <View style={styles.statsRow}>
-                            <View style={styles.statItem}>
-                                <Star size={18} color="#8b4513" />
-                                <Text style={styles.statText}>Nivel 5</Text>
+                        {loading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#d4af37" />
+                                <Text style={styles.loadingText}>Consultando oráculos...</Text>
                             </View>
-                            <View style={styles.statItem}>
-                                <Coins size={18} color="#d4af37" />
-                                <Text style={styles.statText}>120 Oro</Text>
-                            </View>
-                        </View>
+                        ) : (
+                            <>
+                                <View style={styles.statsRow}>
+                                    <View style={styles.statItem}>
+                                        <Star size={18} color="#8b4513" />
+                                        <Text style={styles.statText}>Nivel {stats.level}</Text>
+                                    </View>
+                                    <View style={styles.statItem}>
+                                        <Coins size={18} color="#d4af37" />
+                                        <Text style={styles.statText}>{stats.gold} Oro</Text>
+                                    </View>
+                                </View>
 
-                        <View style={styles.progressContainer}>
-                            <View style={styles.progressHeader}>
-                                <Text style={styles.progressLabel}>XP EXPERIENCIA</Text>
-                                <Text style={styles.progressValue}>450 / 1000</Text>
-                            </View>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: '45%' }]} />
-                            </View>
-                        </View>
+                                <View style={styles.progressContainer}>
+                                    <View style={styles.progressHeader}>
+                                        <Text style={styles.progressLabel}>XP ({stats.class})</Text>
+                                        <Text style={styles.progressValue}>{stats.xp} / {stats.maxXp}</Text>
+                                    </View>
+                                    <View style={styles.progressBarBg}>
+                                        <View style={[styles.progressBarFill, { width: `${xpPercentage}%` }]} />
+                                    </View>
+                                </View>
+                            </>
+                        )}
                     </ParchmentCard>
 
                     {/* Sección 2: Decretos Reales */}
@@ -130,6 +153,8 @@ const styles = StyleSheet.create({
     sectionCard: {
         width: width * 0.9,
         marginBottom: 20,
+        minHeight: 150,
+        justifyContent: 'center',
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -213,5 +238,15 @@ const styles = StyleSheet.create({
     backButton: {
         marginTop: 20,
         width: '100%',
+    },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 14,
+        fontStyle: 'italic',
+        color: '#3d2b1f',
     }
 });

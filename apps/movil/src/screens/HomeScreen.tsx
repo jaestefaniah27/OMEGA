@@ -1,8 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { MedievalButton } from '@omega/ui';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ImageBackground,
+    Dimensions
+} from 'react-native';
+import { MapLocationPin } from '@omega/ui';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+const { width, height } = Dimensions.get('window');
 
 type RootStackParamList = {
     Home: undefined;
@@ -22,76 +30,111 @@ export const HomeScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp>();
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>🗺️ MAPA DEL MUNDO</Text>
+        <View style={styles.container}>
+            {/* 
+        TODO: Use a real isometric map image once available.
+        Using a dark background with a subtle tint as placeholder.
+      */}
+            <View style={styles.mapBase}>
+                <Text style={styles.mapTitle}>REINO DE OMEGA</Text>
 
-            <View style={styles.buttonGrid}>
-                <MedievalButton
-                    title="🏰 Ir al Castillo"
+                {/* Castle: North-Center */}
+                <MapLocationPin
+                    title="Castillo"
+                    icon="🏰"
+                    top="15%"
+                    left="50%"
                     onPress={() => navigation.navigate('Castle')}
-                    style={styles.button}
                 />
-                <MedievalButton
-                    title="📚 Ir a la Biblioteca"
+
+                {/* Library: North-East */}
+                <MapLocationPin
+                    title="Biblioteca"
+                    icon="📚"
+                    top="12%"
+                    left="82%"
                     onPress={() => navigation.navigate('Library')}
-                    style={styles.button}
                 />
-                <MedievalButton
-                    title="🧙‍♂️ Torre del Mago"
+
+                {/* Wizard Tower: Mid-East */}
+                <MapLocationPin
+                    title="Torre del Mago"
+                    icon="🧙‍♂️"
+                    top="28%"
+                    left="88%"
                     onPress={() => navigation.navigate('WizardTower')}
-                    style={styles.button}
                 />
-                <MedievalButton
-                    title="⚔️ Ir a los Barracones"
-                    onPress={() => navigation.navigate('Barracks')}
-                    style={styles.button}
-                />
-                <MedievalButton
-                    title="🍳 Ir a la Taberna"
-                    onPress={() => navigation.navigate('Tavern')}
-                    style={styles.button}
-                />
-                <MedievalButton
-                    title="⛪ Ir al Templo"
+
+                {/* Temple: Mid-West */}
+                <MapLocationPin
+                    title="Templo"
+                    icon="⛪"
+                    top="35%"
+                    left="18%"
                     onPress={() => navigation.navigate('Temple')}
-                    style={styles.button}
                 />
-                <MedievalButton
-                    title="🎭 Ir al Teatro"
+
+                {/* Theatre: Center */}
+                <MapLocationPin
+                    title="Teatro"
+                    icon="🎭"
+                    top="48%"
+                    left="60%"
                     onPress={() => navigation.navigate('Theatre')}
-                    style={styles.button}
                 />
-                <MedievalButton
-                    title="🛒 Ir al Mercado"
+
+                {/* Barracks: South-West */}
+                <MapLocationPin
+                    title="Barracones"
+                    icon="⚔️"
+                    top="65%"
+                    left="20%"
+                    onPress={() => navigation.navigate('Barracks')}
+                />
+
+                {/* Tavern: South-East (Near Market) */}
+                <MapLocationPin
+                    title="Taberna"
+                    icon="🍳"
+                    top="68%"
+                    left="78%"
+                    onPress={() => navigation.navigate('Tavern')}
+                />
+
+                {/* Market: South-East (Edge) */}
+                <MapLocationPin
+                    title="Mercado"
+                    icon="🛒"
+                    top="82%"
+                    left="85%"
                     onPress={() => navigation.navigate('Market')}
-                    style={styles.button}
                 />
+
             </View>
-        </ScrollView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#000',
     },
-    content: {
-        padding: 20,
-        alignItems: 'center',
+    mapBase: {
+        flex: 1,
+        backgroundColor: '#1c1c1c', // Dark stone/ground color
+        width: '100%',
+        height: '100%',
     },
-    title: {
-        fontSize: 28,
+    mapTitle: {
+        position: 'absolute',
+        top: 50,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 22,
         fontWeight: 'bold',
         color: '#FFD700',
-        marginVertical: 30,
-        textAlign: 'center',
-    },
-    buttonGrid: {
-        width: '100%',
-        gap: 15,
-    },
-    button: {
-        width: '100%',
+        letterSpacing: 4,
+        opacity: 0.6,
     }
 });

@@ -2,33 +2,45 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/supabase';
 
-const TEST_USER_ID = '903cf1c9-8d37-4a9b-b228-418c44dc91fa';
-
 export const useUserStats = () => {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchProfile = async () => {
+        let channel: any;
+
+        const fetchProfileData = async (userId: string) => {
             try {
                 setLoading(true);
-
-                // TEMPORAL: Usar ID hardcodeado mientras no hay Login
-                const userId = TEST_USER_ID;
-
-                // Consultamos el perfil (usamos maybeSingle para no fallar si no existe)
                 const { data, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
                     .maybeSingle();
 
-                console.log('Supabase Query Result:', { data, error: fetchError });
-
                 if (fetchError) throw fetchError;
                 setProfile(data);
-                if (!data) console.warn('Aviso: No se encontró ningún perfil con el ID:', userId);
+
+                // Suscribirse a cambios en tiempo real filtrando por el ID
+                channel = supabase
+                    .channel(`profile_${userId}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'profiles',
+                            filter: `id=eq.${userId}`
+                        },
+                        (payload: any) => {
+                            if (payload.new) {
+                                setProfile(prev => ({ ...(prev as Profile), ...payload.new }));
+                            }
+                        }
+                    )
+                    .subscribe();
+
             } catch (err: any) {
                 console.error('Error fetching profile:', err.message);
                 setError(err.message);
@@ -37,27 +49,34 @@ export const useUserStats = () => {
             }
         };
 
-        fetchProfile();
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                fetchProfileData(user.id);
+            } else {
+                setProfile(null);
+                setLoading(false);
+            }
+        };
 
-        // Suscribirse a cambios en tiempo real filtrando por el ID hardcodeado
-        const channel = supabase
-            .channel('profile_changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'profiles',
-                    filter: `id=eq.${TEST_USER_ID}`
-                },
-                (payload) => {
-                    setProfile(payload.new as Profile);
+        checkUser();
+
+        // Escuchar cambios de auth
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                fetchProfileData(session.user.id);
+            } else if (event === 'SIGNED_OUT') {
+                setProfile(null);
+                if (channel) {
+                    supabase.removeChannel(channel);
+                    channel = null;
                 }
-            )
-            .subscribe();
+            }
+        });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
+            authListener.subscription.unsubscribe();
         };
     }, []);
 

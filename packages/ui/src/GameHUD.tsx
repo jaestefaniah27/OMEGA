@@ -42,7 +42,7 @@ const HUDButton: React.FC<HUDButtonProps> = ({
     );
 };
 
-export const GameHUD: React.FC = () => {
+export const GameHUD: React.FC<{ onProfilePress?: () => void }> = ({ onProfilePress }) => {
     return (
         <View style={styles.container}>
             <View style={styles.hudBar}>
@@ -60,7 +60,7 @@ export const GameHUD: React.FC = () => {
                 <View style={styles.spacer} />
 
                 <HUDButton
-                    onPress={() => console.log('Profile')}
+                    onPress={() => onProfilePress?.()}
                     icon={User}
                 />
                 <HUDButton

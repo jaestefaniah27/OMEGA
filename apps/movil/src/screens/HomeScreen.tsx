@@ -22,6 +22,7 @@ type RootStackParamList = {
     Temple: undefined;
     Theatre: undefined;
     Market: undefined;
+    Profile: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;

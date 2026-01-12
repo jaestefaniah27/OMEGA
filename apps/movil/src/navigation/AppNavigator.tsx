@@ -9,29 +9,33 @@ import { TavernScreen } from '../screens/TavernScreen';
 import { TempleScreen } from '../screens/TempleScreen';
 import { TheatreScreen } from '../screens/TheatreScreen';
 import { MarketScreen } from '../screens/MarketScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+    Home: undefined;
+    Castle: undefined;
+    Library: undefined;
+    WizardTower: undefined;
+    Barracks: undefined;
+    Tavern: undefined;
+    Temple: undefined;
+    Theatre: undefined;
+    Market: undefined;
+    Profile: undefined;
+};
 
-export const AppNavigator = () => {
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+export const AppNavigator: React.FC = () => {
     return (
         <Stack.Navigator
             initialRouteName="Home"
             screenOptions={{
-                headerStyle: {
-                    backgroundColor: '#3d2b1f',
-                },
-                headerTintColor: '#FFD700',
-                headerTitleStyle: {
-                    fontWeight: '700',
-                    color: '#FFD700',
-                },
+                headerShown: false,
+                animation: 'fade',
             }}
         >
-            <Stack.Screen
-                name="Home"
-                component={HomeScreen}
-                options={{ title: 'Omega - Reino' }}
-            />
+            <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Castle" component={CastleScreen} />
             <Stack.Screen name="Library" component={LibraryScreen} />
             <Stack.Screen name="WizardTower" component={WizardTowerScreen} />
@@ -40,6 +44,7 @@ export const AppNavigator = () => {
             <Stack.Screen name="Temple" component={TempleScreen} />
             <Stack.Screen name="Theatre" component={TheatreScreen} />
             <Stack.Screen name="Market" component={MarketScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
         </Stack.Navigator>
     );
 };

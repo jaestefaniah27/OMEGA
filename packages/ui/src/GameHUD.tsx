@@ -45,7 +45,8 @@ const HUDButton: React.FC<HUDButtonProps> = ({
 export const GameHUD: React.FC<{
     onProfilePress?: () => void;
     onMapPress?: () => void;
-}> = ({ onProfilePress, onMapPress }) => {
+    onZurronPress?: () => void;
+}> = ({ onProfilePress, onMapPress, onZurronPress }) => {
     return (
         <View style={styles.container}>
             <View style={styles.hudBar}>
@@ -74,7 +75,7 @@ export const GameHUD: React.FC<{
             {/* Zurrón - Central Floating Button */}
             <View style={styles.zurronContainer}>
                 <HUDButton
-                    onPress={() => console.log('Quick Add')}
+                    onPress={() => onZurronPress?.()}
                     icon={Plus}
                     isLarge
                 />

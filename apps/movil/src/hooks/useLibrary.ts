@@ -3,7 +3,7 @@ import { AppState, AppStateStatus, Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
-import { Subject, StudySession, Book } from '../types/supabase';
+import { Subject, StudySession, Book, CustomColor } from '../types/supabase';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
@@ -21,6 +21,7 @@ Notifications.setNotificationHandler({
 export const useLibrary = () => {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [books, setBooks] = useState<Book[]>([]);
+    const [customColors, setCustomColors] = useState<CustomColor[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +67,11 @@ export const useLibrary = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
+            const { data: colorsData, error: colorsError } = await supabase
+                .from('custom_colors')
+                .select('*')
+                .order('created_at', { ascending: false });
+
             // Fetch book sessions for stats
             const { data: sessionData, error: sessionError } = await supabase
                 .from('study_sessions')
@@ -75,6 +81,7 @@ export const useLibrary = () => {
 
             if (fetchError) throw fetchError;
             if (booksError) throw booksError;
+            if (colorsError) throw colorsError;
             if (sessionError) throw sessionError;
 
             // Aggregate Stats
@@ -90,6 +97,7 @@ export const useLibrary = () => {
 
             setSubjects(data || []);
             setBooks(booksData || []);
+            setCustomColors(colorsData || []);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -163,6 +171,21 @@ export const useLibrary = () => {
                             }
                             else if (payload.eventType === 'DELETE') {
                                 setBooks(prev => prev.filter(b => b.id === payload.old.id));
+                            }
+                        }
+                    )
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'custom_colors', filter: `user_id=eq.${user.id}` },
+                        (payload: any) => {
+                            if (payload.eventType === 'INSERT') {
+                                setCustomColors(prev => [payload.new as CustomColor, ...prev]);
+                            }
+                            else if (payload.eventType === 'UPDATE') {
+                                setCustomColors(prev => prev.map(c => c.id === payload.new.id ? payload.new as CustomColor : c));
+                            }
+                            else if (payload.eventType === 'DELETE') {
+                                setCustomColors(prev => prev.filter(c => c.id === payload.old.id));
                             }
                         }
                     )
@@ -467,6 +490,9 @@ export const useLibrary = () => {
         const bookId = selectedBook?.id;
 
         try {
+            if (totalMinutes < 1 && !abandoned && !skipLog) {
+                return;
+            }
             if (!skipLog && start && (subId || bookId)) {
                 await logStudySession({
                     subject_id: subId,
@@ -497,7 +523,7 @@ export const useLibrary = () => {
         }
     };
 
-    const addBook = async (title: string, author: string, total_pages: number) => {
+    const addBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Usuario no autenticado');
 
@@ -507,9 +533,11 @@ export const useLibrary = () => {
             id: idTemp,
             title,
             author,
+            saga: saga || null,
+            saga_index: saga_index || null,
             total_pages,
             current_page: 0,
-            cover_color: '#8b4513',
+            cover_color,
             is_finished: false,
             finished_at: null,
             user_id: user.id,
@@ -518,7 +546,13 @@ export const useLibrary = () => {
         setBooks(prev => [newBook, ...prev]);
 
         const { data, error } = await supabase.from('books').insert([{
-            title, author, total_pages, user_id: user.id
+            title,
+            author,
+            total_pages,
+            cover_color,
+            saga,
+            saga_index,
+            user_id: user.id
         }]).select().single();
 
         if (error) {
@@ -562,13 +596,11 @@ export const useLibrary = () => {
         setBooks(prev => prev.map(b => b.id === id ? {
             ...b,
             is_finished: true,
-            current_page: b.total_pages,
             finished_at: finishedAt
         } : b));
 
         const { error } = await supabase.from('books').update({
             is_finished: true,
-            current_page: book.total_pages,
             finished_at: finishedAt
         }).eq('id', id);
 
@@ -614,6 +646,26 @@ export const useLibrary = () => {
 
     const reactivateSubject = async (id: string) => {
         return updateSubject(id, { is_completed: false });
+    };
+
+    const saveCustomColor = async (hex_code: string, name?: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuario no autenticado');
+
+        // Check if color already exists to avoid duplicates
+        if (customColors.some(c => c.hex_code.toUpperCase() === hex_code.toUpperCase())) {
+            return;
+        }
+
+        const { data, error } = await supabase.from('custom_colors').insert([{
+            hex_code,
+            name: name || null,
+            user_id: user.id
+        }]).select().single();
+
+        if (error) throw error;
+        setCustomColors(prev => [data as CustomColor, ...prev]);
+        return data;
     };
 
     const logStudySession = async (session: Omit<StudySession, 'id' | 'user_id' | 'created_at'>) => {
@@ -668,6 +720,7 @@ export const useLibrary = () => {
         loading, error,
         addSubject, updateSubject, completeSubject, reactivateSubject,
         addBook, updateBookProgress, completeBook, reactivateBook,
+        saveCustomColor, customColors,
         logStudySession, refresh: fetchSubjects,
         isSessionActive, startTime, elapsedSeconds, studyMode, setStudyMode, difficulty, setDifficulty,
         targetMinutes, setTargetMinutes,

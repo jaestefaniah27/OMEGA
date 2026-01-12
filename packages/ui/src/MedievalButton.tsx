@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFD700', // Gold border
         overflow: 'hidden',
-        minWidth: 120,
+        minWidth: 80,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -87,15 +87,15 @@ const styles = StyleSheet.create({
     },
     innerContainer: {
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     text: {
         color: '#F5E6C6', // Papyrus color
         fontWeight: 'bold',
-        fontSize: 16,
-        letterSpacing: 1,
+        fontSize: 13,
+        letterSpacing: 0.5,
         textShadowColor: 'rgba(0, 0, 0, 0.5)',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,

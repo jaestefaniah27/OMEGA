@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -11,6 +11,8 @@ import {
     TouchableOpacity,
     Alert,
     FlatList,
+    Animated,
+    DeviceEventEmitter
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +20,6 @@ import {
     BookOpen,
     Timer as TimerIcon,
     BookText,
-    Plus,
     History,
     CheckCircle,
     ChevronDown,
@@ -29,8 +30,11 @@ import {
     AlertTriangle,
     Sword,
     Scroll,
-    Map
+    Map,
+    Camera,
+    Palette
 } from 'lucide-react-native';
+import { CameraColorPicker, ManualColorPicker } from '@omega/ui';
 import { useLibrary } from '../hooks/useLibrary';
 import { Subject, Book } from '../types/supabase';
 
@@ -38,6 +42,23 @@ const { width, height } = Dimensions.get('window');
 
 const SUBJECT_COLORS = ['#8b4513', '#2c3e50', '#27ae60', '#8e44ad', '#d35400', '#c0392b', '#16a085'];
 const BOOK_COLORS = ['#8b4513', '#2c3e50', '#27ae60', '#8e44ad', '#d35400', '#c0392b', '#16a085'];
+
+const AnimatedSword = Animated.createAnimatedComponent(Sword);
+const AnimatedScroll = Animated.createAnimatedComponent(Scroll);
+
+const toRoman = (num: number): string => {
+    if (!num || isNaN(num)) return '';
+    const lookup: { [key: string]: number } = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 };
+    let roman = '';
+    let n = num;
+    for (const i in lookup) {
+        while (n >= lookup[i]) {
+            roman += i;
+            n -= lookup[i];
+        }
+    }
+    return roman;
+};
 
 export const LibraryScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -71,7 +92,9 @@ export const LibraryScreen: React.FC = () => {
         updateBookProgress,
         completeBook,
         reactivateBook,
-        bookStats
+        bookStats,
+        saveCustomColor,
+        customColors
     } = useLibrary();
 
     // UI-only States
@@ -83,17 +106,26 @@ export const LibraryScreen: React.FC = () => {
 
     // NEW: Dual Mode States
     const [viewMode, setViewMode] = useState<'STUDY' | 'READING'>('STUDY');
+    const horizontalScrollRef = useRef<ScrollView>(null);
+    const scrollX = useRef(new Animated.Value(0)).current;
+
     const [isAddBookVisible, setIsAddBookVisible] = useState(false);
     const [isBookPickerVisible, setIsBookPickerVisible] = useState(false);
     const [newBookTitle, setNewBookTitle] = useState('');
     const [newBookAuthor, setNewBookAuthor] = useState('');
+    const [newBookSaga, setNewBookSaga] = useState('');
+    const [newBookSagaIndex, setNewBookSagaIndex] = useState('');
     const [newBookTotalPages, setNewBookTotalPages] = useState('');
     const [newBookCoverColor, setNewBookCoverColor] = useState(BOOK_COLORS[0]);
     const [isReadingStopModalVisible, setIsReadingStopModalVisible] = useState(false);
     const [endPageInput, setEndPageInput] = useState('');
 
+    const [isCameraPickerVisible, setIsCameraPickerVisible] = useState(false);
+    const [isManualPickerVisible, setIsManualPickerVisible] = useState(false);
+    const [colorPickerTarget, setColorPickerTarget] = useState<'SUBJECT' | 'BOOK' | null>(null);
+
     // Effect to set default course from most recent subject
-    React.useEffect(() => {
+    useEffect(() => {
         if (isAddModalVisible && !newSubjectName && !newSubjectCourse && subjects.length > 0) {
             const lastCourse = subjects[0]?.course;
             if (lastCourse) {
@@ -101,6 +133,18 @@ export const LibraryScreen: React.FC = () => {
             }
         }
     }, [isAddModalVisible, subjects]);
+
+    // --- QUICK ADD HUD LISTENER ---
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('GLOBAL_QUICK_ADD', () => {
+            if (viewMode === 'STUDY') {
+                setIsAddModalVisible(true);
+            } else if (viewMode === 'READING') {
+                setIsAddBookVisible(true);
+            }
+        });
+        return () => sub.remove();
+    }, [viewMode]);
 
     // --- HANDLERS: SUBJECTS ---
     const handleAddSubject = async () => {
@@ -122,9 +166,19 @@ export const LibraryScreen: React.FC = () => {
             return;
         }
         try {
-            await addBook(newBookTitle.trim(), newBookAuthor.trim() || 'Desconocido', parseInt(newBookTotalPages));
+            const sagaIdx = newBookSagaIndex ? parseInt(newBookSagaIndex) : undefined;
+            await addBook(
+                newBookTitle.trim(),
+                newBookAuthor.trim() || 'Desconocido',
+                parseInt(newBookTotalPages),
+                newBookCoverColor,
+                newBookSaga.trim() || undefined,
+                sagaIdx
+            );
             setNewBookTitle('');
             setNewBookAuthor('');
+            setNewBookSaga('');
+            setNewBookSagaIndex('');
             setNewBookTotalPages('');
             setIsAddBookVisible(false);
         } catch (error: any) {
@@ -275,7 +329,10 @@ export const LibraryScreen: React.FC = () => {
         <ParchmentCard style={styles.subjectCard}>
             <View style={[styles.colorTab, { backgroundColor: item.cover_color || '#8b4513' }]} />
             <View style={styles.subjectInfo}>
-                <Text style={styles.subjectName}>{item.title}</Text>
+                <Text style={styles.subjectName}>
+                    {item.title}
+                    {item.saga ? ` - ${item.saga} ${toRoman(item.saga_index || 0)}` : ''}
+                </Text>
                 <View style={styles.subjectMetaRow}>
                     <Text style={styles.courseText}>{item.author || "Anónimo"}</Text>
                 </View>
@@ -325,10 +382,7 @@ export const LibraryScreen: React.FC = () => {
     // --- VIEWS ---
     const StudyView = () => (
         <>
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>BIBLIOTECA REAL</Text>
-                <Text style={styles.headerSubtitle}>"Donde se forjan los sabios"</Text>
-            </View>
+
 
             <ParchmentCard style={styles.atrilCard}>
                 <View style={styles.atrilHeader}>
@@ -409,10 +463,7 @@ export const LibraryScreen: React.FC = () => {
             </ParchmentCard>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>📜 ARCHIVOS REALES</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
-                    <Plus size={24} color="#d4af37" />
-                </TouchableOpacity>
+                <Text style={styles.sectionTitle}>📜 ARTES MÍSTICAS POR DOMINAR</Text>
             </View>
 
             {activeSubjects.length === 0 && !loading && (
@@ -426,7 +477,7 @@ export const LibraryScreen: React.FC = () => {
             {completedSubjects.length > 0 && (
                 <>
                     <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-                        <Text style={styles.sectionTitle}>🏆 COMPLETADOS</Text>
+                        <Text style={styles.sectionTitle}>ARTES MÍSTICAS DOMINADAS</Text>
                     </View>
                     {completedSubjects.map(subject => (
                         <SubjectCard key={subject.id} item={subject} />
@@ -438,15 +489,12 @@ export const LibraryScreen: React.FC = () => {
 
     const ReadingView = () => (
         <>
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>SALA DE LECTURA</Text>
-                <Text style={styles.headerSubtitle}>"El conocimiento es poder"</Text>
-            </View>
+
 
             <ParchmentCard style={styles.atrilCard}>
                 <View style={styles.atrilHeader}>
                     <BookText size={24} color="#8b4513" />
-                    <Text style={styles.atrilTitle}>LECTURA</Text>
+                    <Text style={styles.atrilTitle}>SALA DE LECTURA</Text>
                 </View>
 
                 <TouchableOpacity
@@ -456,7 +504,9 @@ export const LibraryScreen: React.FC = () => {
                     <View style={styles.subjectSelectorLeft}>
                         <View style={[styles.colorDot, { backgroundColor: selectedBook?.cover_color || '#8b4513' }]} />
                         <Text style={styles.subjectSelectorText}>
-                            {selectedBook ? selectedBook.title : "Selecciona un Tomo..."}
+                            {selectedBook
+                                ? `${selectedBook.title}${selectedBook.saga ? ` - ${selectedBook.saga} ${toRoman(selectedBook.saga_index || 0)}` : ''}`
+                                : "Selecciona un Tomo..."}
                         </Text>
                     </View>
                     <ChevronDown size={20} color="#8b4513" />
@@ -482,10 +532,7 @@ export const LibraryScreen: React.FC = () => {
             </ParchmentCard>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>📚 TUS GRIMORIOS</Text>
-                <TouchableOpacity onPress={() => setIsAddBookVisible(true)} style={styles.addBtn}>
-                    <Plus size={24} color="#d4af37" />
-                </TouchableOpacity>
+                <Text style={styles.sectionTitle}>📚 TOMOS DE SABIDURÍA</Text>
             </View>
 
             {activeBooks.length === 0 && !loading && (
@@ -499,7 +546,7 @@ export const LibraryScreen: React.FC = () => {
             {finishedBooks.length > 0 && (
                 <>
                     <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-                        <Text style={styles.sectionTitle}>🏆 COMPLETADOS</Text>
+                        <Text style={styles.sectionTitle}>SABIDURÍA ASIMILADA</Text>
                     </View>
                     {finishedBooks.map(book => (
                         <BookCard key={book.id} item={book} />
@@ -512,31 +559,162 @@ export const LibraryScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* MODE SELECTOR */}
-            <View style={styles.modeSelector}>
+            {/* Header */}
+            <View style={styles.topHeader}>
+                <Text style={styles.headerTitle}>GRAN BIBLIOTECA REAL</Text>
+                <Text style={styles.headerSubtitle}>"El conocimiento es el arma definitiva"</Text>
+            </View>
+
+            {/* Tab Selector */}
+            <View style={styles.tabSelector}>
+                {/* Animated Indicator Background */}
+                <Animated.View
+                    style={[
+                        styles.tabIndicator,
+                        {
+                            transform: [{
+                                translateX: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [4, ((width - 38) / 2) + 4]
+                                })
+                            }],
+                            width: (width - 38) / 2
+                        }
+                    ]}
+                />
+
                 <TouchableOpacity
-                    style={[styles.modeBtn, viewMode === 'STUDY' && styles.modeBtnActive]}
-                    onPress={() => setViewMode('STUDY')}
+                    style={styles.tabBtn}
+                    onPress={() => {
+                        horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+                    }}
                 >
-                    <Sword size={20} color={viewMode === 'STUDY' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.modeBtnText, viewMode === 'STUDY' && styles.modeBtnTextActive]}>
-                        ARCANA
-                    </Text>
+                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                        {/* INACTIVE LAYER */}
+                        <Sword size={20} color="#8b4513" />
+
+                        {/* ACTIVE LAYER (GLOWING) */}
+                        <Animated.View style={{
+                            position: 'absolute',
+                            opacity: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: [1, 0]
+                            }),
+                            shadowColor: '#FFD700',
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowOpacity: 1,
+                            shadowRadius: 10,
+                            elevation: 5,
+                        }}>
+                            <Sword size={20} color="#FFD700" />
+                        </Animated.View>
+                    </View>
+
+                    <Animated.Text style={[
+                        styles.tabBtnText,
+                        {
+                            color: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: ['#FFD700', '#8b4513']
+                            }),
+                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                            textShadowOffset: { width: 0, height: 0 },
+                            textShadowRadius: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: [10, 0]
+                            })
+                        }
+                    ]}>
+                        FORJA DEL INTELECTO
+                    </Animated.Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                    style={[styles.modeBtn, viewMode === 'READING' && styles.modeBtnActive]}
-                    onPress={() => setViewMode('READING')}
+                    style={styles.tabBtn}
+                    onPress={() => {
+                        horizontalScrollRef.current?.scrollTo({ x: width, animated: true });
+                    }}
                 >
-                    <Scroll size={20} color={viewMode === 'READING' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.modeBtnText, viewMode === 'READING' && styles.modeBtnTextActive]}>
-                        SABIDURÍA
-                    </Text>
+                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                        {/* INACTIVE LAYER */}
+                        <Scroll size={20} color="#8b4513" />
+
+                        {/* ACTIVE LAYER (GLOWING) */}
+                        <Animated.View style={{
+                            position: 'absolute',
+                            opacity: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: [0, 1]
+                            }),
+                            shadowColor: '#FFD700',
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowOpacity: 1,
+                            shadowRadius: 10,
+                            elevation: 5,
+                        }}>
+                            <Scroll size={20} color="#FFD700" />
+                        </Animated.View>
+                    </View>
+
+                    <Animated.Text style={[
+                        styles.tabBtnText,
+                        {
+                            color: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: ['#8b4513', '#FFD700']
+                            }),
+                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                            textShadowOffset: { width: 0, height: 0 },
+                            textShadowRadius: scrollX.interpolate({
+                                inputRange: [0, width],
+                                outputRange: [0, 10]
+                            })
+                        }
+                    ]}>
+                        ATALAYA DEL CONOCIMIENTO
+                    </Animated.Text>
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {viewMode === 'STUDY' ? <StudyView /> : <ReadingView />}
-                <View style={{ height: 100 }} />
+            <ScrollView
+                ref={horizontalScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ width: width * 2 }}
+                scrollEventThrottle={16}
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                    { useNativeDriver: false }
+                )}
+                onMomentumScrollEnd={(e) => {
+                    const offsetX = e.nativeEvent.contentOffset.x;
+                    if (offsetX >= width / 2) {
+                        setViewMode('READING');
+                    } else {
+                        setViewMode('STUDY');
+                    }
+                }}
+            >
+                {/* STUDY PANE */}
+                <ScrollView
+                    style={{ width }}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <StudyView />
+                    <View style={{ height: 100 }} />
+                </ScrollView>
+
+                {/* READING PANE */}
+                <ScrollView
+                    style={{ width }}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <ReadingView />
+                    <View style={{ height: 100 }} />
+                </ScrollView>
             </ScrollView>
 
             {/* MODAL: Active Session (Unified) */}
@@ -647,10 +825,37 @@ export const LibraryScreen: React.FC = () => {
                                     onPress={() => setSelectedColor(color)}
                                 />
                             ))}
+                            {customColors.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    style={[styles.colorOption, { backgroundColor: c.hex_code }, selectedColor === c.hex_code && styles.colorActive]}
+                                    onPress={() => setSelectedColor(c.hex_code)}
+                                />
+                            ))}
+                            <TouchableOpacity
+                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
+                                onPress={() => {
+                                    setColorPickerTarget('SUBJECT');
+                                    setIsAddModalVisible(false);
+                                    setTimeout(() => setIsCameraPickerVisible(true), 200);
+                                }}
+                            >
+                                <Camera size={16} color="#FFD700" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
+                                onPress={() => {
+                                    setColorPickerTarget('SUBJECT');
+                                    setIsAddModalVisible(false);
+                                    setTimeout(() => setIsManualPickerVisible(true), 200);
+                                }}
+                            >
+                                <Palette size={16} color="#FFD700" />
+                            </TouchableOpacity>
                         </View>
                         <View style={styles.modalBtns}>
-                            <MedievalButton title="AÑADIR" onPress={handleAddSubject} style={{ flex: 1, marginRight: 10 }} />
-                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddModalVisible(false)} style={{ flex: 1 }} />
+                            <MedievalButton title="AÑADIR" onPress={handleAddSubject} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
+                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddModalVisible(false)} style={{ flex: 1, minWidth: 0 }} />
                         </View>
                     </ParchmentCard>
                 </View>
@@ -660,7 +865,7 @@ export const LibraryScreen: React.FC = () => {
             <Modal visible={isBookPickerVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <ParchmentCard style={styles.pickerModal}>
-                        <Text style={styles.modalTitle}>TUS GRIMORIOS</Text>
+                        <Text style={styles.modalTitle}>TOMOS DE PODER</Text>
                         <FlatList
                             data={activeBooks}
                             keyExtractor={(item) => item.id}
@@ -673,7 +878,10 @@ export const LibraryScreen: React.FC = () => {
                                     }}
                                 >
                                     <View style={[styles.colorDot, { backgroundColor: item.cover_color || '#8b4513' }]} />
-                                    <Text style={styles.pickerItemText}>{item.title}</Text>
+                                    <Text style={styles.pickerItemText}>
+                                        {item.title}
+                                        {item.saga ? ` - ${item.saga} ${toRoman(item.saga_index || 0)}` : ''}
+                                    </Text>
                                 </TouchableOpacity>
                             )}
                             ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
@@ -733,6 +941,28 @@ export const LibraryScreen: React.FC = () => {
                             onChangeText={setNewBookAuthor}
                         />
 
+                        <View style={{ flexDirection: 'row' }}>
+                            <View style={{ flex: 2, marginRight: 10 }}>
+                                <Text style={styles.inputLabel}>Saga:</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    placeholder="ej: El Archivo..."
+                                    value={newBookSaga}
+                                    onChangeText={setNewBookSaga}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Libro #:</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    placeholder="1"
+                                    value={newBookSagaIndex}
+                                    onChangeText={setNewBookSagaIndex}
+                                    keyboardType="number-pad"
+                                />
+                            </View>
+                        </View>
+
                         <Text style={styles.inputLabel}>Páginas:</Text>
                         <TextInput
                             style={styles.modalInput}
@@ -750,16 +980,82 @@ export const LibraryScreen: React.FC = () => {
                                     onPress={() => setNewBookCoverColor(color)}
                                 />
                             ))}
+                            {customColors.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    style={[styles.colorOption, { backgroundColor: c.hex_code }, newBookCoverColor === c.hex_code && styles.colorActive]}
+                                    onPress={() => setNewBookCoverColor(c.hex_code)}
+                                />
+                            ))}
+                            <TouchableOpacity
+                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
+                                onPress={() => {
+                                    setColorPickerTarget('BOOK');
+                                    setIsAddBookVisible(false);
+                                    setTimeout(() => setIsCameraPickerVisible(true), 200);
+                                }}
+                            >
+                                <Camera size={16} color="#FFD700" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
+                                onPress={() => {
+                                    setColorPickerTarget('BOOK');
+                                    setIsAddBookVisible(false);
+                                    setTimeout(() => setIsManualPickerVisible(true), 200);
+                                }}
+                            >
+                                <Palette size={16} color="#FFD700" />
+                            </TouchableOpacity>
                         </View>
 
 
                         <View style={styles.modalBtns}>
-                            <MedievalButton title="AÑADIR" onPress={handleAddBook} style={{ flex: 1, marginRight: 10 }} />
-                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddBookVisible(false)} style={{ flex: 1 }} />
+                            <MedievalButton title="AÑADIR" onPress={handleAddBook} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
+                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddBookVisible(false)} style={{ flex: 1, minWidth: 0 }} />
                         </View>
                     </ParchmentCard>
                 </View>
             </Modal>
+
+            <CameraColorPicker
+                visible={isCameraPickerVisible}
+                onClose={() => {
+                    setIsCameraPickerVisible(false);
+                    // Restore original modal
+                    setTimeout(() => {
+                        if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
+                        else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
+                    }, 400);
+                }}
+                onColorSelect={(color) => {
+                    saveCustomColor(color); // Save to DB correctly
+                    if (colorPickerTarget === 'SUBJECT') {
+                        setSelectedColor(color);
+                    } else if (colorPickerTarget === 'BOOK') {
+                        setNewBookCoverColor(color);
+                    }
+                }}
+            />
+
+            <ManualColorPicker
+                visible={isManualPickerVisible}
+                onClose={() => {
+                    setIsManualPickerVisible(false);
+                    setTimeout(() => {
+                        if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
+                        else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
+                    }, 400);
+                }}
+                onColorSelect={(color) => {
+                    saveCustomColor(color);
+                    if (colorPickerTarget === 'SUBJECT') {
+                        setSelectedColor(color);
+                    } else if (colorPickerTarget === 'BOOK') {
+                        setNewBookCoverColor(color);
+                    }
+                }}
+            />
 
         </View>
     );
@@ -770,63 +1066,68 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#1a1a1a',
     },
-    modeSelector: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 15,
-        backgroundColor: '#3d2b1f',
-        borderBottomWidth: 2,
-        borderBottomColor: '#8b4513',
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    },
-    modeBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-    },
-    modeBtnActive: {
-        backgroundColor: 'rgba(139, 69, 19, 0.4)',
-        borderColor: '#FFD700',
-        borderWidth: 1,
-    },
-    modeBtnText: {
-        color: '#8b4513',
-        marginLeft: 8,
-        fontWeight: 'bold',
-        fontSize: 12,
-    },
-    modeBtnTextActive: {
-        color: '#FFD700',
-    },
-    scrollContent: {
-        padding: 20,
-        alignItems: 'center',
-    },
     topHeader: {
-        width: '100%',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
+        backgroundColor: '#2d1a12',
         alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 30,
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD700',
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#FFD700',
-        textAlign: 'center',
-        textShadowColor: 'rgba(0,0,0,0.8)',
+        letterSpacing: 2,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
         textShadowOffset: { width: 2, height: 2 },
-        textShadowRadius: 4,
+        textShadowRadius: 3,
     },
     headerSubtitle: {
         fontSize: 14,
         color: '#d4af37',
-        opacity: 0.8,
-        marginTop: 5,
         fontStyle: 'italic',
+        marginTop: 4,
     },
+    tabSelector: {
+        flexDirection: 'row',
+        backgroundColor: '#3d2b1f',
+        padding: 4,
+        margin: 15,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#5d3b2a',
+    },
+    tabIndicator: {
+        position: 'absolute',
+        top: 4,
+        bottom: 4,
+        backgroundColor: '#5d3b2a',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    tabBtn: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    tabBtnText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        marginTop: 4,
+        textAlign: 'center',
+        textTransform: 'uppercase',
+    },
+    scrollContent: {
+        paddingHorizontal: 15,
+        paddingBottom: 100,
+        alignItems: 'center',
+    },
+
     atrilCard: {
         width: width * 0.9,
         padding: 20,

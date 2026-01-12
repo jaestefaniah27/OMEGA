@@ -4,6 +4,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GameHUD } from '@omega/ui';
 import { StatusBar } from 'expo-status-bar';
+import { DeviceEventEmitter } from 'react-native';
 
 import { RootStackParamList } from './src/navigation/AppNavigator';
 
@@ -45,10 +46,15 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     }
   };
 
+  const handleZurronPress = () => {
+    DeviceEventEmitter.emit('GLOBAL_QUICK_ADD');
+  };
+
   return (
     <GameHUD
       onProfilePress={handleProfilePress}
       onMapPress={handleMapPress}
+      onZurronPress={handleZurronPress}
     />
   );
 }

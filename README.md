@@ -133,7 +133,7 @@ Es la interfaz que **siempre** ves, estés donde estés (salvo en bloqueo estric
 
 #### 🏛️ La Biblioteca (Intelecto)
 * **Sección Prohibida:** Modo Focus agresivo para estudio teórico. Bloqueo de notificaciones y penalización de vida si sales.
-* **Grimorio de Sabiduría:** Donde visualizas tu Árbol de Talentos Completo.
+* **Grimorio de ATALAYA DEL CONOCIMIENTO:** Donde visualizas tu Árbol de Talentos Completo.
 
 #### ⚔️ Los Barracones (Fuerza)
 * **La Forja:** Donde diseñas tus rutinas y splits (PPL, Arnold, etc.).

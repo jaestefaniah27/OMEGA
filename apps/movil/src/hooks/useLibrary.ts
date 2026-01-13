@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { Subject, StudySession, Book, CustomColor } from '../types/supabase';
+import { useGame } from '../context/GameContext';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
@@ -19,10 +20,22 @@ Notifications.setNotificationHandler({
 });
 
 export const useLibrary = () => {
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [books, setBooks] = useState<Book[]>([]);
-    const [customColors, setCustomColors] = useState<CustomColor[]>([]);
-    const [loading, setLoading] = useState(true);
+    // --- CONSUME CONTEXT ---
+    const { library } = useGame();
+    const {
+        subjects,
+        books,
+        customColors,
+        bookStats,
+        loading,
+        refresh,
+        addSubject: ctxAddSubject,
+        updateSubject: ctxUpdateSubject,
+        addBook: ctxAddBook,
+        updateBook: ctxUpdateBook,
+        saveCustomColor: ctxSaveCustomColor
+    } = library;
+
     const [error, setError] = useState<string | null>(null);
 
     // --- SESSION STATE ---
@@ -47,68 +60,8 @@ export const useLibrary = () => {
     const isHonorableLock = useRef<boolean>(false);
     const warningNotificationId = useRef<string | null>(null);
 
-    const [bookStats, setBookStats] = useState<Record<string, number>>({});
-
-    // ... (rest of state)
-
-    const fetchSubjects = async () => {
-        try {
-            setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data, error: fetchError } = await supabase
-                .from('subjects')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            const { data: booksData, error: booksError } = await supabase
-                .from('books')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            const { data: colorsData, error: colorsError } = await supabase
-                .from('custom_colors')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            // Fetch book sessions for stats
-            const { data: sessionData, error: sessionError } = await supabase
-                .from('study_sessions')
-                .select('book_id, duration_minutes')
-                .eq('user_id', user.id)
-                .not('book_id', 'is', null);
-
-            if (fetchError) throw fetchError;
-            if (booksError) throw booksError;
-            if (colorsError) throw colorsError;
-            if (sessionError) throw sessionError;
-
-            // Aggregate Stats
-            const stats: Record<string, number> = {};
-            if (sessionData) {
-                sessionData.forEach(session => {
-                    if (session.book_id) {
-                        stats[session.book_id] = (stats[session.book_id] || 0) + session.duration_minutes;
-                    }
-                });
-            }
-            setBookStats(stats);
-
-            setSubjects(data || []);
-            setBooks(booksData || []);
-            setCustomColors(colorsData || []);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 1. Initial Load, Recovery & Realtime Subscription
+    // 1. Initial Load (Recovery only, data comes from Context)
     useEffect(() => {
-        let channel: any;
-
         const init = async () => {
             // Permissions
             const { status } = await Notifications.getPermissionsAsync();
@@ -128,76 +81,9 @@ export const useLibrary = () => {
                 const now = Date.now();
                 setElapsedSeconds(Math.floor((now - sessionData.startTime) / 1000));
             }
-
-            // Fetch Initial Subjects
-            await fetchSubjects();
-
-            // Setup Single Realtime Subscription
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                channel = supabase
-                    .channel('public:subjects')
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` },
-                        (payload: any) => {
-                            if (payload.eventType === 'INSERT') {
-                                setSubjects(prev => {
-                                    // Idempotency check: Don't add if ID already exists
-                                    if (prev.some(s => s.id === payload.new.id)) return prev;
-                                    return [payload.new as Subject, ...prev];
-                                });
-                            }
-                            else if (payload.eventType === 'UPDATE') {
-                                setSubjects(prev => prev.map(s => s.id === payload.new.id ? payload.new as Subject : s));
-                            }
-                            else if (payload.eventType === 'DELETE') {
-                                setSubjects(prev => prev.filter(s => s.id === payload.old.id));
-                            }
-                        }
-                    )
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table: 'books', filter: `user_id=eq.${user.id}` },
-                        (payload: any) => {
-                            if (payload.eventType === 'INSERT') {
-                                setBooks(prev => {
-                                    if (prev.some(b => b.id === payload.new.id)) return prev;
-                                    return [payload.new as Book, ...prev];
-                                });
-                            }
-                            else if (payload.eventType === 'UPDATE') {
-                                setBooks(prev => prev.map(b => b.id === payload.new.id ? payload.new as Book : b));
-                            }
-                            else if (payload.eventType === 'DELETE') {
-                                setBooks(prev => prev.filter(b => b.id === payload.old.id));
-                            }
-                        }
-                    )
-                    .on(
-                        'postgres_changes',
-                        { event: '*', schema: 'public', table: 'custom_colors', filter: `user_id=eq.${user.id}` },
-                        (payload: any) => {
-                            if (payload.eventType === 'INSERT') {
-                                setCustomColors(prev => [payload.new as CustomColor, ...prev]);
-                            }
-                            else if (payload.eventType === 'UPDATE') {
-                                setCustomColors(prev => prev.map(c => c.id === payload.new.id ? payload.new as CustomColor : c));
-                            }
-                            else if (payload.eventType === 'DELETE') {
-                                setCustomColors(prev => prev.filter(c => c.id === payload.old.id));
-                            }
-                        }
-                    )
-                    .subscribe();
-            }
         };
 
         init();
-
-        return () => {
-            if (channel) supabase.removeChannel(channel);
-        };
     }, []);
 
     useEffect(() => {
@@ -323,15 +209,13 @@ export const useLibrary = () => {
                         trigger: null,
                     });
 
-                    // Schedule Epic Warning (5s before the 15s limit)
-                    // BY USING THE SAME IDENTIFIER, we force the OS to replace the old one.
-                    // This is the only way to "eliminate" the previous alert in the background.
+                    // Schedule Epic Warning
                     console.log('Iron Will [V5]: Programando aviso épico (Unified ID) para dentro de 10s...');
                     Notifications.scheduleNotificationAsync({
                         identifier: 'iron-will-main-alert',
                         content: {
                             title: '¡EL JUICIO FINAL SE ACERCA! ⚖️',
-                            subtitle: '� ÚLTIMA OPORTUNIDAD �',
+                            subtitle: '🔥 ÚLTIMA OPORTUNIDAD 🔥',
                             body: '5 segundos para la deshonra eterna. ¡Vuelve ahora!',
                             sound: true,
                             // @ts-ignore
@@ -508,7 +392,19 @@ export const useLibrary = () => {
 
                 // Update Book Progress if applicable
                 if (bookId && endPage !== undefined) {
-                    await updateBookProgress(bookId, endPage);
+                    await ctxUpdateBook(bookId, {
+                        current_page: endPage,
+                        is_finished: false, // Will be checked in next step if necessary, but context updateBook is generic
+                    });
+
+                    // We need to check if finished. Access book from 'books'
+                    const liveBook = books.find(b => b.id === bookId);
+                    if (liveBook && endPage >= liveBook.total_pages) {
+                        await ctxUpdateBook(bookId, {
+                            is_finished: true,
+                            finished_at: liveBook.finished_at || new Date().toISOString()
+                        });
+                    }
                 }
 
                 if (!abandoned) {
@@ -523,151 +419,6 @@ export const useLibrary = () => {
         }
     };
 
-    const addBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Usuario no autenticado');
-
-        // Optimistic UI for adding book (optional but good)
-        const idTemp = Math.random().toString(36).substring(7);
-        const newBook: Book = {
-            id: idTemp,
-            title,
-            author,
-            saga: saga || null,
-            saga_index: saga_index || null,
-            total_pages,
-            current_page: 0,
-            cover_color,
-            is_finished: false,
-            finished_at: null,
-            user_id: user.id,
-            created_at: new Date().toISOString()
-        };
-        setBooks(prev => [newBook, ...prev]);
-
-        const { data, error } = await supabase.from('books').insert([{
-            title,
-            author,
-            total_pages,
-            cover_color,
-            saga,
-            saga_index,
-            user_id: user.id
-        }]).select().single();
-
-        if (error) {
-            setBooks(prev => prev.filter(b => b.id !== idTemp));
-            throw error;
-        }
-
-        // Replace optimistic book with real one
-        setBooks(prev => prev.map(b => b.id === idTemp ? data as Book : b));
-        return data;
-    };
-
-    const updateBookProgress = async (id: string, current_page: number) => {
-        const book = books.find(b => b.id === id);
-        if (!book) return;
-
-        const isFinished = current_page >= book.total_pages;
-        const updates: Partial<Book> = {
-            current_page,
-            is_finished: isFinished,
-            finished_at: isFinished ? (book.finished_at || new Date().toISOString()) : null
-        };
-
-        // Optimistic Update
-        setBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
-
-        const { error } = await supabase.from('books').update(updates).eq('id', id);
-        if (error) {
-            // Rollback
-            await fetchSubjects();
-            throw error;
-        }
-    };
-
-    const completeBook = async (id: string) => {
-        const book = books.find(b => b.id === id);
-        if (!book) return;
-
-        const finishedAt = new Date().toISOString();
-        // Optimistic Update
-        setBooks(prev => prev.map(b => b.id === id ? {
-            ...b,
-            is_finished: true,
-            finished_at: finishedAt
-        } : b));
-
-        const { error } = await supabase.from('books').update({
-            is_finished: true,
-            finished_at: finishedAt
-        }).eq('id', id);
-
-        if (error) {
-            await fetchSubjects();
-            throw error;
-        }
-    };
-
-    const reactivateBook = async (id: string) => {
-        // Optimistic Update
-        setBooks(prev => prev.map(b => b.id === id ? { ...b, is_finished: false, finished_at: null } : b));
-
-        const { error } = await supabase.from('books').update({
-            is_finished: false,
-            finished_at: null
-        }).eq('id', id);
-
-        if (error) {
-            await fetchSubjects();
-            throw error;
-        }
-    };
-
-    const addSubject = async (name: string, color: string, course?: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Usuario no autenticado');
-        const { data, error } = await supabase.from('subjects').insert([{ name, color, course, user_id: user.id }]).select().single();
-        if (error) throw error;
-        await fetchSubjects();
-        return data;
-    };
-
-    const updateSubject = async (id: string, updates: Partial<Subject>) => {
-        const { error } = await supabase.from('subjects').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchSubjects();
-    };
-
-    const completeSubject = async (id: string) => {
-        return updateSubject(id, { is_completed: true });
-    };
-
-    const reactivateSubject = async (id: string) => {
-        return updateSubject(id, { is_completed: false });
-    };
-
-    const saveCustomColor = async (hex_code: string, name?: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Usuario no autenticado');
-
-        // Check if color already exists to avoid duplicates
-        if (customColors.some(c => c.hex_code.toUpperCase() === hex_code.toUpperCase())) {
-            return;
-        }
-
-        const { data, error } = await supabase.from('custom_colors').insert([{
-            hex_code,
-            name: name || null,
-            user_id: user.id
-        }]).select().single();
-
-        if (error) throw error;
-        setCustomColors(prev => [data as CustomColor, ...prev]);
-        return data;
-    };
-
     const logStudySession = async (session: Omit<StudySession, 'id' | 'user_id' | 'created_at'>) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Usuario no autenticado');
@@ -676,18 +427,15 @@ export const useLibrary = () => {
         if (sessionError) throw sessionError;
 
         if (session.status === 'COMPLETED' && session.subject_id) {
-            const { data: subject } = await supabase.from('subjects').select('total_minutes_studied').eq('id', session.subject_id).single();
+            // Fetch latest subject data to update total minutes
+            // We use ctxUpdateSubject which will handle optimistic update in context if we wanted, 
+            // but here we just need to push the new total to DB.
+            // Actually, we should get the current total from the 'subjects' array in context!
+            const subject = subjects.find(s => s.id === session.subject_id);
             if (subject) {
                 const newTotalSubject = (subject.total_minutes_studied || 0) + session.duration_minutes;
-                await updateSubject(session.subject_id, { total_minutes_studied: newTotalSubject });
+                await ctxUpdateSubject(session.subject_id, { total_minutes_studied: newTotalSubject });
             }
-        }
-
-        if (session.status === 'COMPLETED' && session.book_id) {
-            setBookStats(prev => ({
-                ...prev,
-                [session.book_id as string]: (prev[session.book_id as string] || 0) + session.duration_minutes
-            }));
         }
 
         if (session.status === 'ABANDONED') {
@@ -696,7 +444,9 @@ export const useLibrary = () => {
                 await supabase.from('profiles').update({ shame_count: (profile.shame_count || 0) + 1 }).eq('id', user.id);
             }
         }
-        await fetchSubjects();
+
+        // Refresh context to pull new session data (for stats)
+        await refresh();
     };
 
     return {
@@ -708,20 +458,42 @@ export const useLibrary = () => {
             .sort((a, b) => {
                 const progA = a.current_page / (a.total_pages || 1);
                 const progB = b.current_page / (b.total_pages || 1);
-                return progB - progA; // Highest percentage on top
+                return progB - progA;
             }),
         finishedBooks: books
             .filter(b => b.is_finished)
             .sort((a, b) => {
                 const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
                 const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
-                return dateB - dateA; // Most recent on top
+                return dateB - dateA;
             }),
         loading, error,
-        addSubject, updateSubject, completeSubject, reactivateSubject,
-        addBook, updateBookProgress, completeBook, reactivateBook,
-        saveCustomColor, customColors,
-        logStudySession, refresh: fetchSubjects,
+        addSubject: ctxAddSubject,
+        updateSubject: ctxUpdateSubject,
+        addBook: ctxAddBook,
+        updateBook: ctxUpdateBook,
+        saveCustomColor: ctxSaveCustomColor,
+        customColors,
+        // Wrappers or Aliases
+        completeSubject: (id: string) => ctxUpdateSubject(id, { is_completed: true }),
+        reactivateSubject: (id: string) => ctxUpdateSubject(id, { is_completed: false }),
+        completeBook: (id: string) => ctxUpdateBook(id, { is_finished: true, finished_at: new Date().toISOString() }),
+        reactivateBook: (id: string) => ctxUpdateBook(id, { is_finished: false, finished_at: null }),
+        updateBookProgress: (id: string, current_page: number) => {
+            // Logic to check finished is moved to stopSession or needs to be here? 
+            // The original used updateBookProgress.
+            // We can check finished state here too.
+            const book = books.find(b => b.id === id);
+            if (!book) return Promise.resolve();
+            const isFinished = current_page >= book.total_pages;
+            return ctxUpdateBook(id, {
+                current_page,
+                is_finished: isFinished,
+                finished_at: isFinished ? (book.finished_at || new Date().toISOString()) : null
+            });
+        },
+        logStudySession,
+        refresh,
         isSessionActive, startTime, elapsedSeconds, studyMode, setStudyMode, difficulty, setDifficulty,
         targetMinutes, setTargetMinutes,
         selectedSubject, setSelectedSubject,

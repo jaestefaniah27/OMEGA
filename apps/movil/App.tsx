@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GameHUD } from '@omega/ui';
+import { GameProvider } from './src/context/GameContext';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter } from 'react-native';
 
@@ -21,9 +22,11 @@ export default function App() {
           setCurrentRoute(navigationRef.getCurrentRoute()?.name);
         }}
       >
-        <AppNavigator />
-        <StatusBar style="light" />
-        <AppContent currentRoute={currentRoute} />
+        <GameProvider>
+          <AppNavigator />
+          <StatusBar style="light" />
+          <AppContent currentRoute={currentRoute} />
+        </GameProvider>
       </NavigationContainer>
     </SafeAreaProvider>
   );

@@ -4,86 +4,43 @@ import {
     TheatreActivity,
     TheatreMovie,
     TheatreSeries,
-    TheatreSeason,
-    StudySession
+    TheatreSeason
 } from '../types/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGame } from '../context/GameContext';
 
 const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
-    const [activities, setActivities] = useState<TheatreActivity[]>([]);
-    const [movies, setMovies] = useState<TheatreMovie[]>([]);
-    const [series, setSeries] = useState<(TheatreSeries & { seasons: TheatreSeason[] })[]>([]);
-    const [loading, setLoading] = useState(true);
+    // --- CONSUME CONTEXT ---
+    const { theatre } = useGame();
+    const {
+        activities,
+        movies,
+        series,
+        activityStats,
+        loading,
+        refresh,
+        addActivity: ctxAddActivity,
+        updateActivity: ctxUpdateActivity, // This only handles name updates currently
+        addMovie: ctxAddMovie,
+        updateMovie: ctxUpdateMovie,
+        addSeries: ctxAddSeries,
+        updateSeries: ctxUpdateSeries, // This only handles title currently
+        addSeason: ctxAddSeason,
+        updateSeason: ctxUpdateSeason
+    } = theatre;
+
     const [error, setError] = useState<string | null>(null);
 
-    // Activity Stats: { activityId: { totalMinutes: number, daysCount: number } }
-    const [activityStats, setActivityStats] = useState<Record<string, { totalMinutes: number, daysCount: number }>>({});
-
-    // Session State (Similar to useLibrary)
+    // Session State
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [startTime, setStartTime] = useState<Date | null>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [selectedActivity, setSelectedActivity] = useState<TheatreActivity | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const [
-                { data: actData, error: actError },
-                { data: movData, error: movError },
-                { data: serData, error: serError },
-                { data: seasData, error: seasError },
-                { data: sessData, error: sessError }
-            ] = await Promise.all([
-                supabase.from('theatre_activities').select('*').order('created_at', { ascending: false }),
-                supabase.from('theatre_movies').select('*').order('created_at', { ascending: false }),
-                supabase.from('theatre_series').select('*').order('created_at', { ascending: false }),
-                supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true }),
-                supabase.from('study_sessions').select('activity_id, duration_minutes, created_at').not('activity_id', 'is', null).eq('user_id', user.id)
-            ]);
-
-            if (actError) throw actError;
-            if (movError) throw movError;
-            if (serError) throw serError;
-            if (seasError) throw seasError;
-            if (sessError) throw sessError;
-
-            // Process Series & Seasons
-            const seriesWithSeasons = (serData || []).map(s => ({
-                ...s,
-                seasons: (seasData || []).filter(season => season.series_id === s.id)
-            }));
-
-            // Process Activity Stats from the new columns
-            const finalStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
-            (actData || []).forEach(act => {
-                finalStats[act.id] = {
-                    totalMinutes: act.total_minutes || 0,
-                    daysCount: act.days_count || 0
-                };
-            });
-
-            setActivities(actData || []);
-            setMovies(movData || []);
-            setSeries(seriesWithSeasons);
-            setActivityStats(finalStats);
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchData();
-
         // Session Recovery
         const recoverSession = async () => {
             const saved = await AsyncStorage.getItem(THEATRE_SESSION_STORAGE_KEY);
@@ -93,12 +50,19 @@ export const useTheatre = () => {
                 setStartTime(start);
                 setElapsedSeconds(Math.floor((new Date().getTime() - start.getTime()) / 1000));
                 setIsSessionActive(true);
-                // We'll need to fetch activities first to find the selected one
-                // This is a bit tricky with async, might need activities in deps or another effect
+
+                // Find selected activity from context data
+                // We depend on activities being loaded. 
+                // Since context loads on mount, they might be here or coming.
+                // We can set it when activities change if we have an ID.
+                if (data.activityId && activities.length > 0) {
+                    const act = activities.find(a => a.id === data.activityId);
+                    if (act) setSelectedActivity(act);
+                }
             }
         };
         recoverSession();
-    }, []);
+    }, [activities]); // Depend on activities to restore selection once loaded
 
     // Timer Heartbeat
     useEffect(() => {
@@ -114,70 +78,27 @@ export const useTheatre = () => {
         };
     }, [isSessionActive, startTime]);
 
-    // CRUD Methods
-    const addActivity = async (name: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user');
+    // Wrappers for Context Mutations
+    const addActivity = (name: string) => ctxAddActivity(name);
 
-        const { data, error } = await supabase.from('theatre_activities').insert([{ name, user_id: user.id }]).select().single();
-        if (error) throw error;
-        await fetchData();
-        return data;
-    };
+    // We generalize updateActivity in the hook to allow partial updates (stats) via direct DB call if needed, 
+    // but the context exposes specific ones. 
+    // The UI currently only updates name.
+    const updateActivity = (id: string, name: string) => ctxUpdateActivity(id, name);
 
-    const addMovie = async (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user');
+    const addMovie = (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) =>
+        ctxAddMovie(title, director, saga, comment, rating);
 
-        const { data, error } = await supabase.from('theatre_movies').insert([{
-            title, director, saga, comment, rating, user_id: user.id
-        }]).select().single();
-        if (error) throw error;
-        await fetchData();
-        return data;
-    };
+    const updateMovie = (id: string, updates: Partial<TheatreMovie>) => ctxUpdateMovie(id, updates);
 
-    const addSeries = async (title: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user');
+    const addSeries = (title: string) => ctxAddSeries(title);
 
-        const { data, error } = await supabase.from('theatre_series').insert([{ title, user_id: user.id }]).select().single();
-        if (error) throw error;
-        await fetchData();
-        return data;
-    };
+    const updateSeries = (id: string, title: string) => ctxUpdateSeries(id, title);
 
-    const addSeason = async (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) => {
-        const { error } = await supabase.from('theatre_seasons').insert([{
-            series_id, season_number, episodes_count, comment, rating
-        }]);
-        if (error) throw error;
-        await fetchData();
-    };
+    const addSeason = (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) =>
+        ctxAddSeason(series_id, season_number, episodes_count, comment, rating);
 
-    const updateActivity = async (id: string, name: string) => {
-        const { error } = await supabase.from('theatre_activities').update({ name }).eq('id', id);
-        if (error) throw error;
-        await fetchData();
-    };
-
-    const updateMovie = async (id: string, updates: Partial<TheatreMovie>) => {
-        const { error } = await supabase.from('theatre_movies').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchData();
-    };
-
-    const updateSeries = async (id: string, title: string) => {
-        const { error } = await supabase.from('theatre_series').update({ title }).eq('id', id);
-        if (error) throw error;
-        await fetchData();
-    };
-
-    const updateSeason = async (id: string, updates: Partial<TheatreSeason>) => {
-        const { error } = await supabase.from('theatre_seasons').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchData();
-    };
+    const updateSeason = (id: string, updates: Partial<TheatreSeason>) => ctxUpdateSeason(id, updates);
 
     // Session Methods
     const startSession = async (activity: TheatreActivity) => {
@@ -200,7 +121,6 @@ export const useTheatre = () => {
             const totalMinutes = Math.floor(elapsedSeconds / 60);
             const start = startTime;
             if (totalMinutes < 1 && !abandoned) {
-                // Too short - do not log anything
                 return;
             }
 
@@ -215,12 +135,13 @@ export const useTheatre = () => {
                     duration_minutes: totalMinutes,
                     mode: 'STOPWATCH',
                     status: 'COMPLETED',
-                    difficulty: 'EXPLORER' // Default for theater
+                    difficulty: 'EXPLORER'
                 }]);
                 if (sessError) console.error('Error saving session:', sessError);
 
                 // Update Theatre Activity Stats
-                // First, get all sessions for this activity to count unique days
+                // Calculate new stats locally or rely on DB aggregation? 
+                // Original logic did aggregation. Let's keep it robust.
                 const { data: allSessions } = await supabase
                     .from('study_sessions')
                     .select('created_at')
@@ -239,6 +160,9 @@ export const useTheatre = () => {
                     .eq('id', selectedActivity.id);
 
                 if (actError) console.error('Error updating activity stats:', actError);
+
+                // Refresh context
+                await refresh();
             }
         } catch (err: any) {
             console.error('StopSession crashed:', err);
@@ -248,7 +172,6 @@ export const useTheatre = () => {
             setElapsedSeconds(0);
             setSelectedActivity(null);
             await AsyncStorage.removeItem(THEATRE_SESSION_STORAGE_KEY);
-            await fetchData();
         }
     };
 
@@ -265,7 +188,7 @@ export const useTheatre = () => {
         isSessionActive, startTime, elapsedSeconds, selectedActivity,
         addActivity, addMovie, addSeries, addSeason,
         updateActivity, updateMovie, updateSeries, updateSeason,
-        startSession, stopSession, cancelSession, fetchData,
+        startSession, stopSession, cancelSession, fetchData: refresh, // Alias refresh to fetchData for compat
         setSelectedActivity
     };
 };

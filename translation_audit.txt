@@ -1,0 +1,873 @@
+3/4 Sit-Up -> 3/4 Sit-Up
+90/90 Hamstring -> 90/90 Hamstring
+Ab Crunch Machine -> Crunch en máquina
+Ab Roller -> Rueda Abdominal
+Adductor -> Adductor
+Adductor/Groin -> Adductor/Groin
+Advanced Kettlebell Windmill -> Advanced con pesa rusa Windmill
+Air Bike -> Air Bike
+All Fours Quad Stretch -> All Fours Quad Stretch
+Alternate Hammer Curl -> Curl
+Alternate Heel Touchers -> Alternate Heel Touchers
+Alternate Incline Dumbbell Curl -> Curl Inclinado con mancuerna
+Alternate Leg Diagonal Bound -> Alternate de piernas Diagonal Bound
+Alternating Cable Shoulder Press -> Press de hombros en polea
+Alternating Deltoid Raise -> Elevación de deltoides
+Alternating Floor Press -> Press
+Alternating Hang Clean -> Alternating Hang Clean
+Alternating Kettlebell Press -> Press con pesa rusa
+Alternating Kettlebell Row -> Remo con pesa rusa
+Alternating Renegade Row -> Remo
+Ankle Circles -> Ankle Circles
+Ankle On The Knee -> Ankle On The Knee
+Anterior Tibialis-SMR -> Anterior Tibialis-SMR
+Anti-Gravity Press -> Press
+Arm Circles -> Arm Circles
+Arnold Dumbbell Press -> Press con mancuerna
+Around The Worlds -> Around The Worlds
+Atlas Stone Trainer -> Atlas Stone Trainer
+Atlas Stones -> Atlas Stones
+Axle Deadlift -> Peso Muerto
+Back Flyes - With Bands -> de espalda Flyes - With Bands
+Backward Drag -> Backward Drag
+Backward Medicine Ball Throw -> Backward con balón medicinal Throw
+Balance Board -> Balance Board
+Ball Leg Curl -> Curl de piernas
+Band Assisted Pull-Up -> Jalón con banda
+Band Good Morning -> con banda Good Morning
+Band Good Morning (Pull Through) -> Jalón con banda
+Band Hip Adductions -> con banda de cadera Adductions
+Band Pull Apart -> Jalón con banda
+Band Skull Crusher -> con banda Skull Crusher
+Barbell Ab Rollout -> con barra Ab Rollout
+Barbell Ab Rollout - On Knees -> con barra Ab Rollout - On Knees
+Barbell Bench Press - Medium Grip -> Press con barra
+Barbell Curl -> Curl con barra
+Barbell Curls Lying Against An Incline -> con barra Curls Tumbado Against An Inclinado
+Barbell Deadlift -> Peso Muerto con barra
+Barbell Full Squat -> Sentadilla con barra
+Barbell Glute Bridge -> con barra de glúteo Bridge
+Barbell Guillotine Bench Press -> Press con barra
+Barbell Hack Squat -> Sentadilla con barra
+Barbell Hip Thrust -> Empuje de cadera con barra
+Barbell Incline Bench Press - Medium Grip -> Press Inclinado con barra
+Barbell Incline Shoulder Raise -> Elevación de hombros Inclinado con barra
+Barbell Lunge -> Zancada con barra
+Barbell Rear Delt Row -> Remo Posterior con barra
+Barbell Rollout from Bench -> con barra Rollout from Bench
+Barbell Seated Calf Raise -> Elevación de gemelo Sentado con barra
+Barbell Shoulder Press -> Press de hombros con barra
+Barbell Shrug -> Encogimiento con barra
+Barbell Shrug Behind The Back -> Encogimiento de espalda con barra
+Barbell Side Bend -> con barra Lateral Bend
+Barbell Side Split Squat -> Sentadilla Lateral con barra
+Barbell Squat -> Sentadilla con barra
+Barbell Squat To A Bench -> Sentadilla con barra
+Barbell Step Ups -> con barra Step Ups
+Barbell Walking Lunge -> Zancada con barra
+Battling Ropes -> Battling Ropes
+Bear Crawl Sled Drags -> Bear Crawl Sled Drags
+Behind Head Chest Stretch -> Behind Head de pecho Stretch
+Bench Dips -> Bench Dips
+Bench Jump -> Salto
+Bench Press - Powerlifting -> Press
+Bench Press - With Bands -> Press
+Bench Press with Chains -> Press
+Bench Sprint -> Bench Sprint
+Bent-Arm Barbell Pullover -> Bent-Arm con barra Pullover
+Bent-Arm Dumbbell Pullover -> Bent-Arm con mancuerna Pullover
+Bent-Knee Hip Raise -> Elevación de cadera
+Bent Over Barbell Row -> Remo Inclinado con barra
+Bent Over Dumbbell Rear Delt Raise With Head On Bench -> Elevación Inclinado Posterior con mancuerna
+Bent Over Low-Pulley Side Lateral -> Inclinado Bajo-Pulley Lateral Lateral
+Bent Over One-Arm Long Bar Row -> Remo Inclinado
+Bent Over Two-Arm Long Bar Row -> Remo Inclinado
+Bent Over Two-Dumbbell Row -> Remo Inclinado con mancuerna
+Bent Over Two-Dumbbell Row With Palms In -> Remo Inclinado con mancuerna
+Bent Press -> Press
+Bicycling -> Bicycling
+Bicycling, Stationary -> Bicycling, Stationary
+Board Press -> Press
+Body-Up -> Body-Up
+Body Tricep Press -> Press
+Bodyweight Flyes ->  Flyes
+Bodyweight Mid Row -> Remo
+Bodyweight Squat -> Sentadilla
+Bodyweight Walking Lunge -> Zancada
+Bosu Ball Cable Crunch With Side Bends -> Crunch Lateral en polea
+Bottoms-Up Clean From The Hang Position -> Bottoms-Up Clean From The Hang Position
+Bottoms Up -> Bottoms Up
+Box Jump (Multiple Response) -> Salto
+Box Skip -> Box Skip
+Box Squat -> Sentadilla
+Box Squat with Bands -> Sentadilla
+Box Squat with Chains -> Sentadilla
+Brachialis-SMR -> Brachialis-SMR
+Bradford/Rocky Presses -> Bradford/Rocky Presses
+Butt-Ups -> Butt-Ups
+Butt Lift (Bridge) -> Butt Lift (Bridge)
+Butterfly -> Butterfly
+Cable Chest Press -> Press de pecho en polea
+Cable Crossover -> Cruce de Poleas
+Cable Crunch -> Crunch en polea
+Cable Deadlifts -> en polea Deadlifts
+Cable Hammer Curls - Rope Attachment -> en polea Hammer Curls - Rope Attachment
+Cable Hip Adduction -> en polea de cadera Adduction
+Cable Incline Pushdown -> en polea Inclinado Pushdown
+Cable Incline Triceps Extension -> Extensión de tríceps Inclinado en polea
+Cable Internal Rotation -> en polea Internal Rotation
+Cable Iron Cross -> en polea Iron Cross
+Cable Judo Flip -> en polea Judo Flip
+Cable Lying Triceps Extension -> Extensión de tríceps Tumbado en polea
+Cable One Arm Tricep Extension -> Extensión a una mano en polea
+Cable Preacher Curl -> Curl en polea
+Cable Rear Delt Fly -> Aperturas Posterior en polea
+Cable Reverse Crunch -> Crunch en polea
+Cable Rope Overhead Triceps Extension -> Extensión de tríceps en polea
+Cable Rope Rear-Delt Rows -> en polea Rope Posterior-Delt Rows
+Cable Russian Twists -> en polea Russian Twists
+Cable Seated Crunch -> Crunch Sentado en polea
+Cable Seated Lateral Raise -> Elevación Sentado en polea
+Cable Shoulder Press -> Press de hombros en polea
+Cable Shrugs -> en polea Shrugs
+Cable Wrist Curl -> Curl de muñeca en polea
+Calf-Machine Shoulder Shrug -> Encogimiento de hombros en máquina
+Calf Press -> Press de gemelo
+Calf Press On The Leg Press Machine -> Press de gemelo en máquina
+Calf Raise On A Dumbbell -> Elevación de gemelo con mancuerna
+Calf Raises - With Bands -> de gemelo Raises - With Bands
+Calf Stretch Elbows Against Wall -> de gemelo Stretch Elbows Against Wall
+Calf Stretch Hands Against Wall -> de gemelo Stretch Hands Against Wall
+Calves-SMR -> Calves-SMR
+Car Deadlift -> Peso Muerto
+Car Drivers -> Car Drivers
+Carioca Quick Step -> Carioca Quick Step
+Cat Stretch -> Cat Stretch
+Catch and Overhead Throw -> Catch and Overhead Throw
+Chain Handle Extension -> Extensión
+Chain Press -> Press
+Chair Leg Extended Stretch -> Chair de piernas Extended Stretch
+Chair Lower Back Stretch -> Chair Lower de espalda Stretch
+Chair Squat -> Sentadilla
+Chair Upper Body Stretch -> Chair Upper Body Stretch
+Chest And Front Of Shoulder Stretch -> de pecho And Frontal Of de hombros Stretch
+Chest Push from 3 point stance -> Empuje de pecho
+Chest Push (multiple response) -> Empuje de pecho
+Chest Push (single response) -> Empuje de pecho
+Chest Push with Run Release -> Empuje de pecho
+Chest Stretch on Stability Ball -> de pecho Stretch on Stability Ball
+Child's Pose -> Child's Pose
+Chin-Up -> Dominada Supina
+Chin To Chest Stretch -> Chin To de pecho Stretch
+Circus Bell -> Circus Bell
+Clean -> Clean
+Clean Deadlift -> Peso Muerto
+Clean Pull -> Jalón
+Clean Shrug -> Encogimiento
+Clean and Jerk -> Cargada y Envión
+Clean and Press -> Press
+Clean from Blocks -> Clean from Blocks
+Clock Push-Up -> Empuje
+Close-Grip Barbell Bench Press -> Press con barra
+Close-Grip Dumbbell Press -> Press con mancuerna
+Close-Grip EZ-Bar Curl with Band -> Curl con banda
+Close-Grip EZ-Bar Press -> Press
+Close-Grip EZ Bar Curl -> Curl
+Close-Grip Front Lat Pulldown -> Close-Grip Frontal Lat Pulldown
+Close-Grip Push-Up off of a Dumbbell -> Empuje con mancuerna
+Close-Grip Standing Barbell Curl -> Curl De Pie con barra
+Cocoons -> Cocoons
+Conan's Wheel -> Conan's Wheel
+Concentration Curls -> Concentrado Curls
+Cross-Body Crunch -> Crunch
+Cross Body Hammer Curl -> Curl
+Cross Over - With Bands -> Cross Over - With Bands
+Crossover Reverse Lunge -> Zancada
+Crucifix -> Crucifix
+Crunch - Hands Overhead -> Crunch
+Crunch - Legs On Exercise Ball -> Crunch
+Crunches -> Crunches
+Cuban Press -> Press
+Dancer's Stretch -> Dancer's Stretch
+Dead Bug -> Dead Bug
+Deadlift with Bands -> Peso Muerto
+Deadlift with Chains -> Peso Muerto
+Decline Barbell Bench Press -> Press Declinado con barra
+Decline Close-Grip Bench To Skull Crusher -> Declinado Close-Grip Bench To Skull Crusher
+Decline Crunch -> Crunch Declinado
+Decline Dumbbell Bench Press -> Press Declinado con mancuerna
+Decline Dumbbell Flyes -> Declinado con mancuerna Flyes
+Decline Dumbbell Triceps Extension -> Extensión de tríceps Declinado con mancuerna
+Decline EZ Bar Triceps Extension -> Extensión de tríceps Declinado
+Decline Oblique Crunch -> Crunch Declinado
+Decline Push-Up -> Empuje Declinado
+Decline Reverse Crunch -> Crunch Declinado
+Decline Smith Press -> Press Declinado en multipower
+Deficit Deadlift -> Peso Muerto
+Depth Jump Leap -> Salto
+Dip Machine -> Dip en máquina
+Dips - Chest Version -> Dips - de pecho Version
+Dips - Triceps Version -> Dips - de tríceps Version
+Donkey Calf Raises -> Donkey de gemelo Raises
+Double Kettlebell Alternating Hang Clean -> Double con pesa rusa Alternating Hang Clean
+Double Kettlebell Jerk -> Double con pesa rusa Jerk
+Double Kettlebell Push Press -> Press con pesa rusa
+Double Kettlebell Snatch -> Double con pesa rusa Snatch
+Double Kettlebell Windmill -> Double con pesa rusa Windmill
+Double Leg Butt Kick -> Patada de piernas
+Downward Facing Balance -> Downward Facing Balance
+Drag Curl -> Curl
+Drop Push -> Empuje
+Dumbbell Alternate Bicep Curl -> Curl con mancuerna
+Dumbbell Bench Press -> Press con mancuerna
+Dumbbell Bench Press with Neutral Grip -> Press Agarre Neutro con mancuerna
+Dumbbell Bicep Curl -> Curl con mancuerna
+Dumbbell Clean -> con mancuerna Clean
+Dumbbell Floor Press -> Press con mancuerna
+Dumbbell Flyes -> con mancuerna Flyes
+Dumbbell Incline Row -> Remo Inclinado con mancuerna
+Dumbbell Incline Shoulder Raise -> Elevación de hombros Inclinado con mancuerna
+Dumbbell Lunges -> con mancuerna Lunges
+Dumbbell Lying One-Arm Rear Lateral Raise -> Elevación Tumbado Posterior con mancuerna
+Dumbbell Lying Pronation -> con mancuerna Tumbado Pronation
+Dumbbell Lying Rear Lateral Raise -> Elevación Tumbado Posterior con mancuerna
+Dumbbell Lying Supination -> con mancuerna Tumbado Supination
+Dumbbell One-Arm Shoulder Press -> Press de hombros con mancuerna
+Dumbbell One-Arm Triceps Extension -> Extensión de tríceps con mancuerna
+Dumbbell One-Arm Upright Row -> Remo con mancuerna
+Dumbbell Prone Incline Curl -> Curl Inclinado con mancuerna
+Dumbbell Raise -> Elevación con mancuerna
+Dumbbell Rear Lunge -> Zancada Posterior con mancuerna
+Dumbbell Scaption -> con mancuerna Scaption
+Dumbbell Seated Box Jump -> Salto Sentado con mancuerna
+Dumbbell Seated One-Leg Calf Raise -> Elevación de gemelo Sentado con mancuerna
+Dumbbell Shoulder Press -> Press de hombros con mancuerna
+Dumbbell Shrug -> Encogimiento con mancuerna
+Dumbbell Side Bend -> con mancuerna Lateral Bend
+Dumbbell Squat -> Sentadilla con mancuerna
+Dumbbell Squat To A Bench -> Sentadilla con mancuerna
+Dumbbell Step Ups -> con mancuerna Step Ups
+Dumbbell Tricep Extension -Pronated Grip -> Extensión con mancuerna
+Dynamic Back Stretch -> Dynamic de espalda Stretch
+Dynamic Chest Stretch -> Dynamic de pecho Stretch
+EZ-Bar Curl -> Curl
+EZ-Bar Skullcrusher -> EZ-Bar Skullcrusher
+Elbow Circles -> Elbow Circles
+Elbow to Knee -> Elbow to Knee
+Elbows Back -> Elbows de espalda
+Elevated Back Lunge -> Zancada de espalda
+Elevated Cable Rows -> Elevated en polea Rows
+Elliptical Trainer -> Elliptical Trainer
+Exercise Ball Crunch -> Crunch
+Exercise Ball Pull-In -> Jalón
+Extended Range One-Arm Kettlebell Floor Press -> Press con pesa rusa
+External Rotation -> External Rotation
+External Rotation with Band -> External Rotation with con banda
+External Rotation with Cable -> External Rotation with en polea
+Face Pull -> Face Pull
+Farmer's Walk -> Paseo del Granjero
+Fast Skipping -> Fast Skipping
+Finger Curls -> Finger Curls
+Flat Bench Cable Flyes -> Flat Bench en polea Flyes
+Flat Bench Leg Pull-In -> Jalón de piernas
+Flat Bench Lying Leg Raise -> Elevación de piernas Tumbado
+Flexor Incline Dumbbell Curls -> Flexor Inclinado con mancuerna Curls
+Floor Glute-Ham Raise -> Elevación de glúteo
+Floor Press -> Press
+Floor Press with Chains -> Press
+Flutter Kicks -> Flutter Kicks
+Foot-SMR -> Foot-SMR
+Forward Drag with Press -> Press
+Frankenstein Squat -> Sentadilla
+Freehand Jump Squat -> Sentadilla
+Frog Hops -> Frog Hops
+Frog Sit-Ups -> Frog Sit-Ups
+Front Barbell Squat -> Sentadilla Frontal con barra
+Front Barbell Squat To A Bench -> Sentadilla Frontal con barra
+Front Box Jump -> Salto Frontal
+Front Cable Raise -> Elevación Frontal en polea
+Front Cone Hops (or hurdle hops) -> Frontal Cone Hops (or hurdle hops)
+Front Dumbbell Raise -> Elevación Frontal con mancuerna
+Front Incline Dumbbell Raise -> Elevación Inclinado Frontal con mancuerna
+Front Leg Raises -> Frontal de piernas Raises
+Front Plate Raise -> Elevación Frontal con disco
+Front Raise And Pullover -> Elevación Frontal
+Front Squat (Clean Grip) -> Sentadilla Frontal
+Front Squats With Two Kettlebells -> Frontal Squats With Two Kettlebells
+Front Two-Dumbbell Raise -> Elevación Frontal con mancuerna
+Full Range-Of-Motion Lat Pulldown -> Full Range-Of-Motion Lat Pulldown
+Gironda Sternum Chins -> Gironda Sternum Chins
+Glute Ham Raise -> Elevación de glúteo
+Glute Kickback -> de glúteo Kickback
+Goblet Squat -> Sentadilla Goblet
+Good Morning -> Buenos Días
+Good Morning off Pins -> Good Morning off Pins
+Gorilla Chin/Crunch -> Crunch
+Groin and Back Stretch -> Groin and de espalda Stretch
+Groiners -> Groiners
+Hack Squat -> Sentadilla Hack
+Hammer Curls -> Hammer Curls
+Hammer Grip Incline DB Bench Press -> Press Inclinado
+Hamstring-SMR -> Hamstring-SMR
+Hamstring Stretch -> Hamstring Stretch
+Handstand Push-Ups -> Empuje
+Hang Clean -> Cargada Colgante
+Hang Clean - Below the Knees -> Hang Clean - Below the Knees
+Hang Snatch -> Arrancada Colgante
+Hang Snatch - Below Knees -> Hang Snatch - Below Knees
+Hanging Bar Good Morning -> Hanging Bar Good Morning
+Hanging Leg Raise -> Elevación de piernas
+Hanging Pike -> Hanging Pike
+Heaving Snatch Balance -> Heaving Snatch Balance
+Heavy Bag Thrust -> Empuje
+High Cable Curls -> Alto en polea Curls
+Hip Circles (prone) -> de cadera Circles (prone)
+Hip Extension with Bands -> Extensión de cadera
+Hip Flexion with Band -> de cadera Flexion with con banda
+Hip Lift with Band -> de cadera Lift with con banda
+Hug A Ball -> Hug A Ball
+Hug Knees To Chest -> Hug Knees To de pecho
+Hurdle Hops -> Hurdle Hops
+Hyperextensions (Back Extensions) -> Hyperextensions (de espalda Extensions)
+Hyperextensions With No Hyperextension Bench -> Hyperextensions With No Hyperextension Bench
+IT Band and Glute Stretch -> IT con banda and de glúteo Stretch
+Iliotibial Tract-SMR -> Iliotibial Tract-SMR
+Inchworm -> Inchworm
+Incline Barbell Triceps Extension -> Extensión de tríceps Inclinado con barra
+Incline Bench Pull -> Jalón Inclinado
+Incline Cable Chest Press -> Press de pecho Inclinado en polea
+Incline Cable Flye -> Inclinado en polea Flye
+Incline Dumbbell Bench With Palms Facing In -> Inclinado con mancuerna Bench With Palms Facing In
+Incline Dumbbell Curl -> Curl Inclinado con mancuerna
+Incline Dumbbell Flyes -> Inclinado con mancuerna Flyes
+Incline Dumbbell Flyes - With A Twist -> Giro Inclinado con mancuerna
+Incline Dumbbell Press -> Press Inclinado con mancuerna
+Incline Hammer Curls -> Inclinado Hammer Curls
+Incline Inner Biceps Curl -> Curl de bíceps Inclinado
+Incline Push-Up -> Empuje Inclinado
+Incline Push-Up Close-Grip -> Empuje Inclinado
+Incline Push-Up Depth Jump -> Empuje Inclinado
+Incline Push-Up Medium -> Empuje Inclinado
+Incline Push-Up Reverse Grip -> Empuje Agarre Inverso Inclinado
+Incline Push-Up Wide -> Empuje Inclinado
+Intermediate Groin Stretch -> Intermediate Groin Stretch
+Intermediate Hip Flexor and Quad Stretch -> Intermediate de cadera Flexor and Quad Stretch
+Internal Rotation with Band -> Internal Rotation with con banda
+Inverted Row -> Remo
+Inverted Row with Straps -> Remo
+Iron Cross -> Iron Cross
+Iron Crosses (stretch) -> Iron Crosses (stretch)
+Isometric Chest Squeezes -> Isometric de pecho Squeezes
+Isometric Neck Exercise - Front And Back -> Isometric Neck Exercise - Frontal And de espalda
+Isometric Neck Exercise - Sides -> Isometric Neck Exercise - Sides
+Isometric Wipers -> Isometric Wipers
+JM Press -> Press
+Jackknife Sit-Up -> Jackknife Sit-Up
+Janda Sit-Up -> Janda Sit-Up
+Jefferson Squats -> Jefferson Squats
+Jerk Balance -> Jerk Balance
+Jerk Dip Squat -> Sentadilla
+Jogging, Treadmill -> Jogging, Treadmill
+Keg Load -> Keg Load
+Kettlebell Arnold Press -> Press con pesa rusa
+Kettlebell Dead Clean -> con pesa rusa Dead Clean
+Kettlebell Figure 8 -> con pesa rusa Figure 8
+Kettlebell Hang Clean -> con pesa rusa Hang Clean
+Kettlebell One-Legged Deadlift -> Peso Muerto con pesa rusa
+Kettlebell Pass Between The Legs -> con pesa rusa Pass Between The Legs
+Kettlebell Pirate Ships -> con pesa rusa Pirate Ships
+Kettlebell Pistol Squat -> Sentadilla con pesa rusa
+Kettlebell Seated Press -> Press Sentado con pesa rusa
+Kettlebell Seesaw Press -> Press con pesa rusa
+Kettlebell Sumo High Pull -> Jalón Alto con pesa rusa
+Kettlebell Thruster -> con pesa rusa Thruster
+Kettlebell Turkish Get-Up (Lunge style) -> Zancada con pesa rusa
+Kettlebell Turkish Get-Up (Squat style) -> Sentadilla con pesa rusa
+Kettlebell Windmill -> con pesa rusa Windmill
+Kipping Muscle Up -> Kipping Muscle Up
+Knee Across The Body -> Knee Across The Body
+Knee Circles -> Knee Circles
+Knee/Hip Raise On Parallel Bars -> Elevación de cadera
+Knee Tuck Jump -> Salto con rodillas al pecho
+Kneeling Arm Drill -> Kneeling Arm Drill
+Kneeling Cable Crunch With Alternating Oblique Twists -> Crunch en polea
+Kneeling Cable Triceps Extension -> Extensión de tríceps en polea
+Kneeling Forearm Stretch -> Kneeling Forearm Stretch
+Kneeling High Pulley Row -> Remo Alto
+Kneeling Hip Flexor -> Kneeling de cadera Flexor
+Kneeling Jump Squat -> Sentadilla
+Kneeling Single-Arm High Pulley Row -> Remo Alto
+Kneeling Squat -> Sentadilla
+Landmine 180's -> Landmine 180's
+Landmine Linear Jammer -> Landmine Linear Jammer
+Lateral Bound -> Lateral Bound
+Lateral Box Jump -> Salto
+Lateral Cone Hops -> Lateral Cone Hops
+Lateral Raise - With Bands -> Elevación
+Latissimus Dorsi-SMR -> Latissimus Dorsi-SMR
+Leg-Over Floor Press -> Press de piernas
+Leg-Up Hamstring Stretch -> de piernas-Up Hamstring Stretch
+Leg Extensions -> de piernas Extensions
+Leg Lift -> de piernas Lift
+Leg Press -> Prensa
+Leg Pull-In -> Jalón de piernas
+Leverage Chest Press -> Press de pecho
+Leverage Deadlift -> Peso Muerto
+Leverage Decline Chest Press -> Press de pecho Declinado
+Leverage High Row -> Remo Alto
+Leverage Incline Chest Press -> Press de pecho Inclinado
+Leverage Iso Row -> Remo
+Leverage Shoulder Press -> Press de hombros
+Leverage Shrug -> Encogimiento
+Linear 3-Part Start Technique -> Linear 3-Part Start Technique
+Linear Acceleration Wall Drill -> Linear Acceleration Wall Drill
+Linear Depth Jump -> Salto
+Log Lift -> Log Lift
+London Bridges -> London Bridges
+Looking At Ceiling -> Looking At Ceiling
+Low Cable Crossover -> Bajo en polea Crossover
+Low Cable Triceps Extension -> Extensión de tríceps Bajo en polea
+Low Pulley Row To Neck -> Remo Bajo
+Lower Back-SMR -> Lower de espalda-SMR
+Lower Back Curl -> Curl de espalda
+Lunge Pass Through -> Zancada
+Lunge Sprint -> Zancada
+Lying Bent Leg Groin -> Tumbado Bent de piernas Groin
+Lying Cable Curl -> Curl Tumbado en polea
+Lying Cambered Barbell Row -> Remo Tumbado con barra
+Lying Close-Grip Bar Curl On High Pulley -> Curl Tumbado Alto
+Lying Close-Grip Barbell Triceps Extension Behind The Head -> Extensión de tríceps Tumbado con barra
+Lying Close-Grip Barbell Triceps Press To Chin -> Press de tríceps Tumbado con barra
+Lying Crossover -> Tumbado Crossover
+Lying Dumbbell Tricep Extension -> Extensión Tumbado con mancuerna
+Lying Face Down Plate Neck Resistance -> Tumbado Face Down con disco Neck Resistance
+Lying Face Up Plate Neck Resistance -> Tumbado Face Up con disco Neck Resistance
+Lying Glute -> Tumbado de glúteo
+Lying Hamstring -> Tumbado Hamstring
+Lying High Bench Barbell Curl -> Curl Tumbado Alto con barra
+Lying Leg Curls -> Tumbado de piernas Curls
+Lying Machine Squat -> Sentadilla Tumbado en máquina
+Lying One-Arm Lateral Raise -> Elevación Tumbado
+Lying Prone Quadriceps -> Tumbado Prone Quadriceps
+Lying Rear Delt Raise -> Elevación Tumbado Posterior
+Lying Supine Dumbbell Curl -> Curl Tumbado con mancuerna
+Lying T-Bar Row -> Remo Tumbado
+Lying Triceps Press -> Press de tríceps Tumbado
+Machine Bench Press -> Press en máquina
+Machine Bicep Curl -> Curl en máquina
+Machine Preacher Curls -> en máquina Preacher Curls
+Machine Shoulder (Military) Press -> Press de hombros Militar en máquina
+Machine Triceps Extension -> Extensión de tríceps en máquina
+Medicine Ball Chest Pass -> con balón medicinal de pecho Pass
+Medicine Ball Full Twist -> Giro con balón medicinal
+Medicine Ball Scoop Throw -> con balón medicinal Scoop Throw
+Middle Back Shrug -> Encogimiento de espalda
+Middle Back Stretch -> Middle de espalda Stretch
+Mixed Grip Chin -> Mixed Grip Chin
+Monster Walk -> Caminata
+Mountain Climbers -> Escaladores
+Moving Claw Series -> Moving Claw Series
+Muscle Snatch -> Muscle Snatch
+Muscle Up -> Muscle Up
+Narrow Stance Hack Squats -> Narrow Stance Hack Squats
+Narrow Stance Leg Press -> Press de piernas
+Narrow Stance Squats -> Narrow Stance Squats
+Natural Glute Ham Raise -> Elevación de glúteo
+Neck-SMR -> Neck-SMR
+Neck Press -> Press
+Oblique Crunches -> Oblique Crunches
+Oblique Crunches - On The Floor -> Oblique Crunches - On The Floor
+Olympic Squat -> Sentadilla
+On-Your-Back Quad Stretch -> On-Your-de espalda Quad Stretch
+On Your Side Quad Stretch -> On Your Lateral Quad Stretch
+One-Arm Dumbbell Row -> Remo con mancuerna
+One-Arm Flat Bench Dumbbell Flye -> One-Arm Flat Bench con mancuerna Flye
+One-Arm High-Pulley Cable Side Bends -> One-Arm Alto-Pulley en polea Lateral Bends
+One-Arm Incline Lateral Raise -> Elevación Inclinado
+One-Arm Kettlebell Clean -> One-Arm con pesa rusa Clean
+One-Arm Kettlebell Clean and Jerk -> One-Arm con pesa rusa Clean and Jerk
+One-Arm Kettlebell Floor Press -> Press con pesa rusa
+One-Arm Kettlebell Jerk -> One-Arm con pesa rusa Jerk
+One-Arm Kettlebell Military Press To The Side -> Press Militar Lateral con pesa rusa
+One-Arm Kettlebell Para Press -> Press con pesa rusa
+One-Arm Kettlebell Push Press -> Press con pesa rusa
+One-Arm Kettlebell Row -> Remo con pesa rusa
+One-Arm Kettlebell Snatch -> One-Arm con pesa rusa Snatch
+One-Arm Kettlebell Split Jerk -> One-Arm con pesa rusa Split Jerk
+One-Arm Kettlebell Split Snatch -> One-Arm con pesa rusa Split Snatch
+One-Arm Kettlebell Swings -> One-Arm con pesa rusa Swings
+One-Arm Long Bar Row -> Remo
+One-Arm Medicine Ball Slam -> One-Arm con balón medicinal Slam
+One-Arm Open Palm Kettlebell Clean -> One-Arm Open Palm con pesa rusa Clean
+One-Arm Overhead Kettlebell Squats -> One-Arm Overhead con pesa rusa Squats
+One-Arm Side Deadlift -> Peso Muerto Lateral
+One-Arm Side Laterals -> One-Arm Lateral Laterals
+One-Legged Cable Kickback -> One-Legged en polea Kickback
+One Arm Against Wall -> a una mano Against Wall
+One Arm Chin-Up -> a una mano Chin-Up
+One Arm Dumbbell Bench Press -> Press a una mano con mancuerna
+One Arm Dumbbell Preacher Curl -> Curl a una mano con mancuerna
+One Arm Floor Press -> Press a una mano
+One Arm Lat Pulldown -> a una mano Lat Pulldown
+One Arm Pronated Dumbbell Triceps Extension -> Extensión de tríceps a una mano con mancuerna
+One Arm Supinated Dumbbell Triceps Extension -> Extensión de tríceps a una mano con mancuerna
+One Half Locust -> One Half Locust
+One Handed Hang -> One Handed Hang
+One Knee To Chest -> One Knee To de pecho
+One Leg Barbell Squat -> Sentadilla de piernas con barra
+Open Palm Kettlebell Clean -> Open Palm con pesa rusa Clean
+Otis-Up -> Otis-Up
+Overhead Cable Curl -> Curl en polea
+Overhead Lat -> Overhead Lat
+Overhead Slam -> Overhead Slam
+Overhead Squat -> Sentadilla
+Overhead Stretch -> Overhead Stretch
+Overhead Triceps -> Overhead de tríceps
+Pallof Press -> Press Pallof
+Pallof Press With Rotation -> Press
+Palms-Down Dumbbell Wrist Curl Over A Bench -> Curl de muñeca con mancuerna
+Palms-Down Wrist Curl Over A Bench -> Curl de muñeca
+Palms-Up Barbell Wrist Curl Over A Bench -> Curl de muñeca con barra
+Palms-Up Dumbbell Wrist Curl Over A Bench -> Curl de muñeca con mancuerna
+Parallel Bar Dip -> Parallel Bar Dip
+Pelvic Tilt Into Bridge -> Pelvic Tilt Into Bridge
+Peroneals-SMR -> Peroneals-SMR
+Peroneals Stretch -> Peroneals Stretch
+Physioball Hip Bridge -> Physioball de cadera Bridge
+Pin Presses -> Pin Presses
+Piriformis-SMR -> Piriformis-SMR
+Plank -> Plancha
+Plate Pinch -> con disco Pinch
+Plate Twist -> Giro con disco
+Platform Hamstring Slides -> Platform Hamstring Slides
+Plie Dumbbell Squat -> Sentadilla con mancuerna
+Plyo Kettlebell Pushups -> Plyo con pesa rusa Pushups
+Plyo Push-up -> Empuje
+Posterior Tibialis Stretch -> Posterior Tibialis Stretch
+Power Clean -> Cargada de Potencia
+Power Clean from Blocks -> Power Clean from Blocks
+Power Jerk -> Power Jerk
+Power Partials -> Power Partials
+Power Snatch -> Arrancada de Potencia
+Power Snatch from Blocks -> Power Snatch from Blocks
+Power Stairs -> Power Stairs
+Preacher Curl -> Curl Predicador
+Preacher Hammer Dumbbell Curl -> Curl con mancuerna
+Press Sit-Up -> Press
+Prone Manual Hamstring -> Prone Manual Hamstring
+Prowler Sprint -> Prowler Sprint
+Pull Through -> Jalón
+Pullups -> Dominadas
+Push-Up Wide -> Empuje
+Push-Ups - Close Triceps Position -> Empuje de tríceps
+Push-Ups With Feet Elevated -> Empuje
+Push-Ups With Feet On An Exercise Ball -> Empuje
+Push Press -> Press
+Push Press - Behind the Neck -> Press Trasnuca
+Push Up to Side Plank -> Empuje Lateral
+Pushups -> Flexiones
+Pushups (Close and Wide Hand Positions) -> Pushups (Close and Wide Hand Positions)
+Pyramid -> Pyramid
+Quad Stretch -> Quad Stretch
+Quadriceps-SMR -> Quadriceps-SMR
+Quick Leap -> Quick Leap
+Rack Delivery -> Rack Delivery
+Rack Pull with Bands -> Jalón
+Rack Pulls -> Rack Pulls
+Rear Leg Raises -> Posterior de piernas Raises
+Recumbent Bike -> Recumbent Bike
+Return Push from Stance -> Empuje
+Reverse Band Bench Press -> Press con banda
+Reverse Band Box Squat -> Sentadilla con banda
+Reverse Band Deadlift -> Peso Muerto con banda
+Reverse Band Power Squat -> Sentadilla con banda
+Reverse Band Sumo Deadlift -> Peso Muerto con banda
+Reverse Barbell Curl -> Curl con barra
+Reverse Barbell Preacher Curls -> Reverse con barra Preacher Curls
+Reverse Cable Curl -> Curl en polea
+Reverse Crunch -> Crunch
+Reverse Flyes -> Reverse Flyes
+Reverse Flyes With External Rotation -> Reverse Flyes With External Rotation
+Reverse Grip Bent-Over Rows -> Agarre Inverso Bent-Over Rows
+Reverse Grip Triceps Pushdown -> Agarre Inverso de tríceps Pushdown
+Reverse Hyperextension -> Reverse Hyperextension
+Reverse Machine Flyes -> Reverse en máquina Flyes
+Reverse Plate Curls -> Reverse con disco Curls
+Reverse Triceps Bench Press -> Press de tríceps
+Rhomboids-SMR -> Rhomboids-SMR
+Rickshaw Carry -> Transporte
+Rickshaw Deadlift -> Peso Muerto
+Ring Dips -> Ring Dips
+Rocket Jump -> Salto
+Rocking Standing Calf Raise -> Elevación de gemelo De Pie
+Rocky Pull-Ups/Pulldowns -> Jalón
+Romanian Deadlift -> Peso Muerto Rumano
+Romanian Deadlift from Deficit -> Peso Muerto
+Rope Climb -> Rope Climb
+Rope Crunch -> Crunch
+Rope Jumping -> Rope Jumping
+Rope Straight-Arm Pulldown -> Rope Straight-Arm Pulldown
+Round The World Shoulder Stretch -> Round The World de hombros Stretch
+Rowing, Stationary -> Rowing, Stationary
+Runner's Stretch -> Runner's Stretch
+Running, Treadmill -> Running, Treadmill
+Russian Twist -> Giros Rusos
+Sandbag Load -> Sandbag Load
+Scapular Pull-Up -> Jalón
+Scissor Kick -> Patada
+Scissors Jump -> Salto
+Seated Band Hamstring Curl -> Curl Sentado con banda
+Seated Barbell Military Press -> Press Militar sentado con barra
+Seated Barbell Twist -> Giro Sentado con barra
+Seated Bent-Over One-Arm Dumbbell Triceps Extension -> Extensión de tríceps Sentado con mancuerna
+Seated Bent-Over Rear Delt Raise -> Elevación Sentado Posterior
+Seated Bent-Over Two-Arm Dumbbell Triceps Extension -> Extensión de tríceps Sentado con mancuerna
+Seated Biceps -> Sentado de bíceps
+Seated Cable Rows -> Sentado en polea Rows
+Seated Cable Shoulder Press -> Press de hombros Sentado en polea
+Seated Calf Raise -> Elevación de gemelo Sentado
+Seated Calf Stretch -> Sentado de gemelo Stretch
+Seated Close-Grip Concentration Barbell Curl -> Curl Concentrado Sentado con barra
+Seated Dumbbell Curl -> Curl Sentado con mancuerna
+Seated Dumbbell Inner Biceps Curl -> Curl de bíceps Sentado con mancuerna
+Seated Dumbbell Palms-Down Wrist Curl -> Curl de muñeca Sentado con mancuerna
+Seated Dumbbell Palms-Up Wrist Curl -> Curl de muñeca Sentado con mancuerna
+Seated Dumbbell Press -> Press Sentado con mancuerna
+Seated Flat Bench Leg Pull-In -> Jalón de piernas Sentado
+Seated Floor Hamstring Stretch -> Sentado Floor Hamstring Stretch
+Seated Front Deltoid -> Sentado Frontal de deltoides
+Seated Glute -> Sentado de glúteo
+Seated Good Mornings -> Sentado Good Mornings
+Seated Hamstring -> Sentado Hamstring
+Seated Hamstring and Calf Stretch -> Sentado Hamstring and de gemelo Stretch
+Seated Head Harness Neck Resistance -> Sentado Head Harness Neck Resistance
+Seated Leg Curl -> Curl de piernas Sentado
+Seated Leg Tucks -> Sentado de piernas Tucks
+Seated One-Arm Dumbbell Palms-Down Wrist Curl -> Curl de muñeca Sentado con mancuerna
+Seated One-Arm Dumbbell Palms-Up Wrist Curl -> Curl de muñeca Sentado con mancuerna
+Seated One-arm Cable Pulley Rows -> Sentado One-arm en polea Pulley Rows
+Seated Overhead Stretch -> Sentado Overhead Stretch
+Seated Palm-Up Barbell Wrist Curl -> Curl de muñeca Sentado con barra
+Seated Palms-Down Barbell Wrist Curl -> Curl de muñeca Sentado con barra
+Seated Side Lateral Raise -> Elevación Sentado Lateral
+Seated Triceps Press -> Press de tríceps Sentado
+Seated Two-Arm Palms-Up Low-Pulley Wrist Curl -> Curl de muñeca Sentado Bajo
+See-Saw Press (Alternating Side Press) -> Press Lateral
+Shotgun Row -> Remo
+Shoulder Circles -> de hombros Circles
+Shoulder Press - With Bands -> Press de hombros
+Shoulder Raise -> Elevación de hombros
+Shoulder Stretch -> de hombros Stretch
+Side-Lying Floor Stretch -> Lateral-Tumbado Floor Stretch
+Side Bridge -> Lateral Bridge
+Side Hop-Sprint -> Lateral Hop-Sprint
+Side Jackknife -> Lateral Jackknife
+Side Lateral Raise -> Elevación Lateral
+Side Laterals to Front Raise -> Elevación Frontal Lateral
+Side Leg Raises -> Lateral de piernas Raises
+Side Lying Groin Stretch -> Lateral Tumbado Groin Stretch
+Side Neck Stretch -> Lateral Neck Stretch
+Side Standing Long Jump -> Salto De Pie Lateral
+Side To Side Chins -> Lateral To Lateral Chins
+Side Wrist Pull -> Jalón de muñeca Lateral
+Side to Side Box Shuffle -> Lateral to Lateral Box Shuffle
+Single-Arm Cable Crossover -> Single-Arm en polea Crossover
+Single-Arm Linear Jammer -> Single-Arm Linear Jammer
+Single-Arm Push-Up -> Empuje
+Single-Cone Sprint Drill -> Single-Cone Sprint Drill
+Single-Leg High Box Squat -> Sentadilla de piernas Alto
+Single-Leg Hop Progression -> Single-de piernas Hop Progression
+Single-Leg Lateral Hop -> Single-de piernas Lateral Hop
+Single-Leg Leg Extension -> Extensión de piernas
+Single-Leg Stride Jump -> Salto de piernas
+Single Dumbbell Raise -> Elevación con mancuerna
+Single Leg Butt Kick -> Patada de piernas
+Single Leg Glute Bridge -> a una pierna de glúteo Bridge
+Single Leg Push-off -> Empuje de piernas
+Sit-Up -> Abdominales
+Sit Squats -> Sit Squats
+Skating -> Skating
+Sled Drag - Harness -> Sled Drag - Harness
+Sled Overhead Backward Walk -> Caminata
+Sled Overhead Triceps Extension -> Extensión de tríceps
+Sled Push -> Empuje
+Sled Reverse Flye -> Sled Reverse Flye
+Sled Row -> Remo
+Sledgehammer Swings -> Sledgehammer Swings
+Smith Incline Shoulder Raise -> Elevación de hombros Inclinado en multipower
+Smith Machine Behind the Back Shrug -> Encogimiento de espalda en máquina
+Smith Machine Bench Press -> Press en máquina
+Smith Machine Bent Over Row -> Remo Inclinado en máquina
+Smith Machine Calf Raise -> Elevación de gemelo en máquina
+Smith Machine Close-Grip Bench Press -> Press en máquina
+Smith Machine Decline Press -> Press Declinado en máquina
+Smith Machine Hang Power Clean -> en multipower en máquina Hang Power Clean
+Smith Machine Hip Raise -> Elevación de cadera en máquina
+Smith Machine Incline Bench Press -> Press Inclinado en máquina
+Smith Machine Leg Press -> Press de piernas en máquina
+Smith Machine One-Arm Upright Row -> Remo en máquina
+Smith Machine Overhead Shoulder Press -> Press de hombros en máquina
+Smith Machine Pistol Squat -> Sentadilla en máquina
+Smith Machine Reverse Calf Raises -> en multipower en máquina Reverse de gemelo Raises
+Smith Machine Squat -> Sentadilla en máquina
+Smith Machine Stiff-Legged Deadlift -> Peso Muerto en máquina
+Smith Machine Upright Row -> Remo en máquina
+Smith Single-Leg Split Squat -> Sentadilla de piernas en multipower
+Snatch -> Arrancada
+Snatch Balance -> Snatch Balance
+Snatch Deadlift -> Peso Muerto
+Snatch Pull -> Jalón
+Snatch Shrug -> Encogimiento
+Snatch from Blocks -> Snatch from Blocks
+Speed Band Overhead Triceps -> Speed con banda Overhead de tríceps
+Speed Box Squat -> Sentadilla
+Speed Squats -> Speed Squats
+Spell Caster -> Spell Caster
+Spider Crawl -> Spider Crawl
+Spider Curl -> Curl
+Spinal Stretch -> Spinal Stretch
+Split Clean -> Split Clean
+Split Jerk -> Split Jerk
+Split Jump -> Salto
+Split Snatch -> Split Snatch
+Split Squat with Dumbbells -> Sentadilla
+Split Squats -> Split Squats
+Squat Jerk -> Sentadilla
+Squat with Bands -> Sentadilla
+Squat with Chains -> Sentadilla
+Squat with Plate Movers -> Sentadilla con disco
+Squats - With Bands -> Squats - With Bands
+Stairmaster -> Stairmaster
+Standing Alternating Dumbbell Press -> Press De Pie con mancuerna
+Standing Barbell Calf Raise -> Elevación de gemelo De Pie con barra
+Standing Barbell Press Behind Neck -> Press De Pie con barra
+Standing Bent-Over One-Arm Dumbbell Triceps Extension -> Extensión de tríceps De Pie con mancuerna
+Standing Bent-Over Two-Arm Dumbbell Triceps Extension -> Extensión de tríceps De Pie con mancuerna
+Standing Biceps Cable Curl -> Curl de bíceps De Pie en polea
+Standing Biceps Stretch -> De Pie de bíceps Stretch
+Standing Bradford Press -> Press De Pie
+Standing Cable Chest Press -> Press de pecho De Pie en polea
+Standing Cable Lift -> De Pie en polea Lift
+Standing Cable Wood Chop -> De Pie en polea Wood Chop
+Standing Calf Raises -> De Pie de gemelo Raises
+Standing Concentration Curl -> Curl Concentrado De Pie
+Standing Dumbbell Calf Raise -> Elevación de gemelo De Pie con mancuerna
+Standing Dumbbell Press -> Press De Pie con mancuerna
+Standing Dumbbell Reverse Curl -> Curl De Pie con mancuerna
+Standing Dumbbell Straight-Arm Front Delt Raise Above Head -> Elevación De Pie Frontal con mancuerna
+Standing Dumbbell Triceps Extension -> Extensión de tríceps De Pie con mancuerna
+Standing Dumbbell Upright Row -> Remo De Pie con mancuerna
+Standing Elevated Quad Stretch -> De Pie Elevated Quad Stretch
+Standing Front Barbell Raise Over Head -> Elevación De Pie Frontal con barra
+Standing Gastrocnemius Calf Stretch -> De Pie Gastrocnemius de gemelo Stretch
+Standing Hamstring and Calf Stretch -> De Pie Hamstring and de gemelo Stretch
+Standing Hip Circles -> De Pie de cadera Circles
+Standing Hip Flexors -> De Pie de cadera Flexors
+Standing Inner-Biceps Curl -> Curl de bíceps De Pie
+Standing Lateral Stretch -> De Pie Lateral Stretch
+Standing Leg Curl -> Curl de piernas De Pie
+Standing Long Jump -> Salto De Pie
+Standing Low-Pulley Deltoid Raise -> Elevación de deltoides De Pie Bajo
+Standing Low-Pulley One-Arm Triceps Extension -> Extensión de tríceps De Pie Bajo
+Standing Military Press -> Press Militar De Pie
+Standing Olympic Plate Hand Squeeze -> De Pie Olympic con disco Hand Squeeze
+Standing One-Arm Cable Curl -> Curl De Pie en polea
+Standing One-Arm Dumbbell Curl Over Incline Bench -> Curl De Pie Inclinado con mancuerna
+Standing One-Arm Dumbbell Triceps Extension -> Extensión de tríceps De Pie con mancuerna
+Standing Overhead Barbell Triceps Extension -> Extensión de tríceps De Pie con barra
+Standing Palm-In One-Arm Dumbbell Press -> Press De Pie con mancuerna
+Standing Palms-In Dumbbell Press -> Press De Pie con mancuerna
+Standing Palms-Up Barbell Behind The Back Wrist Curl -> Curl de muñeca De Pie con barra
+Standing Pelvic Tilt -> De Pie Pelvic Tilt
+Standing Rope Crunch -> Crunch De Pie
+Standing Soleus And Achilles Stretch -> De Pie Soleus And Achilles Stretch
+Standing Toe Touches -> De Pie Toe Touches
+Standing Towel Triceps Extension -> Extensión de tríceps De Pie
+Standing Two-Arm Overhead Throw -> De Pie Two-Arm Overhead Throw
+Star Jump -> Salto
+Step-up with Knee Raise -> Elevación
+Step Mill -> Step Mill
+Stiff-Legged Barbell Deadlift -> Peso Muerto con barra
+Stiff-Legged Dumbbell Deadlift -> Peso Muerto con mancuerna
+Stiff Leg Barbell Good Morning -> Stiff de piernas con barra Good Morning
+Stomach Vacuum -> Stomach Vacuum
+Straight-Arm Dumbbell Pullover -> Straight-Arm con mancuerna Pullover
+Straight-Arm Pulldown -> Straight-Arm Pulldown
+Straight Bar Bench Mid Rows -> Straight Bar Bench Mid Rows
+Straight Raises on Incline Bench -> Straight Raises on Inclinado Bench
+Stride Jump Crossover -> Salto
+Sumo Deadlift -> Peso Muerto Sumo
+Sumo Deadlift with Bands -> Peso Muerto
+Sumo Deadlift with Chains -> Peso Muerto
+Superman -> Superman
+Supine Chest Throw -> Supine de pecho Throw
+Supine One-Arm Overhead Throw -> Supine One-Arm Overhead Throw
+Supine Two-Arm Overhead Throw -> Supine Two-Arm Overhead Throw
+Suspended Fallout -> Suspended Fallout
+Suspended Push-Up -> Empuje
+Suspended Reverse Crunch -> Crunch
+Suspended Row -> Remo
+Suspended Split Squat -> Sentadilla
+Svend Press -> Press Svend
+T-Bar Row with Handle -> Remo
+Tate Press -> Press
+The Straddle -> The Straddle
+Thigh Abductor -> Thigh Abductor
+Thigh Adductor -> Thigh Adductor
+Tire Flip -> Tire Flip
+Toe Touchers -> Toe Touchers
+Torso Rotation -> Torso Rotation
+Trail Running/Walking -> Trail Running/Walking
+Trap Bar Deadlift -> Peso Muerto
+Tricep Dumbbell Kickback -> Tricep con mancuerna Kickback
+Tricep Side Stretch -> Tricep Lateral Stretch
+Triceps Overhead Extension with Rope -> Extensión de tríceps
+Triceps Pushdown -> de tríceps Pushdown
+Triceps Pushdown - Rope Attachment -> de tríceps Pushdown - Rope Attachment
+Triceps Pushdown - V-Bar Attachment -> de tríceps Pushdown - V-Bar Attachment
+Triceps Stretch -> de tríceps Stretch
+Tuck Crunch -> Crunch
+Two-Arm Dumbbell Preacher Curl -> Curl con mancuerna
+Two-Arm Kettlebell Clean -> Two-Arm con pesa rusa Clean
+Two-Arm Kettlebell Jerk -> Two-Arm con pesa rusa Jerk
+Two-Arm Kettlebell Military Press -> Press Militar con pesa rusa
+Two-Arm Kettlebell Row -> Remo con pesa rusa
+Underhand Cable Pulldowns -> Underhand en polea Pulldowns
+Upper Back-Leg Grab -> Upper de espalda-de piernas Grab
+Upper Back Stretch -> Upper de espalda Stretch
+Upright Barbell Row -> Remo con barra
+Upright Cable Row -> Remo en polea
+Upright Row - With Bands -> Remo
+Upward Stretch -> Upward Stretch
+V-Bar Pulldown -> V-Bar Pulldown
+V-Bar Pullup -> V-Bar Pullup
+Vertical Swing -> Balanceo
+Walking, Treadmill -> Walking, Treadmill
+Weighted Ball Hyperextension -> con lastre Ball Hyperextension
+Weighted Ball Side Bend -> con lastre Ball Lateral Bend
+Weighted Bench Dip -> con lastre Bench Dip
+Weighted Crunches -> con lastre Crunches
+Weighted Jump Squat -> Sentadilla con lastre
+Weighted Pull Ups -> Jalón con lastre
+Weighted Sissy Squat -> Sentadilla con lastre
+Weighted Sit-Ups - With Bands -> con lastre Sit-Ups - With Bands
+Weighted Squat -> Sentadilla con lastre
+Wide-Grip Barbell Bench Press -> Press con barra
+Wide-Grip Decline Barbell Bench Press -> Press Declinado con barra
+Wide-Grip Decline Barbell Pullover -> Wide-Grip Declinado con barra Pullover
+Wide-Grip Lat Pulldown -> Wide-Grip Lat Pulldown
+Wide-Grip Pulldown Behind The Neck -> Wide-Grip Pulldown Trasnuca
+Wide-Grip Rear Pull-Up -> Jalón Posterior
+Wide-Grip Standing Barbell Curl -> Curl De Pie con barra
+Wide Stance Barbell Squat -> Sentadilla con barra
+Wide Stance Stiff Legs -> Wide Stance Stiff Legs
+Wind Sprints -> Wind Sprints
+Windmills -> Windmills
+World's Greatest Stretch -> World's Greatest Stretch
+Wrist Circles -> de muñeca Circles
+Wrist Roller -> de muñeca Roller
+Wrist Rotations with Straight Bar -> de muñeca Rotations with Straight Bar
+Yoke Walk -> Caminata
+Zercher Squats -> Zercher Squats
+Zottman Curl -> Curl Zottman
+Zottman Preacher Curl -> Curl

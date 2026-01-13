@@ -12,8 +12,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "turbo": "latest",
-    "prettier": "^3.0.0"
+    "@supabase/supabase-js": "^2.90.1",
+    "dotenv": "^17.2.3",
+    "prettier": "^3.0.0",
+    "turbo": "latest"
   },
   "packageManager": "npm@10.2.4"
 }

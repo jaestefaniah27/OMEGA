@@ -57,3 +57,24 @@ Mantén estas decisiones en futuros desarrollos:
 - **ADR-003 (UI Components):** La UI debe ser **agnóstica** de plataforma cuando sea posible. Los componentes en `packages/ui` deben funcionar en Web (Desktop) y Native (Móvil).
 - **ADR-004 (Offline):** Estrategia "Offline First" simple. Cachear datos críticos en `AsyncStorage` (Móvil) o `localStorage` (Desktop) al iniciar, y sincronizar con Supabase en segundo plano.
 - **ADR-005 (Estética):** La inmersión es prioridad. No "parecer una app de productividad". Debe parecer un juego.
+- **ADR-006 (Catálogo de Ejercicios):** Los ejercicios se gestionan en Supabase (`public.exercises`). Para eficiencia offline, el móvil guarda un subconjunto de "Core Exercises" en `core_exercises.json`.
+- **ADR-007 (Nomenclatura Muscular):** La interfaz debe mostrar SIEMPRE nombres musculares simplificados (Bíceps, Pecho, Isquios, Hombros). La complejidad técnica se guarda internamente pero no se muestra al usuario.
+
+## 6. Nomenclatura Muscular (UI vs DB)
+Mapeo estricto para mantener la simplicidad RPG:
+| Nombre Técnico | Nombre UI (OMEGA) |
+| :--- | :--- |
+| Pectoral Mayor | **Pecho** |
+| Bíceps braquial | **Bíceps** |
+| Tríceps braquial | **Tríceps** |
+| Isquiosurales | **Isquios** |
+| Deltoides (todos) | **Hombros** |
+| Dorsal ancho | **Espalda** |
+| Erectores espinales| **Lumbar** |
+| Trapecio | **Trapecio** |
+| Cuádriceps | **Cuádriceps** |
+
+## 7. Sistema de Favoritos
+- **Tabla:** `public.user_exercise_favorites` (user_id, exercise_id).
+- **Acceso:** "Biblioteca de Combate" en el Barracón.
+- **Sync:** El script `import_exercises.js` debe sincronizar los IDs de la DB con el archivo local `core_exercises.json` para que los favoritos funcionen en modo offline/híbrido.

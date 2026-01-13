@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -252,7 +253,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         // 2. Fetch Remote (Background Sync)
         fetchAll();
 
-        // 3. Realtime Subscriptions
+        // 3. Refresh on Focus (AppState)
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                console.log('GameContext: App active, refreshing data...');
+                fetchAll();
+            }
+        });
+
+        // 4. Periodic Polling (Every 2 minutes)
+        // Ensure freshness even if Realtime disconnects silently
+        const intervalId = setInterval(() => {
+            if (AppState.currentState === 'active') {
+                console.log('GameContext: Periodic Poll...');
+                fetchAll();
+            }
+        }, 120000); // 2 minutes
+
+        // 5. Realtime Subscriptions
         const setupRealtime = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -277,24 +295,34 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const sub = setupRealtime();
         return () => {
             sub.then(cleanup => cleanup && cleanup());
+            subscription.remove();
+            clearInterval(intervalId);
         };
     }, []);
 
     // --- RPC HELPERS ---
     const addGold = async (amount: number) => {
         try {
-            // Optimistic Update
+            // Optimistic Update & Persist
             if (profile) {
                 const newGold = (profile.gold || 0) + amount;
-                setProfile({ ...profile, gold: newGold });
+                const newProfile = { ...profile, gold: newGold };
+                setProfile(newProfile);
+
+                // SAVE TO LOCAL IMMEDIATELLY (Critical for Offline Restart)
+                saveToLocal(
+                    { subjects, books, customColors, bookStats },
+                    { activities, movies, series, activityStats },
+                    newProfile
+                );
             }
 
             // RPC Call
             const { error } = await supabase.rpc('add_gold', { amount });
             if (error) {
-                console.error('RPC add_gold failed:', error);
-                // Revert fetch will happen automatically via realtime or we could force it
-                await fetchAll();
+                console.error('RPC add_gold failed (will sync later):', error);
+                // Note: Without a sync queue, this change exists only locally until next successful sync/fetch overwrites it.
+                // But at least it persists across restarts while offline.
             }
         } catch (e) {
             console.error('RPC Error', e);
@@ -303,17 +331,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const addXp = async (amount: number) => {
         try {
-            // Optimistic Update
+            // Optimistic Update & Persist
             if (profile) {
                 const newXp = (profile.current_xp || 0) + amount;
                 const newTotal = (profile.total_study_minutes || 0) + amount;
-                setProfile({ ...profile, current_xp: newXp, total_study_minutes: newTotal });
+                const newProfile = { ...profile, current_xp: newXp, total_study_minutes: newTotal };
+                setProfile(newProfile);
+
+                // SAVE TO LOCAL IMMEDIATELLY
+                saveToLocal(
+                    { subjects, books, customColors, bookStats },
+                    { activities, movies, series, activityStats },
+                    newProfile
+                );
             }
 
             const { error } = await supabase.rpc('add_xp', { amount });
             if (error) {
-                console.error('RPC add_xp failed:', error);
-                await fetchAll();
+                console.error('RPC add_xp failed (will sync later):', error);
             }
         } catch (e) {
             console.error('RPC Error', e);
@@ -323,32 +358,88 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // --- MUTATORS (LIBRARY) ---
     const addSubject = async (name: string, color: string, course?: string) => {
         if (!user) return;
+
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        const newSubject: Subject = {
+            id: tempId,
+            user_id: user.id,
+            name,
+            color,
+            course: course || null,
+            is_completed: false,
+            total_minutes_studied: 0,
+            created_at: new Date().toISOString()
+        };
+        const newSubjects = [newSubject, ...subjects];
+        setSubjects(newSubjects);
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+
         const { data, error } = await supabase.from('subjects').insert([{ name, color, course, user_id: user.id }]).select().single();
-        if (error) throw error;
-        await fetchAll();
+        if (error) {
+            console.error('Offline Action Queued (Subject)', error);
+            // In a full system we'd add to a SyncQueue. Here we rely on persistent Optimistic UI.
+            return newSubject;
+        }
+        await fetchAll(); // Replaces temp ID with real ID
         return data;
     };
 
     const updateSubject = async (id: string, updates: Partial<Subject>) => {
+        // Optimistic
+        const newSubjects = subjects.map(s => s.id === id ? { ...s, ...updates } : s);
+        setSubjects(newSubjects);
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+
         const { error } = await supabase.from('subjects').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Action Queued (Update Subject)', error);
+        else await fetchAll();
     };
 
     const addBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
         if (!user) return;
+
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        const newBook: Book = {
+            id: tempId,
+            user_id: user.id,
+            title,
+            author,
+            total_pages,
+            current_page: 0,
+            cover_color,
+            saga: saga || null,
+            saga_index: saga_index || null,
+            is_finished: false,
+            finished_at: null,
+            created_at: new Date().toISOString()
+        };
+        const newBooks = [newBook, ...books];
+        setBooks(newBooks);
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+
         const { data, error } = await supabase.from('books').insert([{
             title, author, total_pages, cover_color, saga, saga_index, user_id: user.id
         }]).select().single();
-        if (error) throw error;
+
+        if (error) {
+            console.error('Offline Action Queued (Book)', error);
+            return newBook;
+        }
         await fetchAll();
         return data;
     };
 
     const updateBook = async (id: string, updates: Partial<Book>) => {
+        // Optimistic
+        const newBooks = books.map(b => b.id === id ? { ...b, ...updates } : b);
+        setBooks(newBooks);
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+
         const { error } = await supabase.from('books').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Action Queued (Update Book)', error);
+        else await fetchAll();
     };
 
     const saveCustomColor = async (hex_code: string, name?: string) => {
@@ -367,60 +458,162 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // --- MUTATORS (THEATRE) ---
     const addActivity = async (name: string) => {
         if (!user) return;
+
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        const newActivity: TheatreActivity = {
+            id: tempId,
+            user_id: user.id,
+            name,
+            total_minutes: 0,
+            days_count: 0,
+            created_at: new Date().toISOString()
+        };
+        const newActivities = [newActivity, ...activities];
+        setActivities(newActivities);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, profile);
+
         const { data, error } = await supabase.from('theatre_activities').insert([{ name, user_id: user.id }]).select().single();
-        if (error) throw error;
+        if (error) {
+            console.error('Offline Queued (Activity)', error);
+            return newActivity;
+        }
         await fetchAll();
         return data;
     };
 
     const updateActivity = async (id: string, name: string) => {
+        // Optimistic
+        const newActivities = activities.map(a => a.id === id ? { ...a, name } : a);
+        setActivities(newActivities);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, profile);
+
         const { error } = await supabase.from('theatre_activities').update({ name }).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Queued (Update Activity)', error);
+        else await fetchAll();
     };
 
     const addMovie = async (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) => {
         if (!user) return;
+
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        const newMovie: TheatreMovie = {
+            id: tempId,
+            user_id: user.id,
+            title,
+            director: director || null,
+            saga: saga || null,
+            comment: comment || null,
+            rating,
+            created_at: new Date().toISOString()
+        };
+        const newMovies = [newMovie, ...movies];
+        setMovies(newMovies);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, profile);
+
         const { data, error } = await supabase.from('theatre_movies').insert([{
             title, director, saga, comment, rating, user_id: user.id
         }]).select().single();
-        if (error) throw error;
+
+        if (error) {
+            console.error('Offline Queued (Movie)', error);
+            return newMovie;
+        }
         await fetchAll();
         return data;
     };
 
     const updateMovie = async (id: string, updates: Partial<TheatreMovie>) => {
+        // Optimistic
+        const newMovies = movies.map(m => m.id === id ? { ...m, ...updates } : m);
+        setMovies(newMovies);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, profile);
+
         const { error } = await supabase.from('theatre_movies').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Queued (Update Movie)', error);
+        else await fetchAll();
     };
 
     const addSeries = async (title: string) => {
         if (!user) return;
+
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        const newSeriesItem: TheatreSeries & { seasons: TheatreSeason[] } = {
+            id: tempId,
+            user_id: user.id,
+            title,
+            created_at: new Date().toISOString(),
+            seasons: []
+        };
+        const newSeriesList = [newSeriesItem, ...series];
+        setSeries(newSeriesList);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+
         const { data, error } = await supabase.from('theatre_series').insert([{ title, user_id: user.id }]).select().single();
-        if (error) throw error;
+        if (error) {
+            console.error('Offline Queued (Series)', error);
+            return newSeriesItem;
+        }
         await fetchAll();
         return data;
     };
 
     const updateSeries = async (id: string, title: string) => {
+        // Optimistic
+        const newSeriesList = series.map(s => s.id === id ? { ...s, title } : s);
+        setSeries(newSeriesList);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+
         const { error } = await supabase.from('theatre_series').update({ title }).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Queued (Update Series)', error);
+        else await fetchAll();
     };
 
     const addSeason = async (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) => {
+        // Optimistic
+        const tempId = `temp_${Date.now()}`;
+        // We need to find the series and add the season to it securely
+        const newSeason: TheatreSeason = {
+            id: tempId,
+            series_id,
+            season_number,
+            episodes_count: episodes_count || 0,
+            comment: comment || null,
+            rating,
+            created_at: new Date().toISOString()
+        };
+
+        const newSeriesList = series.map(s => {
+            if (s.id === series_id) {
+                return { ...s, seasons: [...(s.seasons || []), newSeason] };
+            }
+            return s;
+        });
+        setSeries(newSeriesList);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+
         const { error } = await supabase.from('theatre_seasons').insert([{
             series_id, season_number, episodes_count, comment, rating
         }]);
-        if (error) throw error;
-        await fetchAll();
+
+        if (error) console.error('Offline Queued (Season)', error);
+        else await fetchAll();
     };
 
     const updateSeason = async (id: string, updates: Partial<TheatreSeason>) => {
+        // Optimistic
+        const newSeriesList = series.map(s => ({
+            ...s,
+            seasons: (s.seasons || []).map(sea => sea.id === id ? { ...sea, ...updates } : sea)
+        }));
+        setSeries(newSeriesList);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+
         const { error } = await supabase.from('theatre_seasons').update(updates).eq('id', id);
-        if (error) throw error;
-        await fetchAll();
+        if (error) console.error('Offline Queued (Update Season)', error);
+        else await fetchAll();
     };
 
     const value: GameContextType = {

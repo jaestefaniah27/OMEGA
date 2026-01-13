@@ -12,13 +12,87 @@ import {
 import { X, Sparkles } from 'lucide-react-native';
 import { MedievalButton } from './MedievalButton';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ManualColorPickerProps {
     visible: boolean;
     onClose: () => void;
     onColorSelect: (color: string) => void;
 }
+
+// Separate component using the EXACT logic from StarRatingSlider
+const ColorSlider = ({ value, max, onChange, label, colors, onScrollToggle }: {
+    value: number,
+    max: number,
+    onChange: (val: number) => void,
+    label: string,
+    colors: string[],
+    onScrollToggle: (enabled: boolean) => void
+}) => {
+    const [sliderWidth, setSliderWidth] = useState(0);
+    const sliderRef = useRef<View>(null);
+
+    const updateValue = (evt: any) => {
+        // Using nativeEvent.locationX exactly like StarRatingSlider
+        const x = evt.nativeEvent.locationX;
+        if (sliderWidth > 0) {
+            let newVal = (x / sliderWidth) * max;
+            // Clamping
+            if (newVal < 0) newVal = 0;
+            if (newVal > max) newVal = max;
+            onChange(newVal);
+        }
+    };
+
+    return (
+        <View style={styles.sliderWrapper}>
+            <View style={styles.labelRow}>
+                <Text style={styles.sliderLabel}>{label}</Text>
+                <Text style={styles.valueLabel}>{Math.round(value)}</Text>
+            </View>
+            <View
+                ref={sliderRef}
+                style={styles.sliderTrackContainer}
+                onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
+                // EXACT Responder logic from TheatreScreen's StarRatingSlider
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderGrant={(evt) => {
+                    onScrollToggle(false);
+                    updateValue(evt);
+                }}
+                onResponderMove={(evt) => {
+                    updateValue(evt);
+                }}
+                onResponderRelease={() => {
+                    onScrollToggle(true);
+                }}
+                onResponderTerminate={() => {
+                    onScrollToggle(true);
+                }}
+            >
+                <View pointerEvents="none" style={styles.sliderTrack}>
+                    <View style={styles.gradientContainer}>
+                        {colors.map((c: string, i: number) => (
+                            <View key={i} style={{ flex: 1, backgroundColor: c, height: 24 }} />
+                        ))}
+                    </View>
+                </View>
+
+                {/* Thumb */}
+                <View
+                    pointerEvents="none"
+                    style={[
+                        styles.thumb,
+                        { left: `${(value / max) * 100}%` }
+                    ]}
+                >
+                    <View style={styles.thumbInner} />
+                </View>
+            </View>
+        </View>
+    );
+};
 
 export const ManualColorPicker: React.FC<ManualColorPickerProps> = ({ visible, onClose, onColorSelect }) => {
     const [h, setH] = useState(0);
@@ -44,67 +118,6 @@ export const ManualColorPicker: React.FC<ManualColorPickerProps> = ({ visible, o
         onClose();
     };
 
-    const Slider = ({ value, max, onChange, label, colors }: any) => {
-        const [sliderWidth, setSliderWidth] = useState(0);
-
-        const updateValue = (evt: any) => {
-            const x = evt.nativeEvent.locationX;
-            if (sliderWidth > 0) {
-                let newVal = (x / sliderWidth) * max;
-                if (newVal < 0) newVal = 0;
-                if (newVal > max) newVal = max;
-                onChange(newVal);
-            }
-        };
-
-        return (
-            <View style={styles.sliderWrapper}>
-                <View style={styles.labelRow}>
-                    <Text style={styles.sliderLabel}>{label}</Text>
-                    <Text style={styles.valueLabel}>{Math.round(value)}</Text>
-                </View>
-                <View
-                    style={styles.sliderTrackContainer}
-                    onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
-                    onStartShouldSetResponder={() => true}
-                    onMoveShouldSetResponder={() => true}
-                    onResponderGrant={(evt) => {
-                        setScrollEnabled(false);
-                        updateValue(evt);
-                    }}
-                    onResponderMove={(evt) => {
-                        updateValue(evt);
-                    }}
-                    onResponderRelease={() => {
-                        setScrollEnabled(true);
-                    }}
-                    onResponderTerminate={() => {
-                        setScrollEnabled(true);
-                    }}
-                >
-                    <View pointerEvents="none" style={styles.sliderTrack}>
-                        <View style={styles.gradientContainer}>
-                            {colors.map((c: string, i: number) => (
-                                <View key={i} style={{ flex: 1, backgroundColor: c, height: 24 }} />
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Thumb */}
-                    <View
-                        pointerEvents="none"
-                        style={[
-                            styles.thumb,
-                            { left: `${(value / max) * 100}%` }
-                        ]}
-                    >
-                        <View style={styles.thumbInner} />
-                    </View>
-                </View>
-            </View>
-        );
-    };
-
     return (
         <Modal visible={visible} animationType="fade" transparent={true}>
             <View style={styles.overlay}>
@@ -125,7 +138,12 @@ export const ManualColorPicker: React.FC<ManualColorPickerProps> = ({ visible, o
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView scrollEnabled={scrollEnabled} showsVerticalScrollIndicator={false}>
+                    <ScrollView
+                        scrollEnabled={scrollEnabled}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 5 }}
+                        keyboardShouldPersistTaps="handled"
+                    >
                         <View style={styles.mainSection}>
                             <View style={styles.previewCard}>
                                 <View style={[styles.previewCircle, { backgroundColor: selectedColor }]}>
@@ -137,28 +155,31 @@ export const ManualColorPicker: React.FC<ManualColorPickerProps> = ({ visible, o
                             </View>
 
                             <View style={styles.slidersContainer}>
-                                <Slider
+                                <ColorSlider
                                     label="MATIZ"
                                     value={h}
                                     max={360}
                                     onChange={setH}
                                     colors={['#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', '#ff0000']}
+                                    onScrollToggle={setScrollEnabled}
                                 />
 
-                                <Slider
+                                <ColorSlider
                                     label="SATURACIÓN"
                                     value={s}
                                     max={100}
                                     onChange={setS}
                                     colors={['#888', selectedColor]}
+                                    onScrollToggle={setScrollEnabled}
                                 />
 
-                                <Slider
+                                <ColorSlider
                                     label="ESENCIA (LUM)"
                                     value={l}
                                     max={100}
                                     onChange={setL}
                                     colors={['#000', selectedColor, '#fff']}
+                                    onScrollToggle={setScrollEnabled}
                                 />
                             </View>
                         </View>
@@ -189,10 +210,10 @@ const styles = StyleSheet.create({
     modalContent: {
         width: '100%',
         maxWidth: 400,
-        maxHeight: '80%',
+        maxHeight: '85%',
         backgroundColor: '#F5E6C6',
         borderRadius: 12,
-        padding: 20,
+        padding: 24,
         paddingBottom: 10,
         borderWidth: 2,
         borderColor: '#8b4513',
@@ -211,7 +232,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     titleContainer: {
         flexDirection: 'row',
@@ -280,7 +301,7 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     sliderWrapper: {
-        marginBottom: 20,
+        marginBottom: 24,
     },
     labelRow: {
         flexDirection: 'row',
@@ -303,6 +324,7 @@ const styles = StyleSheet.create({
         height: 44,
         justifyContent: 'center',
         width: '100%',
+        backgroundColor: 'transparent',
     },
     sliderTrack: {
         height: 12,

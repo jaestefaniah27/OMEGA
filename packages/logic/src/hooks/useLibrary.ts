@@ -1,26 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { AppState, AppStateStatus, Alert, Platform } from 'react-native';
+import { AppState, AppStateStatus, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
-import { Subject, StudySession, Book, CustomColor } from '../types/supabase';
+import { Subject, StudySession, Book } from '../types/supabase';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
+import { usePlatform } from '../services/PlatformContext';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
-// --- Global Notification Setup (Required for SDK 53+) ---
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: false, // Deprecated in SDK 53
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
-
 export const useLibrary = () => {
+    const platform = usePlatform();
     // --- CONSUME CONTEXT ---
     const { library, workout, castle } = useGame();
     const { showToast } = useToast();
@@ -67,10 +57,7 @@ export const useLibrary = () => {
     useEffect(() => {
         const init = async () => {
             // Permissions
-            const { status } = await Notifications.getPermissionsAsync();
-            if (status !== 'granted') {
-                await Notifications.requestPermissionsAsync();
-            }
+            await platform.notifications.requestPermissions();
 
             // Recovery
             const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
@@ -176,7 +163,7 @@ export const useLibrary = () => {
                 backgroundTicks.current = 0;
 
                 // HEURISTIC A: iOS Timing (Transition Speed)
-                if (Platform.OS === 'ios' && inactiveStart.current) {
+                if (platform.os === 'ios' && inactiveStart.current) {
                     const transitionDelay = Date.now() - inactiveStart.current;
                     console.log(`Iron Will: Transition Delay = ${transitionDelay}ms`);
 
@@ -201,38 +188,21 @@ export const useLibrary = () => {
                     }, 1000);
 
                     console.log('Iron Will [V5]: Enviando primer aviso (Unified ID)...');
-                    Notifications.scheduleNotificationAsync({
-                        identifier: 'iron-will-main-alert',
-                        content: {
-                            title: '⚠️ ¡HONOR EN JUEGO!',
-                            body: 'Mantente enfocado. Si usas otras apps, la cruzada fallará.',
-                            sound: true,
-                            // @ts-ignore
-                            relevanceScore: 0.5,
-                        },
-                        trigger: null,
-                    });
+                    platform.notifications.scheduleNotification(
+                        '⚠️ ¡HONOR EN JUEGO!',
+                        'Mantente enfocado. Si usas otras apps, la cruzada fallará.',
+                        0,
+                        'iron-will-main-alert'
+                    );
 
                     // Schedule Epic Warning
                     console.log('Iron Will [V5]: Programando aviso épico (Unified ID) para dentro de 10s...');
-                    Notifications.scheduleNotificationAsync({
-                        identifier: 'iron-will-main-alert',
-                        content: {
-                            title: '¡EL JUICIO FINAL SE ACERCA! ⚖️',
-                            subtitle: '🔥 ÚLTIMA OPORTUNIDAD 🔥',
-                            body: '5 segundos para la deshonra eterna. ¡Vuelve ahora!',
-                            sound: true,
-                            // @ts-ignore
-                            interruptionLevel: 'time-sensitive',
-                            // @ts-ignore
-                            relevanceScore: 1.0,
-                        },
-                        trigger: {
-                            type: 'timeInterval',
-                            seconds: 10,
-                            repeats: false,
-                        } as any,
-                    }).then(id => {
+                    platform.notifications.scheduleNotification(
+                        '¡EL JUICIO FINAL SE ACERCA! ⚖️',
+                        '5 segundos para la deshonra eterna. ¡Vuelve ahora!',
+                        10,
+                        'iron-will-main-alert'
+                    ).then(id => {
                         warningNotificationId.current = id;
                         console.log('Iron Will [V5]: Aviso épico programado con ID Unificado:', id);
                     }).catch(err => {
@@ -244,11 +214,11 @@ export const useLibrary = () => {
             // Return to Active
             if (nextAppState === 'active') {
                 // Cancel/Dismiss the unified identifier
-                Notifications.dismissNotificationAsync('iron-will-main-alert');
-                Notifications.cancelScheduledNotificationAsync('iron-will-main-alert');
+                platform.notifications.dismissNotification('iron-will-main-alert');
+                platform.notifications.cancelNotification('iron-will-main-alert');
 
                 if (warningNotificationId.current) {
-                    Notifications.cancelScheduledNotificationAsync(warningNotificationId.current);
+                    platform.notifications.cancelNotification(warningNotificationId.current);
                     warningNotificationId.current = null;
                 }
 
@@ -303,16 +273,7 @@ export const useLibrary = () => {
 
     const sendLocalNotification = async (title: string, body: string) => {
         try {
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title,
-                    body,
-                    sound: true,
-                    // SDK 53 Compatibility
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                },
-                trigger: null, // Immediate
-            });
+            await platform.notifications.scheduleNotification(title, body);
         } catch (e) {
             console.error('Error sending notification:', e);
         }
@@ -464,10 +425,6 @@ export const useLibrary = () => {
         if (sessionError) throw sessionError;
 
         if (session.status === 'COMPLETED' && session.subject_id) {
-            // Fetch latest subject data to update total minutes
-            // We use ctxUpdateSubject which will handle optimistic update in context if we wanted, 
-            // but here we just need to push the new total to DB.
-            // Actually, we should get the current total from the 'subjects' array in context!
             const subject = subjects.find(s => s.id === session.subject_id);
             if (subject) {
                 const newTotalSubject = (subject.total_minutes_studied || 0) + session.duration_minutes;
@@ -523,9 +480,6 @@ export const useLibrary = () => {
         completeBook: (id: string) => ctxUpdateBook(id, { is_finished: true, finished_at: new Date().toISOString() }),
         reactivateBook: (id: string) => ctxUpdateBook(id, { is_finished: false, finished_at: null }),
         updateBookProgress: (id: string, current_page: number) => {
-            // Logic to check finished is moved to stopSession or needs to be here? 
-            // The original used updateBookProgress.
-            // We can check finished state here too.
             const book = books.find(b => b.id === id);
             if (!book) return Promise.resolve();
             const isFinished = current_page >= book.total_pages;

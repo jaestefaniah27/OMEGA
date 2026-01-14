@@ -3,11 +3,12 @@ import './patch-rtn'; // Import before App
 import App from './App';
 import './App.css';
 
-// Register the app
+console.log("Renderer: Registering component...");
 AppRegistry.registerComponent('desktop', () => App);
 
-// Run the app (web-specific)
+console.log("Renderer: Running application...");
 AppRegistry.runApplication('desktop', {
   initialProps: {},
   rootTag: document.getElementById('root'),
 });
+console.log("Renderer: Application run call finished.");

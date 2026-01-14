@@ -11,3 +11,5 @@ export * from './hooks/useWorkout';
 export * from './types/supabase';
 export * from './utils/formatTime';
 export { supabase } from './lib/supabase';
+export * from './services/PlatformInterfaces';
+export * from './services/PlatformContext';

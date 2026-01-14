@@ -1,2 +1,9 @@
-// Polyfill Buffer for React Native libraries running in Electron/Browser
-global.Buffer = global.Buffer || require('buffer').Buffer;
+import { Buffer } from 'buffer';
+import process from 'process';
+
+if (typeof window.global === 'undefined') {
+  window.global = window;
+}
+
+window.Buffer = Buffer;
+window.process = process;

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { WorkoutSession, WorkoutSet } from '../types/supabase';
 import { useGame } from '../context/GameContext';
+import { usePlatform } from '../services/PlatformContext';
 
 const ACTIVE_WORKOUT_KEY = '@omega_active_workout';
 
@@ -22,6 +23,7 @@ export interface ActiveWorkoutState {
 }
 
 export const useActiveWorkout = () => {
+    const platform = usePlatform();
     const { profile, library } = useGame();
     const { refresh } = library;
     const [isSessionActive, setIsSessionActive] = useState(false);
@@ -85,19 +87,21 @@ export const useActiveWorkout = () => {
         setIsSessionActive(true);
         setIsResting(false);
         
+        platform.keepAwake.activate();
         await AsyncStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify({
             startTime: now,
             routineId: selectedRoutineId,
             sets: []
         }));
-    }, []);
+    }, [platform]);
 
     const addSet = useCallback((exerciseId: string, weight: number, reps: number, rpe?: number, type: 'warmup' | 'normal' | 'failure' = 'normal') => {
         const newSet: LocalWorkoutSet = { exerciseId, weight, reps, rpe, type };
         setCurrentSets(prev => [...prev, newSet]);
         // Trigger rest timer logic here if UI needs it
         setIsResting(true);
-    }, []);
+        platform.haptics.vibrate();
+    }, [platform]);
 
     const finishSession = useCallback(async (note?: string) => {
         if (!isSessionActive || !startTime) return;
@@ -144,6 +148,7 @@ export const useActiveWorkout = () => {
             setIsSessionActive(false);
             setStartTime(null);
             setCurrentSets([]);
+            platform.keepAwake.deactivate();
             await refresh(); // Refresh muscle heatmap and other stats
             
         } catch (error) {

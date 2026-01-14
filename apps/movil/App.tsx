@@ -11,6 +11,7 @@ import { Timer, Castle, Calendar } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RootStackParamList } from './src/navigation/AppNavigator';
+import { MobilePlatformProvider } from './src/services/MobilePlatformProvider';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -20,20 +21,22 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer
-          ref={navigationRef}
-          onStateChange={() => {
-            setCurrentRoute(navigationRef.getCurrentRoute()?.name);
-          }}
-        >
-          <ToastProvider>
-            <GameProvider>
-              <AppNavigator />
-              <StatusBar style="light" />
-              <AppContent currentRoute={currentRoute} />
-            </GameProvider>
-          </ToastProvider>
-        </NavigationContainer>
+        <MobilePlatformProvider>
+          <NavigationContainer
+            ref={navigationRef}
+            onStateChange={() => {
+              setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+            }}
+          >
+            <ToastProvider>
+              <GameProvider>
+                <AppNavigator />
+                <StatusBar style="light" />
+                <AppContent currentRoute={currentRoute} />
+              </GameProvider>
+            </ToastProvider>
+          </NavigationContainer>
+        </MobilePlatformProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

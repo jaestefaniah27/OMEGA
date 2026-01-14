@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import type { ParamListBase } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { 
     HomeScreen,
@@ -17,11 +18,14 @@ import {
     GameHUD 
 } from '@omega/ui';
 import { GameProvider, ToastProvider } from '@omega/logic';
+import { DesktopPlatformProvider } from './services/DesktopPlatformProvider';
 import { DeviceEventEmitter } from 'react-native';
 import { Castle, Calendar } from 'lucide-react-native';
 
+console.log("Renderer: App.tsx evaluated");
+
 const Stack = createNativeStackNavigator();
-const navigationRef = createNavigationContainerRef();
+const navigationRef = createNavigationContainerRef<ParamListBase>();
 
 function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
   const handleProfilePress = () => {
@@ -86,32 +90,34 @@ export default function App() {
   try {
     return (
     <SafeAreaProvider>
-      <NavigationContainer
-        ref={navigationRef}
-        onStateChange={() => {
-            setCurrentRoute(navigationRef.getCurrentRoute()?.name);
-            console.log("Route changed to:", navigationRef.getCurrentRoute()?.name);
-        }}
-      >
-        <ToastProvider>
-            <GameProvider>
-                <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-                    <Stack.Screen name="Home" component={HomeScreen} />
-                    <Stack.Screen name="Castle" component={CastleScreen} />
-                    <Stack.Screen name="Library" component={LibraryScreen} />
-                    <Stack.Screen name="WizardTower" component={WizardTowerScreen} />
-                    <Stack.Screen name="Barracks" component={BarracksScreen} />
-                    <Stack.Screen name="Tavern" component={TavernScreen} />
-                    <Stack.Screen name="Temple" component={TempleScreen} />
-                    <Stack.Screen name="Theatre" component={TheatreScreen} />
-                    <Stack.Screen name="Market" component={MarketScreen} />
-                    <Stack.Screen name="Profile" component={ProfileScreen} />
-                    <Stack.Screen name="WarTable" component={WarTableScreen} />
-                </Stack.Navigator>
-                <AppContent currentRoute={currentRoute} />
-            </GameProvider>
-        </ToastProvider>
-      </NavigationContainer>
+      <DesktopPlatformProvider>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={() => {
+              setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+              console.log("Route changed to:", navigationRef.getCurrentRoute()?.name);
+          }}
+        >
+          <ToastProvider>
+              <GameProvider>
+                  <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+                      <Stack.Screen name="Home" component={HomeScreen} />
+                      <Stack.Screen name="Castle" component={CastleScreen} />
+                      <Stack.Screen name="Library" component={LibraryScreen} />
+                      <Stack.Screen name="WizardTower" component={WizardTowerScreen} />
+                      <Stack.Screen name="Barracks" component={BarracksScreen} />
+                      <Stack.Screen name="Tavern" component={TavernScreen} />
+                      <Stack.Screen name="Temple" component={TempleScreen} />
+                      <Stack.Screen name="Theatre" component={TheatreScreen} />
+                      <Stack.Screen name="Market" component={MarketScreen} />
+                      <Stack.Screen name="Profile" component={ProfileScreen} />
+                      <Stack.Screen name="WarTable" component={WarTableScreen} />
+                  </Stack.Navigator>
+                  <AppContent currentRoute={currentRoute} />
+              </GameProvider>
+          </ToastProvider>
+        </NavigationContainer>
+      </DesktopPlatformProvider>
     </SafeAreaProvider>
   );
   } catch (e) {

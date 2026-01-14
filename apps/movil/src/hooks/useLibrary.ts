@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { Subject, StudySession, Book, CustomColor } from '../types/supabase';
 import { useGame } from '../context/GameContext';
+import { useToast } from '../context/ToastContext';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
@@ -21,7 +22,8 @@ Notifications.setNotificationHandler({
 
 export const useLibrary = () => {
     // --- CONSUME CONTEXT ---
-    const { library, workout } = useGame();
+    const { library, workout, castle } = useGame();
+    const { showToast } = useToast();
     const {
         subjects,
         books,
@@ -375,56 +377,82 @@ export const useLibrary = () => {
     };
 
     const stopSession = async (abandoned = false, skipLog = false, endPage?: number) => {
+        const totalMinutes = Math.floor(elapsedSeconds / 60);
+
+        if (totalMinutes < 1 && !abandoned && !skipLog) {
+            Alert.alert(
+                "⏳ Tiempo Insuficiente",
+                "Las sesiones de menos de un minuto no se registran. ¿Deseas salir de todos modos?",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { 
+                        text: "Salir sin guardar", 
+                        style: "destructive", 
+                        onPress: () => finalizeStop(abandoned, true, endPage) 
+                    }
+                ]
+            );
+            return;
+        }
+
+        await finalizeStop(abandoned, skipLog, endPage);
+    };
+
+    const finalizeStop = async (abandoned = false, skipLog = false, endPage?: number) => {
         if (timerRef.current) clearInterval(timerRef.current);
         const totalMinutes = Math.floor(elapsedSeconds / 60);
         const start = startTime;
         const subId = selectedSubject?.id;
         const bookId = selectedBook?.id;
+        const isAbandoned = abandoned;
+        const finalMinutes = totalMinutes;
+
+        // --- OPTIMISTIC UI RESET ---
+        setIsSessionActive(false);
+        setElapsedSeconds(0);
+        setStartTime(null);
+        setActiveSessionType(null);
+        AsyncStorage.removeItem(SESSION_STORAGE_KEY).catch(console.error);
 
         try {
-            if (totalMinutes < 1 && !abandoned && !skipLog) {
+            if (skipLog || (finalMinutes < 1 && !isAbandoned)) {
                 return;
             }
-            if (!skipLog && start && (subId || bookId)) {
-                await logStudySession({
+            if (start && (subId || bookId)) {
+                // Background process
+                logStudySession({
                     subject_id: subId,
                     book_id: bookId,
                     start_time: new Date(start).toISOString(),
                     end_time: new Date().toISOString(),
-                    duration_minutes: abandoned ? 0 : (totalMinutes || 1),
+                    duration_minutes: isAbandoned ? 0 : finalMinutes,
                     mode: studyMode,
-                    status: abandoned ? 'ABANDONED' : 'COMPLETED',
+                    status: isAbandoned ? 'ABANDONED' : 'COMPLETED',
                     difficulty: difficulty,
-                    notes: abandoned ? 'Abandono voluntario' : 'Éxito'
-                });
-
-                // Update Book Progress if applicable
-                if (bookId && endPage !== undefined) {
-                    await ctxUpdateBook(bookId, {
-                        current_page: endPage,
-                        is_finished: false, // Will be checked in next step if necessary, but context updateBook is generic
-                    });
-
-                    // We need to check if finished. Access book from 'books'
-                    const liveBook = books.find(b => b.id === bookId);
-                    if (liveBook && endPage >= liveBook.total_pages) {
+                    notes: isAbandoned ? 'Abandono voluntario' : 'Éxito'
+                }).then(async () => {
+                    // Update Book Progress if applicable
+                    if (bookId && endPage !== undefined) {
                         await ctxUpdateBook(bookId, {
-                            is_finished: true,
-                            finished_at: liveBook.finished_at || new Date().toISOString()
+                            current_page: endPage,
                         });
-                    }
-                }
 
-                if (!abandoned) {
-                    Alert.alert('✨ Misión Cumplida', `Has sumado ${totalMinutes || 1} minutos.`);
-                }
+                        const liveBook = books.find(b => b.id === bookId);
+                        if (liveBook && endPage >= liveBook.total_pages) {
+                            await ctxUpdateBook(bookId, {
+                                is_finished: true,
+                                finished_at: liveBook.finished_at || new Date().toISOString()
+                            });
+                        }
+                    }
+
+                    if (!isAbandoned) {
+                        showToast(`✨ Misión Cumplida: +${finalMinutes} min`, 'success');
+                    }
+                }).catch(err => console.error('Background log session error:', err));
             }
-        } finally {
-            await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-            setIsSessionActive(false);
-            setElapsedSeconds(0);
-            setStartTime(null);
-            setActiveSessionType(null);
+        } catch (err) {
+            console.error('Error in finalizeStop logic:', err);
         }
     };
 
@@ -452,6 +480,12 @@ export const useLibrary = () => {
             if (profile) {
                 await supabase.from('profiles').update({ shame_count: (profile.shame_count || 0) + 1 }).eq('id', user.id);
             }
+        }
+
+        // Update Royal Decrees
+        if (session.status === 'COMPLETED') {
+            const libraryTag = session.subject_id ? 'STUDY' : 'READING';
+            await castle.checkDecreeProgress('LIBRARY', libraryTag, 1, session.duration_minutes);
         }
 
         // Refresh context to pull new session data (for stats)

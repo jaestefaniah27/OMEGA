@@ -13,7 +13,7 @@ import {
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
-import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins } from 'lucide-react-native';
 import { useUserStats } from '../hooks/useUserStats';
 import { MuscleHeatMap } from '../components/MuscleHeatMap';
 
@@ -188,21 +188,61 @@ export const ProfileScreen: React.FC = () => {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.headerTitle}>👤 PERFIL DEL HÉROE</Text>
 
-                <ParchmentCard style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatarCircle}>
-                            <User size={60} color="#d4af37" />
+                {/* RPG HEADER STATS */}
+                <ParchmentCard style={styles.rpgHeaderCard}>
+                    <View style={styles.rpgHeaderTop}>
+                        <View style={styles.avatarContainer}>
+                            <View style={styles.avatarCircle}>
+                                <User size={50} color="#d4af37" />
+                            </View>
+                            <Shield size={20} color="#d4af37" style={styles.shieldIcon} />
                         </View>
-                        <Shield size={24} color="#d4af37" style={styles.shieldIcon} />
+                        
+                        <View style={styles.rankInfo}>
+                            <Text style={styles.usernameText}>{profile?.username || 'Guerrero Sin Nombre'}</Text>
+                            <View style={styles.levelBadge}>
+                                <Text style={styles.levelText}>Nivel {profile?.level ?? 1}</Text>
+                                <Text style={styles.classText}>{profile?.class ?? 'Aprendiz'}</Text>
+                            </View>
+                        </View>
                     </View>
 
-                    {/* Rango y Nivel */}
-                    <View style={styles.rankBadge}>
-                        <Star size={16} color="#d4af37" />
-                        <Text style={styles.rankText}>
-                            Nvl {profile?.level ?? 1} - {profile?.class ?? 'Aprendiz'}
-                        </Text>
+                    {/* XP BAR */}
+                    <View style={styles.statProgressBarContainer}>
+                        <View style={styles.progressBarHeader}>
+                            <View style={styles.statIconLabel}>
+                                <Star size={14} color="#8b4513" />
+                                <Text style={styles.progressBarLabel}>EXPERIENCIA (XP)</Text>
+                            </View>
+                            <Text style={styles.progressBarValue}>{profile?.current_xp ?? 0} / {profile?.max_xp ?? 1000}</Text>
+                        </View>
+                        <View style={styles.progressBarBg}>
+                            <View style={[styles.progressBarFill, { width: `${((profile?.current_xp ?? 0) / (profile?.max_xp ?? 1000)) * 100}%`, backgroundColor: '#d4af37' }]} />
+                        </View>
                     </View>
+
+                    {/* HP BAR (Sangre/Vida) */}
+                    <View style={styles.statProgressBarContainer}>
+                        <View style={styles.progressBarHeader}>
+                            <View style={styles.statIconLabel}>
+                                <Shield size={14} color="#c0392b" />
+                                <Text style={styles.progressBarLabel}>PUNTOS DE VIDA (HP)</Text>
+                            </View>
+                            <Text style={styles.progressBarValue}>{profile?.hp_current ?? 100} / {profile?.hp_max ?? 100}</Text>
+                        </View>
+                        <View style={styles.progressBarBg}>
+                            <View style={[styles.progressBarFill, { width: `${((profile?.hp_current ?? 100) / (profile?.hp_max ?? 100)) * 100}%`, backgroundColor: '#c0392b' }]} />
+                        </View>
+                    </View>
+
+                    {/* GOLD COUNTER */}
+                    <View style={styles.goldCounter}>
+                        <Coins size={20} color="#d4af37" />
+                        <Text style={styles.goldText}>{profile?.gold ?? 0} Monedas de Oro</Text>
+                    </View>
+                </ParchmentCard>
+
+                <ParchmentCard style={styles.profileCard}>
 
                     <View style={styles.infoGroup}>
                         <Text style={styles.infoLabel}>Correo Electrónico:</Text>
@@ -352,6 +392,94 @@ const styles = StyleSheet.create({
         marginTop: 10,
         width: '100%',
     },
+    rpgHeaderCard: {
+        width: width * 0.9,
+        padding: 20,
+        marginBottom: 20,
+    },
+    rpgHeaderTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    rankInfo: {
+        marginLeft: 15,
+        flex: 1,
+    },
+    usernameText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginBottom: 4,
+    },
+    levelBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    levelText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        backgroundColor: 'rgba(212, 175, 55, 0.2)',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        marginRight: 8,
+    },
+    classText: {
+        fontSize: 12,
+        color: '#3d2b1f',
+        fontStyle: 'italic',
+    },
+    statProgressBarContainer: {
+        marginBottom: 15,
+    },
+    progressBarHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    statIconLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    progressBarLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginLeft: 6,
+    },
+    progressBarValue: {
+        fontSize: 10,
+        color: '#3d2b1f',
+        fontWeight: '600',
+    },
+    progressBarBg: {
+        height: 10,
+        backgroundColor: 'rgba(61, 43, 31, 0.15)',
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 5,
+    },
+    goldCounter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 5,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(61, 43, 31, 0.1)',
+    },
+    goldText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#d4af37',
+        marginLeft: 10,
+    },
     profileCard: {
         width: width * 0.9,
         padding: 25,
@@ -360,7 +488,6 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         position: 'relative',
-        marginBottom: 10,
     },
     avatarCircle: {
         width: 100,

@@ -9,12 +9,14 @@ import {
 } from '../types/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGame } from '../context/GameContext';
+import { useToast } from '../context/ToastContext';
 
 const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
     // --- CONSUME CONTEXT ---
-    const { theatre, workout } = useGame();
+    const { theatre, workout, castle } = useGame();
+    const { showToast } = useToast();
     const {
         activities,
         movies,
@@ -118,13 +120,42 @@ export const useTheatre = () => {
         }));
     };
 
-    const stopSession = async (abandoned = false, skipLog = false, endPage?: number) => {
+    const stopSession = async (abandoned = false) => {
+        const totalMinutes = Math.floor(elapsedSeconds / 60);
+
+        if (totalMinutes < 1 && !abandoned) {
+            Alert.alert(
+                "⏳ Tiempo Insuficiente",
+                "Las sesiones de menos de un minuto no se registran. ¿Deseas salir de todos modos?",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { 
+                        text: "Salir sin guardar", 
+                        style: "destructive", 
+                        onPress: () => finalizeStop(true) 
+                    }
+                ]
+            );
+            return;
+        }
+
+        await finalizeStop(abandoned);
+    };
+
+    const finalizeStop = async (abandoned = false) => {
         if (timerRef.current) clearInterval(timerRef.current);
         if (!startTime || !selectedActivity) return;
 
         try {
             const totalMinutes = Math.floor(elapsedSeconds / 60);
-            const start = startTime;
+            
+            // --- OPTIMISTIC RESET ---
+            setIsSessionActive(false);
+            setStartTime(null);
+            setElapsedSeconds(0);
+            setSelectedActivity(null);
+            AsyncStorage.removeItem(THEATRE_SESSION_STORAGE_KEY).catch(console.error);
+
             if (totalMinutes < 1 && !abandoned) {
                 return;
             }
@@ -137,46 +168,38 @@ export const useTheatre = () => {
                     activity_id: selectedActivity.id,
                     start_time: startTime.toISOString(),
                     end_time: new Date().toISOString(),
-                    duration_minutes: totalMinutes,
+                    duration_minutes: abandoned ? 0 : totalMinutes,
                     mode: 'STOPWATCH',
-                    status: 'COMPLETED',
+                    status: abandoned ? 'ABANDONED' : 'COMPLETED',
                     difficulty: 'EXPLORER'
                 }]);
                 if (sessError) console.error('Error saving session:', sessError);
 
-                // Update Theatre Activity Stats
-                // Calculate new stats locally or rely on DB aggregation? 
-                // Original logic did aggregation. Let's keep it robust.
-                const { data: allSessions } = await supabase
-                    .from('study_sessions')
-                    .select('created_at')
-                    .eq('activity_id', selectedActivity.id);
+                if (!abandoned) {
+                    const { data: allSessions } = await supabase
+                        .from('study_sessions')
+                        .select('created_at')
+                        .eq('activity_id', selectedActivity.id);
 
-                const daysSet = new Set((allSessions || []).map(s => new Date(s.created_at).toISOString().split('T')[0]));
-                const newMinutes = (selectedActivity.total_minutes || 0) + totalMinutes;
-                const newDays = daysSet.size;
+                    const daysSet = new Set((allSessions || []).map(s => new Date(s.created_at).toISOString().split('T')[0]));
+                    const newMinutes = (selectedActivity.total_minutes || 0) + totalMinutes;
+                    const newDays = daysSet.size;
 
-                const { error: actError } = await supabase
-                    .from('theatre_activities')
-                    .update({
-                        total_minutes: newMinutes,
-                        days_count: newDays
-                    })
-                    .eq('id', selectedActivity.id);
+                    await supabase
+                        .from('theatre_activities')
+                        .update({
+                            total_minutes: newMinutes,
+                            days_count: newDays
+                        })
+                        .eq('id', selectedActivity.id);
 
-                if (actError) console.error('Error updating activity stats:', actError);
-
-                // Refresh context
-                await refresh();
+                    await castle.checkDecreeProgress('THEATRE', selectedActivity.id, 1, totalMinutes);
+                    showToast(`✨ Maestría: +${totalMinutes} min`, 'success');
+                    await refresh();
+                }
             }
         } catch (err: any) {
-            console.error('StopSession crashed:', err);
-        } finally {
-            setIsSessionActive(false);
-            setStartTime(null);
-            setElapsedSeconds(0);
-            setSelectedActivity(null);
-            await AsyncStorage.removeItem(THEATRE_SESSION_STORAGE_KEY);
+            console.error('FinalizeStop crashed:', err);
         }
     };
 

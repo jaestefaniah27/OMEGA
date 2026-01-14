@@ -1,5 +1,5 @@
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { CastleScreen } from '../screens/CastleScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
@@ -10,6 +10,7 @@ import { TempleScreen } from '../screens/TempleScreen';
 import { TheatreScreen } from '../screens/TheatreScreen';
 import { MarketScreen } from '../screens/MarketScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { WarTableScreen } from '../screens/WarTableScreen';
 
 export type RootStackParamList = {
     Home: undefined;
@@ -22,9 +23,17 @@ export type RootStackParamList = {
     Theatre: undefined;
     Market: undefined;
     Profile: undefined;
+    WarTable: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
+
+const fastTransitionSpec = {
+    animation: 'timing' as const,
+    config: {
+        duration: 250,
+    },
+};
 
 export const AppNavigator: React.FC = () => {
     return (
@@ -32,7 +41,11 @@ export const AppNavigator: React.FC = () => {
             initialRouteName="Home"
             screenOptions={{
                 headerShown: false,
-                animation: 'fade',
+                cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
+                transitionSpec: {
+                    open: fastTransitionSpec,
+                    close: fastTransitionSpec,
+                }
             }}
         >
             <Stack.Screen name="Home" component={HomeScreen} />
@@ -45,6 +58,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Theatre" component={TheatreScreen} />
             <Stack.Screen name="Market" component={MarketScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="WarTable" component={WarTableScreen} />
         </Stack.Navigator>
     );
 };

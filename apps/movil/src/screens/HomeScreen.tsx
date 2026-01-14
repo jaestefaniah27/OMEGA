@@ -23,6 +23,7 @@ type RootStackParamList = {
     Theatre: undefined;
     Market: undefined;
     Profile: undefined;
+    WarTable: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -102,7 +103,6 @@ export const HomeScreen: React.FC = () => {
                     onPress={() => navigation.navigate('Tavern')}
                 />
 
-                {/* Market: South-East (Edge) */}
                 <MapLocationPin
                     title="Mercado"
                     icon="🛒"
@@ -110,6 +110,7 @@ export const HomeScreen: React.FC = () => {
                     left="85%"
                     onPress={() => navigation.navigate('Market')}
                 />
+
 
             </View>
         </View>

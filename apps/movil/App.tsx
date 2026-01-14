@@ -7,11 +7,14 @@ import { GameHUD } from '@omega/ui';
 import { GameProvider } from './src/context/GameContext';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Timer } from 'lucide-react-native';
+import { Timer, Castle, Calendar } from 'lucide-react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useGame } from './src/context/GameContext';
 import { useWorkout } from './src/hooks/useWorkout';
 
 import { RootStackParamList } from './src/navigation/AppNavigator';
+
+import { ToastProvider } from './src/context/ToastContext';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -19,20 +22,24 @@ export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>('Home');
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer
-        ref={navigationRef}
-        onStateChange={() => {
-          setCurrentRoute(navigationRef.getCurrentRoute()?.name);
-        }}
-      >
-        <GameProvider>
-          <AppNavigator />
-          <StatusBar style="light" />
-          <AppContent currentRoute={currentRoute} />
-        </GameProvider>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={() => {
+            setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+          }}
+        >
+          <ToastProvider>
+            <GameProvider>
+              <AppNavigator />
+              <StatusBar style="light" />
+              <AppContent currentRoute={currentRoute} />
+            </GameProvider>
+          </ToastProvider>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -50,6 +57,22 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
   const handleMapPress = () => {
     if (navigationRef.isReady()) {
       navigationRef.navigate('Home' as any);
+    }
+  };
+
+  const handleCastlePress = () => {
+    if (navigationRef.isReady()) {
+      if (currentRoute === 'Castle') {
+        navigationRef.navigate('WarTable' as any);
+      } else {
+        navigationRef.navigate('Castle' as any);
+      }
+    }
+  };
+
+  const handleTheatrePress = () => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Theatre' as any);
     }
   };
 
@@ -82,6 +105,9 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
         onProfilePress={handleProfilePress}
         onMapPress={handleMapPress}
         onZurronPress={handleZurronPress}
+        onCastlePress={handleCastlePress}
+        onTheatrePress={handleTheatrePress}
+        castleIcon={currentRoute === 'Castle' ? Calendar : Castle}
       />
     </>
   );

@@ -6,7 +6,7 @@ import {
     Dimensions,
     Platform
 } from 'react-native';
-import { ScrollText, Map, Plus, User } from 'lucide-react-native';
+import { Castle, Map, Plus, User, Clapperboard } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -46,13 +46,23 @@ export const GameHUD: React.FC<{
     onProfilePress?: () => void;
     onMapPress?: () => void;
     onZurronPress?: () => void;
-}> = ({ onProfilePress, onMapPress, onZurronPress }) => {
+    onCastlePress?: () => void;
+    onTheatrePress?: () => void;
+    castleIcon?: React.ElementType; // New prop for dynamic icon
+}> = ({ 
+    onProfilePress, 
+    onMapPress, 
+    onZurronPress, 
+    onCastlePress,
+    onTheatrePress,
+    castleIcon = Castle // Default to Castle
+}) => {
     return (
         <View style={styles.container}>
             <View style={styles.hudBar}>
                 <HUDButton
-                    onPress={() => console.log('Tasks')}
-                    icon={ScrollText}
+                    onPress={() => onCastlePress?.()}
+                    icon={castleIcon}
                 />
                 <HUDButton
                     onPress={() => onMapPress?.()}
@@ -67,8 +77,8 @@ export const GameHUD: React.FC<{
                     icon={User}
                 />
                 <HUDButton
-                    onPress={() => console.log('Settings')}
-                    icon={ScrollText} // Placeholder for 'Theatre' or similar
+                    onPress={() => onTheatrePress?.()}
+                    icon={Clapperboard}
                 />
             </View>
 

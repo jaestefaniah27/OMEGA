@@ -6,6 +6,7 @@ export interface Profile {
     current_xp: number;
     max_xp: number;
     hp_current: number;
+    hp_max: number;
     gold: number;
     current_status: string;
     avatar_url: string | null;
@@ -168,4 +169,27 @@ export interface PersonalRecord {
     exercise_name: string;
     max_weight: number;
     achieved_at: string;
+}
+
+// --- ROYAL DECREES SYSTEM ---
+
+export type DecreeType = 'GENERAL' | 'THEATRE' | 'LIBRARY' | 'BARRACKS' | 'CALENDAR_EVENT';
+export type DecreeStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
+export type DecreeUnit = 'MINUTES' | 'PAGES' | 'SESSIONS';
+
+export interface RoyalDecree {
+    id: string;
+    user_id: string;
+    title: string;
+    description: string | null;
+    type: DecreeType;
+    status: DecreeStatus;
+    required_activity_tag: string | null;
+    target_quantity: number;
+    current_quantity: number;
+    unit: DecreeUnit;
+    due_date: string | null;
+    recurrence: any;
+    created_at: string;
+    completed_at: string | null;
 }

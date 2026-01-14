@@ -10,8 +10,30 @@ import {
     TheatreMovie,
     TheatreSeries,
     TheatreSeason,
-    Profile
+    Profile,
+    Routine,
+    RoutineExercise,
+    Exercise,
+    MuscleFatigue,
+    PersonalRecord,
+    RoyalDecree,
+    DecreeType,
+    DecreeStatus,
+    DecreeUnit
 } from '../types/supabase';
+import { showGlobalToast } from './ToastContext';
+
+export interface RoutineWithExercises extends Routine {
+    exercises: (RoutineExercise & { exercise: Exercise })[];
+}
+
+export interface WorkoutHistoryItem {
+    id: string;
+    date: string;
+    routine: string;
+    duration: string;
+    tonnage: string;
+}
 
 const GAME_STATE_STORAGE_KEY = '@omega_game_state_v1';
 
@@ -53,6 +75,23 @@ interface GameContextType {
         updateSeason: (id: string, updates: Partial<TheatreSeason>) => Promise<void>;
     };
 
+    // --- BARRACKS DATA ---
+    barracks: {
+        routines: RoutineWithExercises[];
+        history: WorkoutHistoryItem[];
+        muscleFatigue: MuscleFatigue;
+        records: PersonalRecord[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+
+        // Mutations
+        createRoutine: (name: string, category?: string) => Promise<any>;
+        deleteRoutine: (id: string) => Promise<void>;
+        addExerciseToRoutine: (routineId: string, exerciseId: string, orderIndex: number) => Promise<void>;
+        removeExerciseFromRoutine: (routineExerciseId: string) => Promise<void>;
+        updateRoutineExercise: (id: string, updates: { target_sets?: number, target_reps?: number }) => Promise<void>;
+    };
+
     // --- WORKOUT DATA ---
     workout: {
         isSessionActive: boolean;
@@ -64,6 +103,19 @@ interface GameContextType {
         addSet: (exerciseId: string, exerciseName: string) => void;
         updateSet: (id: string, updates: Partial<any>) => void;
         removeSet: (id: string) => void;
+    };
+
+    // --- CASTLE DATA ---
+    castle: {
+        decrees: RoyalDecree[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+
+        // Mutations
+        addDecree: (decree: Partial<RoyalDecree>) => Promise<any>;
+        updateDecree: (id: string, updates: Partial<RoyalDecree>) => Promise<void>;
+        deleteDecree: (id: string) => Promise<void>;
+        checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => Promise<void>;
     };
 
     // --- GLOBAL ---
@@ -104,6 +156,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [activityStats, setActivityStats] = useState<Record<string, { totalMinutes: number, daysCount: number }>>({});
     const [theatreLoading, setTheatreLoading] = useState(true);
 
+    // Barracks State
+    const [routines, setRoutines] = useState<RoutineWithExercises[]>([]);
+    const [history, setHistory] = useState<WorkoutHistoryItem[]>([]);
+    const [muscleFatigue, setMuscleFatigue] = useState<MuscleFatigue>({});
+    const [records, setRecords] = useState<PersonalRecord[]>([]);
+    const [barracksLoading, setBarracksLoading] = useState(true);
+
+    // Castle State
+    const [decrees, setDecrees] = useState<RoyalDecree[]>([]);
+    const [castleLoading, setCastleLoading] = useState(true);
+
     // Workout State
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -138,8 +201,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     setActivityStats(theat.activityStats || {});
                     setTheatreLoading(false); // Immediate interaction
                 }
+                if (data.barracks) {
+                    setRoutines(data.barracks.routines || []);
+                    setHistory(data.barracks.history || []);
+                    setMuscleFatigue(data.barracks.muscleFatigue || {});
+                    setRecords(data.barracks.records || []);
+                    setBarracksLoading(false);
+                }
                 if (prof) {
                     setProfile(prof);
+                }
+                if (data.castle) {
+                    setDecrees(data.castle.decrees || []);
+                    setCastleLoading(false);
                 }
                 isHydrated.current = true;
             }
@@ -151,12 +225,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const saveToLocal = async (
         libData: { subjects: any[], books: any[], customColors: any[], bookStats: any },
         theatData: { activities: any[], movies: any[], series: any[], activityStats: any },
+        barracksData: { routines: any[], history: any[], muscleFatigue: any, records: any },
+        castleData: { decrees: RoyalDecree[] },
         profData: any
     ) => {
         try {
             const dump = {
                 lib: libData,
                 theat: theatData,
+                barracks: barracksData,
+                castle: castleData,
                 prof: profData,
                 timestamp: Date.now()
             };
@@ -265,8 +343,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setIsSessionActive(false);
             setStartTime(null);
             setSetsLog([]);
+            
+            // Actualizar Decretos Reales (BARRACKS)
+            const durationSec = startTime ? Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) : 0;
+            const durationMin = Math.round(durationSec / 60);
+            await checkDecreeProgress('BARRACKS', '', 1, durationMin);
+
             await fetchAll();
-            Alert.alert("¡Batalla Concluida!", `Has causado ${totalVolume} puntos de daño (tonelaje).`);
+            showGlobalToast(`¡Batalla Concluida! Daño: ${totalVolume}kg`, 'success');
             return true;
         } catch (e: any) {
             Alert.alert("Error al guardar", e.message);
@@ -300,13 +384,59 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
+    const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => {
+        if (!user || !decrees) return;
+
+        const pendingDecrees = decrees.filter(d => 
+            d.status === 'PENDING' && 
+            d.type === type && 
+            (!d.required_activity_tag || d.required_activity_tag === tag)
+        );
+
+        let updated = false;
+
+        for (const decree of pendingDecrees) {
+            // Validate minimum time if specified in recurrence
+            const minTime = decree.recurrence?.min_time || 0;
+            if (minTime > 0 && durationMinutes !== undefined && durationMinutes < minTime) {
+                continue; // Does not meet minimum requirements
+            }
+
+            const newQuantity = (decree.current_quantity || 0) + amount;
+            const isCompleted = newQuantity >= (decree.target_quantity || 1);
+            
+            const updates: Partial<RoyalDecree> = {
+                current_quantity: newQuantity,
+                status: isCompleted ? 'COMPLETED' : 'PENDING',
+                completed_at: isCompleted ? new Date().toISOString() : null
+            };
+
+            const { error } = await supabase
+                .from('royal_decrees')
+                .update(updates)
+                .eq('id', decree.id);
+
+            if (!error) {
+                updated = true;
+                if (isCompleted) {
+                    await addXp(50);
+                    await addGold(10);
+                }
+            }
+        }
+        
+        if (updated) {
+            await fetchAll();
+        }
+    };
+
     // --- FETCH ---
     const fetchAll = async () => {
         try {
-
             if (!isHydrated.current) {
                 setLibraryLoading(true);
                 setTheatreLoading(true);
+                setBarracksLoading(true);
             }
 
             const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -314,69 +444,81 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             if (!currentUser) return;
 
             // PARALLEL FETCH
-            const [
-                { data: subData },
-                { data: bookData },
-                { data: colData },
-                { data: sessData },
-                { data: actData },
-                { data: movData },
-                { data: serData },
-                { data: seasData },
-                { data: profData }
-            ] = await Promise.all([
-                // Library
+            const results = await Promise.all([
+                // 0: subjects
                 supabase.from('subjects').select('*').order('created_at', { ascending: false }),
+                // 1: books
                 supabase.from('books').select('*').order('created_at', { ascending: false }),
+                // 2: custom_colors
                 supabase.from('custom_colors').select('*').order('created_at', { ascending: false }),
+                // 3: study_sessions
                 supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null),
-
-                // Theatre
+                // 4: theatre_activities
                 supabase.from('theatre_activities').select('*').order('created_at', { ascending: false }),
+                // 5: theatre_movies
                 supabase.from('theatre_movies').select('*').order('created_at', { ascending: false }),
+                // 6: theatre_series
                 supabase.from('theatre_series').select('*').order('created_at', { ascending: false }),
+                // 7: theatre_seasons
                 supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true }),
-
-                // Profile
-                supabase.from('profiles').select('*').eq('id', currentUser.id).single()
+                // 8: profiles
+                supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
+                // 9: routines
+                supabase.from('routines').select(`*, exercises:routine_exercises(*, exercise:exercises(*))`).eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 10: workout_history
+                supabase.from('workout_sessions').select(`*, routine:routines(name), sets:workout_sets(weight_kg, reps)`).eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(5),
+                // 11: muscle_fatigue
+                supabase.rpc('get_muscle_heat_map', { user_uuid: currentUser.id }),
+                // 12: personal_records
+                supabase.rpc('get_personal_records', { user_uuid: currentUser.id }),
+                // 13: royal_decrees
+                supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
             ]);
 
-            // --- PROCESS LIBRARY ---
-            const newSubjects = subData || [];
-            const newBooks = bookData || [];
-            const newColors = colData || [];
+            const subData = results[0].data || [];
+            const bookData = results[1].data || [];
+            const colData = results[2].data || [];
+            const sessData = results[3].data || [];
+            const actData = results[4].data || [];
+            const movData = results[5].data || [];
+            const serData = results[6].data || [];
+            const seasData = results[7].data || [];
+            const profData = results[8].data;
+            const routineData = results[9].data || [];
+            const rawHistory = results[10].data || [];
+            const fatigueData = results[11].data || {};
+            const recordData = results[12].data || [];
+            const decreeData = results[13].data || [];
 
+            // --- PROCESS LIBRARY ---
             const bStats: Record<string, number> = {};
-            (sessData || []).forEach((s: any) => {
+            sessData.forEach((s: any) => {
                 if (s.book_id) {
                     bStats[s.book_id] = (bStats[s.book_id] || 0) + s.duration_minutes;
                 }
             });
 
-            setSubjects(newSubjects);
-            setBooks(newBooks);
-            setCustomColors(newColors);
+            setSubjects(subData);
+            setBooks(bookData);
+            setCustomColors(colData);
             setBookStats(bStats);
 
             // --- PROCESS THEATRE ---
-            const seriesWithSeasons = (serData || []).map((s: any) => ({
+            const seriesWithSeasons = serData.map((s: any) => ({
                 ...s,
-                seasons: (seasData || []).filter((season: any) => season.series_id === s.id)
+                seasons: seasData.filter((season: any) => season.series_id === s.id)
             }));
 
             const tStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
-            (actData || []).forEach((act: any) => {
+            actData.forEach((act: any) => {
                 tStats[act.id] = {
                     totalMinutes: act.total_minutes || 0,
                     daysCount: act.days_count || 0
                 };
             });
 
-            const newActivities = actData || [];
-            const newMovies = movData || [];
-
-            setActivities(newActivities);
-            setMovies(newMovies);
+            setActivities(actData);
+            setMovies(movData);
             setSeries(seriesWithSeasons);
             setActivityStats(tStats);
 
@@ -385,10 +527,34 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 setProfile(profData as Profile);
             }
 
+            // --- PROCESS BARRACKS ---
+            const formattedHistory: WorkoutHistoryItem[] = rawHistory.map((session: any) => {
+                const totalTonnage = session.sets.reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
+                const duration = session.ended_at 
+                    ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
+                    : 'En curso';
+                
+                return {
+                    id: session.id,
+                    date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    routine: session.routine?.name || 'Misión Libre',
+                    duration,
+                    tonnage: totalTonnage.toLocaleString() + 'kg'
+                };
+            });
+
+            setRoutines(routineData);
+            setHistory(formattedHistory);
+            setMuscleFatigue(fatigueData);
+            setRecords(recordData);
+            setDecrees(decreeData);
+
             // --- PERSIST ---
             saveToLocal(
-                { subjects: newSubjects, books: newBooks, customColors: newColors, bookStats: bStats },
-                { activities: newActivities, movies: newMovies, series: seriesWithSeasons, activityStats: tStats },
+                { subjects: subData, books: bookData, customColors: colData, bookStats: bStats },
+                { activities: actData, movies: movData, series: seriesWithSeasons, activityStats: tStats },
+                { routines: routineData, history: formattedHistory, muscleFatigue: fatigueData, records: recordData },
+                { decrees: decreeData },
                 profData
             );
 
@@ -397,6 +563,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLibraryLoading(false);
             setTheatreLoading(false);
+            setBarracksLoading(false);
+            setCastleLoading(false);
             isHydrated.current = true;
         }
     };
@@ -469,6 +637,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 saveToLocal(
                     { subjects, books, customColors, bookStats },
                     { activities, movies, series, activityStats },
+                    { routines, history, muscleFatigue, records },
+                    { decrees },
                     newProfile
                 );
             }
@@ -477,8 +647,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const { error } = await supabase.rpc('add_gold', { amount });
             if (error) {
                 console.error('RPC add_gold failed (will sync later):', error);
-                // Note: Without a sync queue, this change exists only locally until next successful sync/fetch overwrites it.
-                // But at least it persists across restarts while offline.
             }
         } catch (e) {
             console.error('RPC Error', e);
@@ -498,6 +666,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 saveToLocal(
                     { subjects, books, customColors, bookStats },
                     { activities, movies, series, activityStats },
+                    { routines, history, muscleFatigue, records },
+                    { decrees },
                     newProfile
                 );
             }
@@ -514,262 +684,196 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // --- MUTATORS (LIBRARY) ---
     const addSubject = async (name: string, color: string, course?: string) => {
         if (!user) return;
-
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
         const newSubject: Subject = {
-            id: tempId,
-            user_id: user.id,
-            name,
-            color,
-            course: course || null,
-            is_completed: false,
-            total_minutes_studied: 0,
-            created_at: new Date().toISOString()
+            id: tempId, user_id: user.id, name, color, course: course || null,
+            is_completed: false, total_minutes_studied: 0, created_at: new Date().toISOString()
         };
         const newSubjects = [newSubject, ...subjects];
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
 
         const { data, error } = await supabase.from('subjects').insert([{ name, color, course, user_id: user.id }]).select().single();
-        if (error) {
-            console.error('Offline Action Queued (Subject)', error);
-            // In a full system we'd add to a SyncQueue. Here we rely on persistent Optimistic UI.
-            return newSubject;
-        }
-        await fetchAll(); // Replaces temp ID with real ID
-        return data;
+        if (!error) await fetchAll();
+        return data || newSubject;
     };
 
     const updateSubject = async (id: string, updates: Partial<Subject>) => {
-        // Optimistic
         const newSubjects = subjects.map(s => s.id === id ? { ...s, ...updates } : s);
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
-
-        const { error } = await supabase.from('subjects').update(updates).eq('id', id);
-        if (error) console.error('Offline Action Queued (Update Subject)', error);
-        else await fetchAll();
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('subjects').update(updates).eq('id', id);
+        await fetchAll();
     };
 
     const addBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
         if (!user) return;
-
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
         const newBook: Book = {
-            id: tempId,
-            user_id: user.id,
-            title,
-            author,
-            total_pages,
-            current_page: 0,
-            cover_color,
-            saga: saga || null,
-            saga_index: saga_index || null,
-            is_finished: false,
-            finished_at: null,
-            created_at: new Date().toISOString()
+            id: tempId, user_id: user.id, title, author, total_pages, current_page: 0,
+            cover_color, saga: saga || null, saga_index: saga_index || null,
+            is_finished: false, finished_at: null, created_at: new Date().toISOString()
         };
         const newBooks = [newBook, ...books];
         setBooks(newBooks);
-        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
 
-        const { data, error } = await supabase.from('books').insert([{
-            title, author, total_pages, cover_color, saga, saga_index, user_id: user.id
-        }]).select().single();
-
-        if (error) {
-            console.error('Offline Action Queued (Book)', error);
-            return newBook;
-        }
-        await fetchAll();
-        return data;
+        const { data, error } = await supabase.from('books').insert([{ title, author, total_pages, cover_color, saga, saga_index, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data || newBook;
     };
 
     const updateBook = async (id: string, updates: Partial<Book>) => {
-        // Optimistic
         const newBooks = books.map(b => b.id === id ? { ...b, ...updates } : b);
         setBooks(newBooks);
-        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, profile);
-
-        const { error } = await supabase.from('books').update(updates).eq('id', id);
-        if (error) console.error('Offline Action Queued (Update Book)', error);
-        else await fetchAll();
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('books').update(updates).eq('id', id);
+        await fetchAll();
     };
 
     const saveCustomColor = async (hex_code: string, name?: string) => {
         if (!user) return;
-        if (customColors.some(c => c.hex_code.toUpperCase() === hex_code.toUpperCase())) return;
-
-        const { data, error } = await supabase.from('custom_colors').insert([{
-            hex_code, name, user_id: user.id
-        }]).select().single();
-        if (error) throw error;
-        await fetchAll();
+        const { data, error } = await supabase.from('custom_colors').insert([{ hex_code, name, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
         return data;
     };
-
 
     // --- MUTATORS (THEATRE) ---
     const addActivity = async (name: string) => {
         if (!user) return;
-
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
         const newActivity: TheatreActivity = {
-            id: tempId,
-            user_id: user.id,
-            name,
-            total_minutes: 0,
-            days_count: 0,
-            created_at: new Date().toISOString()
+            id: tempId, user_id: user.id, name, total_minutes: 0, days_count: 0, created_at: new Date().toISOString()
         };
         const newActivities = [newActivity, ...activities];
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
 
         const { data, error } = await supabase.from('theatre_activities').insert([{ name, user_id: user.id }]).select().single();
-        if (error) {
-            console.error('Offline Queued (Activity)', error);
-            return newActivity;
-        }
-        await fetchAll();
-        return data;
+        if (!error) await fetchAll();
+        return data || newActivity;
     };
 
     const updateActivity = async (id: string, name: string) => {
-        // Optimistic
         const newActivities = activities.map(a => a.id === id ? { ...a, name } : a);
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, profile);
-
-        const { error } = await supabase.from('theatre_activities').update({ name }).eq('id', id);
-        if (error) console.error('Offline Queued (Update Activity)', error);
-        else await fetchAll();
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('theatre_activities').update({ name }).eq('id', id);
+        await fetchAll();
     };
 
     const addMovie = async (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) => {
         if (!user) return;
-
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
         const newMovie: TheatreMovie = {
-            id: tempId,
-            user_id: user.id,
-            title,
-            director: director || null,
-            saga: saga || null,
-            comment: comment || null,
-            rating,
-            created_at: new Date().toISOString()
+            id: tempId, user_id: user.id, title, director: director || null, saga: saga || null, comment: comment || null, rating, created_at: new Date().toISOString()
         };
         const newMovies = [newMovie, ...movies];
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
 
-        const { data, error } = await supabase.from('theatre_movies').insert([{
-            title, director, saga, comment, rating, user_id: user.id
-        }]).select().single();
-
-        if (error) {
-            console.error('Offline Queued (Movie)', error);
-            return newMovie;
-        }
-        await fetchAll();
-        return data;
+        const { data, error } = await supabase.from('theatre_movies').insert([{ title, director, saga, comment, rating, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data || newMovie;
     };
 
     const updateMovie = async (id: string, updates: Partial<TheatreMovie>) => {
-        // Optimistic
         const newMovies = movies.map(m => m.id === id ? { ...m, ...updates } : m);
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, profile);
-
-        const { error } = await supabase.from('theatre_movies').update(updates).eq('id', id);
-        if (error) console.error('Offline Queued (Update Movie)', error);
-        else await fetchAll();
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('theatre_movies').update(updates).eq('id', id);
+        await fetchAll();
     };
 
     const addSeries = async (title: string) => {
         if (!user) return;
-
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
         const newSeriesItem: TheatreSeries & { seasons: TheatreSeason[] } = {
-            id: tempId,
-            user_id: user.id,
-            title,
-            created_at: new Date().toISOString(),
-            seasons: []
+            id: tempId, user_id: user.id, title, created_at: new Date().toISOString(), seasons: []
         };
         const newSeriesList = [newSeriesItem, ...series];
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
 
         const { data, error } = await supabase.from('theatre_series').insert([{ title, user_id: user.id }]).select().single();
-        if (error) {
-            console.error('Offline Queued (Series)', error);
-            return newSeriesItem;
-        }
-        await fetchAll();
-        return data;
+        if (!error) await fetchAll();
+        return data || newSeriesItem;
     };
 
     const updateSeries = async (id: string, title: string) => {
-        // Optimistic
         const newSeriesList = series.map(s => s.id === id ? { ...s, title } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
-
-        const { error } = await supabase.from('theatre_series').update({ title }).eq('id', id);
-        if (error) console.error('Offline Queued (Update Series)', error);
-        else await fetchAll();
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('theatre_series').update({ title }).eq('id', id);
+        await fetchAll();
     };
 
     const addSeason = async (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) => {
-        // Optimistic
         const tempId = `temp_${Date.now()}`;
-        // We need to find the series and add the season to it securely
         const newSeason: TheatreSeason = {
-            id: tempId,
-            series_id,
-            season_number,
-            episodes_count: episodes_count || 0,
-            comment: comment || null,
-            rating,
-            created_at: new Date().toISOString()
+            id: tempId, series_id, season_number, episodes_count: episodes_count || 0, comment: comment || null, rating, created_at: new Date().toISOString()
         };
-
-        const newSeriesList = series.map(s => {
-            if (s.id === series_id) {
-                return { ...s, seasons: [...(s.seasons || []), newSeason] };
-            }
-            return s;
-        });
+        const newSeriesList = series.map(s => s.id === series_id ? { ...s, seasons: [...(s.seasons || []), newSeason] } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
-
-        const { error } = await supabase.from('theatre_seasons').insert([{
-            series_id, season_number, episodes_count, comment, rating
-        }]);
-
-        if (error) console.error('Offline Queued (Season)', error);
-        else await fetchAll();
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('theatre_seasons').insert([{ series_id, season_number, episodes_count, comment, rating }]);
+        await fetchAll();
     };
 
     const updateSeason = async (id: string, updates: Partial<TheatreSeason>) => {
-        // Optimistic
         const newSeriesList = series.map(s => ({
-            ...s,
-            seasons: (s.seasons || []).map(sea => sea.id === id ? { ...sea, ...updates } : sea)
+            ...s, seasons: (s.seasons || []).map(sea => sea.id === id ? { ...sea, ...updates } : sea)
         }));
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        await supabase.from('theatre_seasons').update(updates).eq('id', id);
+        await fetchAll();
+    };
 
-        const { error } = await supabase.from('theatre_seasons').update(updates).eq('id', id);
-        if (error) console.error('Offline Queued (Update Season)', error);
-        else await fetchAll();
+    // --- MUTATORS (BARRACKS) ---
+    const createRoutine = async (name: string, category?: string) => {
+        if (!user) return;
+        const { data: routine, error: rError } = await supabase.from('routines').insert([{ name, category, user_id: user.id }]).select().single();
+        if (!rError) await fetchAll();
+        return routine;
+    };
+
+    const addExerciseToRoutine = async (routineId: string, exerciseId: string, orderIndex: number) => {
+        await supabase.from('routine_exercises').insert([{ routine_id: routineId, exercise_id: exerciseId, order_index: orderIndex, target_sets: 3, target_reps: 10 }]);
+        await fetchAll();
+    };
+
+    const removeExerciseFromRoutine = async (routineExerciseId: string) => {
+        await supabase.from('routine_exercises').delete().eq('id', routineExerciseId);
+        await fetchAll();
+    };
+
+    const updateRoutineExercise = async (id: string, updates: { target_sets?: number, target_reps?: number }) => {
+        await supabase.from('routine_exercises').update(updates).eq('id', id);
+        await fetchAll();
+    };
+
+    const deleteRoutine = async (id: string) => {
+        await supabase.from('routines').delete().eq('id', id);
+        await fetchAll();
+    };
+
+    // --- MUTATORS (CASTLE) ---
+    const addDecree = async (decree: Partial<RoyalDecree>) => {
+        if (!user) return;
+        const { data, error } = await supabase.from('royal_decrees').insert([{ ...decree, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data;
+    };
+
+    const updateDecree = async (id: string, updates: Partial<RoyalDecree>) => {
+        await supabase.from('royal_decrees').update(updates).eq('id', id);
+        await fetchAll();
+    };
+
+    const deleteDecree = async (id: string) => {
+        await supabase.from('royal_decrees').delete().eq('id', id);
+        await fetchAll();
     };
 
     const value: GameContextType = {
@@ -801,6 +905,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             updateSeries,
             addSeason,
             updateSeason
+        },
+        barracks: {
+            routines,
+            history,
+            muscleFatigue,
+            records,
+            loading: barracksLoading,
+            refresh: fetchAll,
+            createRoutine,
+            deleteRoutine,
+            addExerciseToRoutine,
+            removeExerciseFromRoutine,
+            updateRoutineExercise
+        },
+        castle: {
+            decrees,
+            loading: castleLoading,
+            refresh: fetchAll,
+            addDecree,
+            updateDecree,
+            deleteDecree,
+            checkDecreeProgress
         },
         workout: {
             isSessionActive,

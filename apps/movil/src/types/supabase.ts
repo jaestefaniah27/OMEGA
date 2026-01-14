@@ -23,7 +23,21 @@ export interface Subject {
     course: string | null;
     is_completed: boolean;
     total_minutes_studied: number;
+    exams: Exam[];
+    final_grade: number | null;
     created_at: string;
+}
+
+export interface Exam {
+    id: string;
+    title: string;
+    date: string;
+    time?: string;
+    place?: string;
+    weight: number; // 0-100
+    grade: number | null; // 0-10
+    is_completed: boolean;
+    decree_id: string | null;
 }
 
 export interface Book {
@@ -173,7 +187,7 @@ export interface PersonalRecord {
 
 // --- ROYAL DECREES SYSTEM ---
 
-export type DecreeType = 'GENERAL' | 'THEATRE' | 'LIBRARY' | 'BARRACKS' | 'CALENDAR_EVENT';
+export type DecreeType = 'GENERAL' | 'THEATRE' | 'LIBRARY' | 'BARRACKS' | 'CALENDAR_EVENT' | 'EXAM';
 export type DecreeStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 export type DecreeUnit = 'MINUTES' | 'PAGES' | 'SESSIONS';
 

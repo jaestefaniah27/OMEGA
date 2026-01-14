@@ -36,7 +36,8 @@ import {
 } from 'lucide-react-native';
 import { CameraColorPicker, ManualColorPicker } from '@omega/ui';
 import { useLibrary } from '../hooks/useLibrary';
-import { Subject, Book } from '../types/supabase';
+import { Subject, Book, Exam } from '../types/supabase';
+import Svg, { G, Path, Circle } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,6 +59,52 @@ const toRoman = (num: number): string => {
         }
     }
     return roman;
+};
+
+const ExamPieChart = ({ exams, size = 100 }: { exams: Exam[], size?: number }) => {
+    const totalWeight = exams.reduce((acc, ex) => acc + ex.weight, 0);
+    const radius = size / 2;
+    const center = size / 2;
+    let currentAngle = -90; // Start at top
+
+    if (exams.length === 0) return null;
+
+    return (
+        <Svg width={size} height={size}>
+            <G transform={`translate(${center}, ${center})`}>
+                {exams.map((ex, idx) => {
+                    const sliceAngle = (ex.weight / (totalWeight || 100)) * 360;
+                    const rad1 = (currentAngle * Math.PI) / 180;
+                    const x1 = (radius - 5) * Math.cos(rad1);
+                    const y1 = (radius - 5) * Math.sin(rad1);
+                    
+                    const rad2 = ((currentAngle + sliceAngle) * Math.PI) / 180;
+                    const x2 = (radius - 5) * Math.cos(rad2);
+                    const y2 = (radius - 5) * Math.sin(rad2);
+                    
+                    const largeArc = sliceAngle > 180 ? 1 : 0;
+                    const d = `M 0 0 L ${x1} ${y1} A ${radius - 5} ${radius - 5} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                    
+                    const colors = ['#d4af37', '#8b4513', '#c0392b', '#2980b9', '#27ae60', '#8e44ad'];
+                    const fillColor = ex.is_completed ? '#27ae60' : (colors[idx % colors.length]);
+                    
+                    currentAngle += sliceAngle;
+                    
+                    return (
+                        <Path 
+                            key={ex.id} 
+                            d={d} 
+                            fill={fillColor} 
+                            stroke="#3d2b1f" 
+                            strokeWidth={1}
+                            opacity={ex.is_completed ? 1 : 0.7}
+                        />
+                    );
+                })}
+                <Circle cx={0} cy={0} r={radius / 3} fill="#fff7e6" />
+            </G>
+        </Svg>
+    );
 };
 
 export const LibraryScreen: React.FC = () => {
@@ -95,8 +142,11 @@ export const LibraryScreen: React.FC = () => {
         bookStats,
         saveCustomColor,
         customColors,
-        activeSessionType
+        activeSessionType,
+        updateSubject
     } = useLibrary();
+
+    const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
     // UI-only States
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -288,43 +338,150 @@ export const LibraryScreen: React.FC = () => {
     };
 
     // --- CARDS ---
-    const SubjectCard = ({ item }: { item: Subject }) => (
-        <ParchmentCard style={styles.subjectCard}>
-            <View style={[styles.colorTab, { backgroundColor: item.color }]} />
-            <View style={styles.subjectInfo}>
-                <Text style={styles.subjectName}>{item.name}</Text>
-                <View style={styles.subjectMetaRow}>
-                    {item.course && (
-                        <View style={styles.courseBadge}>
-                            <Map size={10} color="#8b4513" style={{ marginRight: 3 }} />
-                            <Text style={styles.courseText}>{item.course}</Text>
+    const SubjectCard = ({ item }: { item: Subject }) => {
+        const isExpanded = expandedSubjectId === item.id;
+        const exams = item.exams || [];
+        const completedExams = exams.filter(e => e.is_completed);
+
+        const handleUpdateExamGrade = async (examId: string, grade: number) => {
+            const updatedExams = exams.map(ex => ex.id === examId ? { ...ex, grade } : ex);
+            await updateSubject(item.id, { exams: updatedExams });
+        };
+
+        const handleUpdateFinalGrade = async (grade: number) => {
+            await updateSubject(item.id, { final_grade: grade });
+        };
+
+        return (
+            <ParchmentCard style={styles.subjectCard}>
+                <TouchableOpacity 
+                    style={styles.cardMainArea}
+                    onPress={() => setExpandedSubjectId(isExpanded ? null : item.id)}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.colorTab, { backgroundColor: item.color }]} />
+                    <View style={styles.subjectInfo}>
+                        <View style={styles.subjectHeaderRow}>
+                            <Text style={styles.subjectName}>{item.name}</Text>
+                            {exams.length > 0 && (
+                                <View style={styles.examBadge}>
+                                    <Award size={10} color="#fff" />
+                                    <Text style={styles.examBadgeText}>{exams.length} E</Text>
+                                </View>
+                            )}
                         </View>
-                    )}
-                    <View style={styles.subjectStats}>
-                        <Clock size={12} color="#8b4513" style={{ marginRight: 4 }} />
-                        <Text style={styles.subjectTime}>{formatTimeDisplay(item.total_minutes_studied)}</Text>
+                        <View style={styles.subjectMetaRow}>
+                            {item.course && (
+                                <View style={styles.courseBadge}>
+                                    <Map size={10} color="#8b4513" style={{ marginRight: 3 }} />
+                                    <Text style={styles.courseText}>{item.course}</Text>
+                                </View>
+                            )}
+                            <View style={styles.subjectStats}>
+                                <Clock size={12} color="#8b4513" style={{ marginRight: 4 }} />
+                                <Text style={styles.subjectTime}>{formatTimeDisplay(item.total_minutes_studied)}</Text>
+                            </View>
+                        </View>
                     </View>
-                </View>
-            </View>
-            <View style={styles.cardActions}>
-                {item.is_completed ? (
-                    <TouchableOpacity
-                        style={styles.reactivateBtn}
-                        onPress={() => reactivateSubject(item.id)}
-                    >
-                        <History size={20} color="#8b4513" opacity={0.6} />
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity
-                        style={styles.completeBtn}
-                        onPress={() => completeSubject(item.id)}
-                    >
-                        <CheckCircle size={20} color="#27ae60" />
-                    </TouchableOpacity>
+                    <View style={styles.cardActions}>
+                        <ChevronDown size={20} color="#8b4513" style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }} />
+                    </View>
+                </TouchableOpacity>
+
+                {isExpanded && (
+                    <View style={styles.expandedContent}>
+                        <View style={styles.examSection}>
+                            <View style={styles.examHeader}>
+                                <View style={styles.quesitoContainer}>
+                                    <ExamPieChart exams={exams} size={100} />
+                                    <Text style={styles.quesitoLabel}>APORTACIÓN</Text>
+                                </View>
+                                <View style={styles.examSummary}>
+                                    <Text style={styles.examSummaryTitle}>EXÁMENES RELEVANTES</Text>
+                                    <Text style={styles.examSummarySubtitle}>{completedExams.length} de {exams.length} concluidos</Text>
+                                    
+                                    {item.final_grade !== null && (
+                                        <View style={styles.finalGradeResult}>
+                                            <Text style={styles.finalGradeLabel}>NOTA FINAL:</Text>
+                                            <Text style={styles.finalGradeValue}>{item.final_grade}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+
+                            <View style={styles.examList}>
+                                {exams.map(ex => (
+                                    <View key={ex.id} style={styles.examItemCard}>
+                                        <View style={styles.examItemTop}>
+                                            <View style={styles.examItemInfo}>
+                                                <Text style={styles.examItemTitle}>{ex.title}</Text>
+                                                <Text style={styles.examItemMeta}>
+                                                    {new Date(ex.date).toLocaleDateString()} {ex.time ? `- ${ex.time}` : ''}
+                                                    {ex.place ? ` @ ${ex.place}` : ''}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.examItemWeight}>
+                                                <Text style={styles.weightValue}>{ex.weight}%</Text>
+                                            </View>
+                                        </View>
+
+                                        {ex.is_completed ? (
+                                            <View style={styles.gradeEditor}>
+                                                <Text style={styles.gradeLabel}>Nota Real:</Text>
+                                                <View style={styles.gradeInputRow}>
+                                                    <TextInput
+                                                        style={styles.gradeInput}
+                                                        keyboardType="numeric"
+                                                        value={ex.grade !== null ? ex.grade.toString() : ''}
+                                                        placeholder="0-10"
+                                                        onChangeText={(val) => handleUpdateExamGrade(ex.id, parseFloat(val) || 0)}
+                                                    />
+                                                    <View style={styles.gradeBarBg}>
+                                                        <View 
+                                                            style={[
+                                                                styles.gradeBarFill, 
+                                                                { 
+                                                                    width: `${(ex.grade || 0) * 10}%`,
+                                                                    backgroundColor: (ex.grade || 0) >= 5 ? '#27ae60' : '#c0392b'
+                                                                }
+                                                            ]} 
+                                                        />
+                                                    </View>
+                                                    <Text style={styles.gradePercentText}>{Math.round((ex.grade || 0) * 10)}%</Text>
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.pendingExamStatus}>
+                                                <Clock size={14} color="#f39c12" />
+                                                <Text style={styles.pendingText}>Pendiente de realización</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                ))}
+                            </View>
+
+                            <View style={styles.finalActions}>
+                                <Text style={styles.finalGradePrompt}>Nota Final de la Asignatura:</Text>
+                                <TextInput
+                                    style={styles.finalGradeInput}
+                                    placeholder="Nota final"
+                                    keyboardType="numeric"
+                                    value={item.final_grade !== null ? item.final_grade.toString() : ''}
+                                    onChangeText={(val) => handleUpdateFinalGrade(parseFloat(val) || 0)}
+                                />
+                                <MedievalButton
+                                    title={item.is_completed ? "REACTIVAR ASIGNATURA" : "CONCLUIR ASIGNATURA"}
+                                    onPress={() => item.is_completed ? reactivateSubject(item.id) : completeSubject(item.id)}
+                                    style={styles.subjectCompleteBtn}
+                                    variant={item.is_completed ? "primary" : "primary"}
+                                />
+                            </View>
+                        </View>
+                    </View>
                 )}
-            </View>
-        </ParchmentCard>
-    );
+            </ParchmentCard>
+        );
+    };
 
     const BookCard = ({ item }: { item: Book }) => (
         <ParchmentCard style={styles.subjectCard}>
@@ -1277,10 +1434,10 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     subjectCard: {
-        width: width * 0.9,
+        width: width * 0.95,
         padding: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'column',
+        alignItems: 'stretch',
         marginBottom: 12,
     },
     colorTab: {
@@ -1291,6 +1448,7 @@ const styles = StyleSheet.create({
     },
     subjectInfo: {
         flex: 1,
+        paddingHorizontal: 10,
     },
     subjectName: {
         fontSize: 16,
@@ -1560,4 +1718,212 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
     },
+    subjectHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    examBadge: {
+        backgroundColor: '#d4af37',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    examBadgeText: {
+        color: '#fff',
+        fontSize: 9,
+        fontWeight: 'bold',
+        marginLeft: 2,
+    },
+    cardMainArea: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        justifyContent: 'space-between',
+    },
+    expandedContent: {
+        marginTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(61, 43, 31, 0.1)',
+        paddingTop: 15,
+    },
+    examSection: {
+        width: '100%',
+    },
+    examHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    quesitoContainer: {
+        alignItems: 'center',
+        marginRight: 20,
+    },
+    quesitoLabel: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginTop: 5,
+        letterSpacing: 1,
+    },
+    examSummary: {
+        flex: 1,
+    },
+    examSummaryTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        letterSpacing: 1,
+    },
+    examSummarySubtitle: {
+        fontSize: 10,
+        color: '#8b4513',
+        marginTop: 2,
+    },
+    finalGradeResult: {
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    finalGradeLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    finalGradeValue: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#d4af37',
+        marginLeft: 5,
+    },
+    examList: {
+        gap: 10,
+    },
+    examItemCard: {
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: 8,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(61, 43, 31, 0.1)',
+    },
+    examItemTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    examItemInfo: {
+        flex: 1,
+    },
+    examItemTitle: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    examItemMeta: {
+        fontSize: 11,
+        color: '#8b4513',
+        marginTop: 2,
+    },
+    examItemWeight: {
+        backgroundColor: 'rgba(61, 43, 31, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    weightValue: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    gradeEditor: {
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(61, 43, 31, 0.05)',
+    },
+    gradeLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginBottom: 5,
+    },
+    gradeInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    gradeInput: {
+        width: 45,
+        height: 30,
+        backgroundColor: '#fff',
+        borderRadius: 4,
+        paddingHorizontal: 5,
+        fontSize: 14,
+        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(61, 43, 31, 0.2)',
+        color: '#3d2b1f',
+    },
+    gradeBarBg: {
+        flex: 1,
+        height: 6,
+        backgroundColor: 'rgba(61, 43, 31, 0.1)',
+        borderRadius: 3,
+        marginHorizontal: 10,
+        overflow: 'hidden',
+    },
+    gradeBarFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    gradePercentText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        width: 40,
+        textAlign: 'right',
+    },
+    pendingExamStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10,
+        gap: 5,
+    },
+    pendingText: {
+        fontSize: 11,
+        color: '#f39c12',
+        fontStyle: 'italic',
+    },
+    finalActions: {
+        marginTop: 25,
+        paddingTop: 15,
+        borderTopWidth: 2,
+        borderTopColor: 'rgba(61, 43, 31, 0.1)',
+        borderStyle: 'dashed',
+    },
+    finalGradePrompt: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        textAlign: 'center',
+        marginBottom: 10,
+    },
+    finalGradeInput: {
+        width: 100,
+        alignSelf: 'center',
+        height: 40,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: '#d4af37',
+        color: '#3d2b1f',
+        marginBottom: 15,
+    },
+    subjectCompleteBtn: {
+        width: '100%',
+    }
 });

@@ -430,6 +430,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 if (isCompleted) {
                     await addXp(50);
                     await addGold(10);
+
+                    // Special logic for EXAM decrees: auto-complete the exam in the subject
+                    if (decree.type === 'EXAM') {
+                        const subjectWithExam = subjects.find(s => 
+                            (s.exams || []).some(ex => ex.decree_id === decree.id)
+                        );
+                        if (subjectWithExam) {
+                            const updatedExams = subjectWithExam.exams.map(ex => 
+                                ex.decree_id === decree.id ? { ...ex, is_completed: true } : ex
+                            );
+                            await updateSubject(subjectWithExam.id, { exams: updatedExams });
+                        }
+                    }
                 }
             }
         }
@@ -696,7 +709,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const tempId = `temp_${Date.now()}`;
         const newSubject: Subject = {
             id: tempId, user_id: user.id, name, color, course: course || null,
-            is_completed: false, total_minutes_studied: 0, created_at: new Date().toISOString()
+            is_completed: false, total_minutes_studied: 0, created_at: new Date().toISOString(),
+            exams: [], final_grade: null
         };
         const newSubjects = [newSubject, ...subjects];
         setSubjects(newSubjects);

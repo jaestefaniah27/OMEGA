@@ -23,7 +23,8 @@ import {
     Shield, 
     History,
     Sword,
-    Scroll
+    Scroll,
+    GraduationCap
 } from 'lucide-react-native';
 import { useGame } from '../context/GameContext';
 import { RoyalDecree } from '../types/supabase';
@@ -75,6 +76,8 @@ export const CastleScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => toggleGeneralDecree(decree)}>
                             <Square size={20} color="#3d2b1f" />
                         </TouchableOpacity>
+                    ) : decree.type === 'EXAM' ? (
+                        <GraduationCap size={20} color="#d4af37" />
                     ) : (
                         <ScrollIcon size={20} color="#3d2b1f" />
                     )}

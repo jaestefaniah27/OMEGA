@@ -8,7 +8,9 @@ import {
     ScrollView,
     TouchableOpacity,
     Dimensions,
-    ActivityIndicator
+    ActivityIndicator,
+    Platform,
+    KeyboardAvoidingView
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { X, Sword, BookOpen, Music, Target, Calendar } from 'lucide-react-native';
@@ -25,7 +27,8 @@ interface RoyalDecreeModalProps {
 }
 
 export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onClose, onSave }) => {
-    const { theatre } = useGame();
+    const { library, theatre } = useGame();
+    const { subjects, updateSubject } = library;
     const { activities } = theatre;
 
     const [title, setTitle] = useState('');
@@ -38,12 +41,20 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [dueDate, setDueDate] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Exam Related
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
+    const [examTime, setExamTime] = useState('');
+    const [examPlace, setExamPlace] = useState('');
+    const [examWeight, setExamWeight] = useState(100);
+    const [otherExamWeights, setOtherExamWeights] = useState<{[key: string]: number}>({});
+
     // Repetitive Logic
     const [freq, setFreq] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM' | 'BIWEEKLY' | 'EVERY_2_DAYS'>('DAILY');
     const [customDays, setCustomDays] = useState<number[]>([]);
-    const [librarySubType, setLibrarySubType] = useState<'STUDY' | 'READING'>('STUDY');
+    const [librarySubType, setLibrarySubType] = useState<'STUDY' | 'READING' | 'EXAM'>('STUDY');
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
     const handleSave = async () => {
         let finalTitle = title;
@@ -56,11 +67,17 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
             finalTitle = "Mandato de la Forja";
             finalDescription = `Entrenar un total de ${finalQuantity} minutos.`;
         } else if (type === 'LIBRARY') {
-            const isReading = librarySubType === 'READING';
-            finalTitle = isReading ? "Hábito del Lector" : "Erudición Real";
-            finalDescription = isReading 
-                ? `Leer un total de ${finalQuantity} minutos.`
-                : `Estudiar un total de ${finalQuantity} minutos.`;
+            if (librarySubType === 'EXAM') {
+                const subject = subjects.find(s => s.id === selectedSubjectId);
+                finalTitle = `EXAMEN: ${subject?.name || 'Asignatura'}`;
+                finalDescription = title || `Examen en ${examPlace || 'el Reino'}`;
+            } else {
+                const isReading = librarySubType === 'READING';
+                finalTitle = isReading ? "Hábito del Lector" : "Erudición Real";
+                finalDescription = isReading 
+                    ? `Leer un total de ${finalQuantity} minutos.`
+                    : `Estudiar un total de ${finalQuantity} minutos.`;
+            }
         } else if (type === 'THEATRE') {
             const activity = activities.find(a => a.id === selectedActivityId);
             finalTitle = `Maestría: ${activity?.name || 'Actividad'}`;
@@ -69,12 +86,16 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
 
         setLoading(true);
         try {
-            await onSave({
+            const decreeId = Math.random().toString(36).substr(2, 9);
+            const isExam = type === 'LIBRARY' && librarySubType === 'EXAM';
+            
+            const decreeData = {
+                id: decreeId,
                 title: finalTitle,
                 description: finalDescription,
-                type,
-                target_quantity: finalQuantity,
-                unit: finalUnit,
+                type: isExam ? 'EXAM' : type,
+                target_quantity: isExam ? 1 : finalQuantity,
+                unit: isExam ? 'SESSIONS' : finalUnit,
                 due_date: selectedDate ? selectedDate.toISOString() : null,
                 recurrence: {
                     min_time: parseInt(minTime) || 0,
@@ -83,10 +104,40 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     days: (isRepetitive && freq === 'CUSTOM') ? customDays : 
                            (isRepetitive && freq === 'WEEKLY') ? [new Date().getDay()] : null,
                     interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1),
-                    time_based: finalUnit === 'MINUTES'
+                    time_based: finalUnit === 'MINUTES' && !isExam
                 },
                 status: 'PENDING'
-            });
+            };
+
+            await onSave(decreeData);
+
+            if (isExam && selectedSubjectId) {
+                const subject = subjects.find(s => s.id === selectedSubjectId);
+                if (subject) {
+                    const newExam = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        title: title || 'Examen',
+                        date: (selectedDate || new Date()).toISOString(),
+                        time: examTime,
+                        place: examPlace,
+                        weight: examWeight,
+                        grade: null,
+                        is_completed: false,
+                        decree_id: decreeId
+                    };
+                    
+                    const updatedExams = [...(subject.exams || [])];
+                    // Update other exams' weights as edited in the form
+                    const finalExams = updatedExams.map(ex => ({
+                        ...ex,
+                        weight: otherExamWeights[ex.id] !== undefined ? otherExamWeights[ex.id] : ex.weight
+                    }));
+                    
+                    await updateSubject(selectedSubjectId, {
+                        exams: [...finalExams, newExam]
+                    });
+                }
+            }
             resetAndClose();
         } catch (error) {
             console.error('Error saving decree:', error);
@@ -106,15 +157,31 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         setFreq('DAILY');
         setCustomDays([]);
         setLibrarySubType('STUDY');
-        setSelectedDate(null);
+        setSelectedDate(new Date());
+        setSelectedSubjectId('');
+        setExamTime('');
+        setExamPlace('');
+        setExamWeight(100);
+        setOtherExamWeights({});
         onClose();
     };
 
     const onDateChange = (event: any, date?: Date) => {
-        setShowDatePicker(false);
+        if (Platform.OS === 'android') setShowDatePicker(false);
         if (date) {
             setSelectedDate(date);
         }
+        if (Platform.OS === 'ios' && event.type === 'set') setShowDatePicker(false);
+    };
+
+    const onTimeChange = (event: any, date?: Date) => {
+        if (Platform.OS === 'android') setShowTimePicker(false);
+        if (date) {
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            setExamTime(`${hours}:${minutes}`);
+        }
+        if (Platform.OS === 'ios' && event.type === 'set') setShowTimePicker(false);
     };
 
     const types: { label: string; value: DecreeType; icon: any }[] = [
@@ -144,6 +211,25 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             placeholder="Instrucciones del Rey..."
                             multiline
                         />
+                        <View style={styles.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Fecha Designada (Opcional)</Text>
+                                <TouchableOpacity 
+                                    style={styles.dateSelector} 
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Calendar size={18} color="#8b4513" />
+                                    <Text style={styles.dateText}>
+                                        {selectedDate ? selectedDate.toLocaleDateString() : 'Cualquier día'}
+                                    </Text>
+                                    {selectedDate && (
+                                        <TouchableOpacity onPress={() => setSelectedDate(null)} style={styles.clearDate}>
+                                            <X size={14} color="#8b4513" />
+                                        </TouchableOpacity>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                         {renderRecurrenceFields()}
                     </>
                 );
@@ -158,13 +244,26 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             keyboardType="numeric"
                             placeholder="Ej: 30"
                         />
+                        <View style={styles.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Fecha Designada</Text>
+                                <TouchableOpacity 
+                                    style={styles.dateSelector} 
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Calendar size={18} color="#8b4513" />
+                                    <Text style={styles.dateText}>
+                                        {selectedDate ? selectedDate.toLocaleDateString() : 'Hoy'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                         {renderRecurrenceFields()}
                     </>
                 );
             case 'LIBRARY':
                 return (
                     <>
-                        <Text style={styles.label}>Naturaleza de la Tarea</Text>
                         <View style={styles.asiduidadTabs}>
                             <TouchableOpacity
                                 style={[styles.tab, librarySubType === 'STUDY' && styles.tabActive]}
@@ -178,16 +277,125 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             >
                                 <Text style={[styles.tabText, librarySubType === 'READING' && styles.tabTextActive]}>Lectura</Text>
                             </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tab, librarySubType === 'EXAM' && styles.tabActive]}
+                                onPress={() => setLibrarySubType('EXAM')}
+                            >
+                                <Text style={[styles.tabText, librarySubType === 'EXAM' && styles.tabTextActive]}>Examen</Text>
+                            </TouchableOpacity>
                         </View>
-                        <Text style={styles.label}>Tiempo Objetivo (minutos)</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={targetQuantity}
-                            onChangeText={setTargetQuantity}
-                            keyboardType="numeric"
-                            placeholder="Ej: 60"
-                        />
-                        {renderRecurrenceFields()}
+
+                        {librarySubType === 'EXAM' ? (
+                            <>
+                                <Text style={styles.label}>Asignatura</Text>
+                                <View style={styles.activityGrid}>
+                                    {subjects.map(sub => (
+                                        <TouchableOpacity
+                                            key={sub.id}
+                                            style={[styles.activityItem, selectedSubjectId === sub.id && styles.activityItemActive, { borderColor: sub.color }]}
+                                            onPress={() => handleSubjectSelectForExam(sub.id)}
+                                        >
+                                            <Text style={[styles.activityText, selectedSubjectId === sub.id && styles.activityTextActive]}>
+                                                {sub.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <Text style={styles.label}>Título del Examen (Ej: Parcial de Álgebra)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={title}
+                                    onChangeText={setTitle}
+                                    placeholder="Nombre del examen..."
+                                />
+
+                                <View style={styles.row}>
+                                    <View style={{ flex: 1, marginRight: 10 }}>
+                                        <Text style={styles.label}>Fecha (Obligatorio)</Text>
+                                        <TouchableOpacity 
+                                            style={styles.dateSelector} 
+                                            onPress={() => setShowDatePicker(true)}
+                                        >
+                                            <Calendar size={18} color="#8b4513" />
+                                            <Text style={styles.dateText}>
+                                                {selectedDate ? selectedDate.toLocaleDateString() : 'Seleccionar...'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.label}>Hora (Opcional)</Text>
+                                        <TouchableOpacity 
+                                            style={styles.dateSelector} 
+                                            onPress={() => setShowTimePicker(true)}
+                                        >
+                                            <Calendar size={18} color="#8b4513" />
+                                            <Text style={styles.dateText}>
+                                                {examTime || 'Seleccionar...'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.label}>Lugar (Opcional)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={examPlace}
+                                    onChangeText={setExamPlace}
+                                    placeholder="Aula 4B"
+                                />
+
+                                <Text style={styles.label}>Factor de Aportación (%)</Text>
+                                <View style={styles.weightContainer}>
+                                    <View style={styles.weightRow}>
+                                        <Text style={styles.weightItemLabel}>Este Examen:</Text>
+                                        <TextInput
+                                            style={[styles.input, styles.weightInput]}
+                                            value={examWeight.toString()}
+                                            onChangeText={(val) => setExamWeight(parseInt(val) || 0)}
+                                            keyboardType="numeric"
+                                        />
+                                        <Text style={{color: '#3d2b1f'}}>%</Text>
+                                    </View>
+                                    
+                                    {selectedSubjectId && subjects.find(s => s.id === selectedSubjectId)?.exams?.map(ex => (
+                                        <View key={ex.id} style={styles.weightRow}>
+                                            <Text style={styles.weightItemLabel}>{ex.title}:</Text>
+                                            <TextInput
+                                                style={[styles.input, styles.weightInput]}
+                                                value={(otherExamWeights[ex.id] ?? ex.weight).toString()}
+                                                onChangeText={(val) => {
+                                                    setOtherExamWeights({
+                                                        ...otherExamWeights,
+                                                        [ex.id]: parseInt(val) || 0
+                                                    });
+                                                }}
+                                                keyboardType="numeric"
+                                            />
+                                            <Text style={{color: '#3d2b1f'}}>%</Text>
+                                        </View>
+                                    ))}
+                                    
+                                    <View style={styles.weightTotalRow}>
+                                        <Text style={[styles.weightTotalText, (getTotalWeight() !== 100) && {color: '#e74c3c'}]}>
+                                            Total: {getTotalWeight()}%
+                                        </Text>
+                                    </View>
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.label}>Tiempo Objetivo (minutos)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={targetQuantity}
+                                    onChangeText={setTargetQuantity}
+                                    keyboardType="numeric"
+                                    placeholder="Ej: 60"
+                                />
+                                {renderRecurrenceFields()}
+                            </>
+                        )}
                     </>
                 );
             case 'THEATRE':
@@ -215,6 +423,20 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             keyboardType="numeric"
                             placeholder="Ej: 45"
                         />
+                        <View style={styles.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Fecha Designada</Text>
+                                <TouchableOpacity 
+                                    style={styles.dateSelector} 
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Calendar size={18} color="#8b4513" />
+                                    <Text style={styles.dateText}>
+                                        {selectedDate ? selectedDate.toLocaleDateString() : 'Hoy'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                         {renderRecurrenceFields()}
                     </>
                 );
@@ -229,6 +451,45 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         } else {
             setCustomDays([...customDays, day].sort());
         }
+    };
+
+    const handleSubjectSelectForExam = (subjectId: string) => {
+        setSelectedSubjectId(subjectId);
+        const subject = subjects.find(s => s.id === subjectId);
+        if (subject) {
+            const exams = subject.exams || [];
+            if (exams.length === 0) {
+                setExamWeight(100);
+                setOtherExamWeights({});
+            } else if (exams.length === 1 && exams[0].weight === 100) {
+                setExamWeight(50);
+                setOtherExamWeights({ [exams[0].id]: 50 });
+            } else {
+                // Smart adopt remaining or equal split
+                const currentTotal = exams.reduce((acc, ex) => acc + ex.weight, 0);
+                if (currentTotal < 100) {
+                    setExamWeight(100 - currentTotal);
+                    setOtherExamWeights({});
+                } else {
+                    const newWeight = Math.floor(100 / (exams.length + 1));
+                    setExamWeight(newWeight);
+                    const newOthers: {[key: string]: number} = {};
+                    exams.forEach(ex => newOthers[ex.id] = newWeight);
+                    setOtherExamWeights(newOthers);
+                }
+            }
+        }
+    };
+
+    const getTotalWeight = () => {
+        let total = examWeight;
+        if (selectedSubjectId) {
+            const subject = subjects.find(s => s.id === selectedSubjectId);
+            subject?.exams?.forEach(ex => {
+                total += (otherExamWeights[ex.id] ?? ex.weight);
+            });
+        }
+        return total;
     };
 
     const renderRecurrenceFields = () => (
@@ -331,20 +592,72 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             </TouchableOpacity>
                         </View>
                     </View>
-
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={selectedDate || new Date()}
-                            mode="date"
-                            display="default"
-                            onChange={onDateChange}
-                            minimumDate={new Date()}
-                        />
-                    )}
                 </>
             )}
         </View>
     );
+
+    const renderDatePicker = () => {
+        if (!showDatePicker && !showTimePicker) return null;
+
+        const isDate = showDatePicker;
+        const value = isDate ? (selectedDate || new Date()) : new Date(); // Time picker needs a date object, we can just use new Date() if we only care about time creation or extract from state if we stored it differently. 
+                                                                          // But for examTime (string), we might want to parse it if we wanted to show current selection, 
+                                                                          // but for now defaulting to now/selectedDate is fine as per original code.
+        
+        const handleChange = isDate ? onDateChange : onTimeChange;
+        const mode = isDate ? 'date' : 'time';
+
+        if (Platform.OS === 'android') {
+            return (
+                <DateTimePicker
+                    value={value}
+                    mode={mode}
+                    is24Hour={true}
+                    display="default"
+                    onChange={handleChange}
+                    minimumDate={isDate ? new Date() : undefined}
+                />
+            );
+        }
+
+        // iOS Implementation
+        return (
+            <Modal
+                transparent={true}
+                animationType="slide"
+                visible={true} // Controlled by showDatePicker/showTimePicker check above
+                onRequestClose={() => {
+                    if (isDate) setShowDatePicker(false);
+                    else setShowTimePicker(false);
+                }}
+            >
+                <View style={styles.datePickerOverlay}>
+                    <View style={styles.datePickerContainer}>
+                        <View style={styles.datePickerHeader}>
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    if (isDate) setShowDatePicker(false);
+                                    else setShowTimePicker(false);
+                                }}
+                            >
+                                <Text style={styles.datePickerDoneText}>Listo</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={value}
+                            mode={mode}
+                            is24Hour={true}
+                            display="spinner"
+                            onChange={handleChange}
+                            minimumDate={isDate ? new Date() : undefined}
+                            textColor="#3d2b1f" // Match theme
+                        />
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
 
     return (
         <Modal visible={visible} transparent animationType="fade">
@@ -357,34 +670,41 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <Text style={styles.label}>Esfera de Influencia</Text>
-                        <View style={styles.typeGrid}>
-                            {types.map((t) => (
-                                <TouchableOpacity
-                                    key={t.value}
-                                    style={[styles.typeItem, type === t.value && styles.typeItemActive]}
-                                    onPress={() => setType(t.value)}
-                                >
-                                    <t.icon size={18} color={type === t.value ? '#fff' : '#3d2b1f'} />
-                                    <Text style={[styles.typeLabel, type === t.value && styles.typeLabelActive]}>
-                                        {t.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                    <KeyboardAvoidingView 
+                        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+                        style={{ width: '100%' }}
+                    >
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                            <Text style={styles.label}>Esfera de Influencia</Text>
+                            <View style={styles.typeGrid}>
+                                {types.map((t) => (
+                                    <TouchableOpacity
+                                        key={t.value}
+                                        style={[styles.typeItem, type === t.value && styles.typeItemActive]}
+                                        onPress={() => setType(t.value)}
+                                    >
+                                        <t.icon size={18} color={type === t.value ? '#fff' : '#3d2b1f'} />
+                                        <Text style={[styles.typeLabel, type === t.value && styles.typeLabelActive]}>
+                                            {t.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
 
-                        <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                        {renderFields()}
+                            {renderFields()}
 
-                        <MedievalButton
-                            title={loading ? "SELLANDO..." : "SELLAR DECRETO"}
-                            onPress={handleSave}
-                            style={styles.saveButton}
-                        />
-                    </ScrollView>
+                            <MedievalButton
+                                title={loading ? "SELLANDO..." : "SELLAR DECRETO"}
+                                onPress={handleSave}
+                                style={styles.saveButton}
+                            />
+                            
+                        </ScrollView>
+                    </KeyboardAvoidingView>
                 </ParchmentCard>
+                {renderDatePicker()}
             </View>
         </Modal>
     );
@@ -397,8 +717,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalCard: {
-        width: width * 0.9,
-        maxHeight: height * 0.8,
+        width: width * 0.95,
+        maxHeight: height * 0.85,
         padding: 20,
     },
     header: {
@@ -599,5 +919,66 @@ const styles = StyleSheet.create({
     },
     clearDate: {
         padding: 4,
-    }
+    },
+    weightContainer: {
+        backgroundColor: 'rgba(61, 43, 31, 0.05)',
+        borderRadius: 10,
+        padding: 12,
+        marginTop: 5,
+    },
+    weightRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    weightItemLabel: {
+        flex: 1,
+        fontSize: 12,
+        color: '#3d2b1f',
+    },
+    weightInput: {
+        width: 60,
+        paddingVertical: 5,
+        paddingHorizontal: 8,
+        textAlign: 'center',
+        marginRight: 5,
+    },
+    weightTotalRow: {
+        marginTop: 10,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(61, 43, 31, 0.1)',
+        alignItems: 'flex-end',
+    },
+    weightTotalText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#27ae60',
+    },
+    datePickerOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    datePickerContainer: {
+        backgroundColor: '#f5e6d3', // Match parchment/modal bg somewhat
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    },
+    datePickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(61, 43, 31, 0.1)',
+        backgroundColor: 'rgba(61, 43, 31, 0.05)',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    datePickerDoneText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#8b4513',
+    },
 });

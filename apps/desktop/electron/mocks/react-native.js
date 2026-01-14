@@ -48,6 +48,12 @@ export const useWindowDimensions = RNW.useWindowDimensions;
 export const Alert = RNW.Alert; // Add Alert
 export const DeviceEventEmitter = RNW.DeviceEventEmitter; // Add DeviceEventEmitter
 
+// Missing exports for libraries
+export const processColor = RNW.processColor;
+export const findNodeHandle = RNW.findNodeHandle;
+export const I18nManager = RNW.I18nManager;
+export const NativeModules = RNW.NativeModules || {};
+
 // Patches
 export const TurboModuleRegistry = {
   get: () => null,

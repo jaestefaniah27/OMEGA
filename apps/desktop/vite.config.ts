@@ -57,12 +57,15 @@ export default defineConfig({
     },
   },
   resolve: {
-    extensions: ['.web.tsx', '.tsx', '.ts', '.jsx', '.js', '.json'],
+    extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js', '.json'],
     alias: [
-      { find: 'react-native', replacement: 'react-native-web' },
       { find: 'expo-camera', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
       { find: 'expo-image-manipulator', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
       { find: 'expo-haptics', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
+      { 
+        find: 'react-native', 
+        replacement: path.resolve(__dirname, './src/mocks/react-native-patched.ts') 
+      },
       { find: /^expo-.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
       { find: /^@react-native-community\/.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
       { find: '@omega/ui', replacement: path.resolve(__dirname, '../../packages/ui/src/index.tsx') },

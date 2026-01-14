@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     electron([
       {
+        // Main Process
         entry: 'electron/main.ts',
         vite: {
           build: {
@@ -17,7 +18,7 @@ export default defineConfig({
             rollupOptions: {
               external: ['active-win'],
               output: {
-                format: 'cjs',
+                format: 'cjs', // <--- FUERZA COMMONJS
                 entryFileNames: '[name].js',
               },
             },
@@ -25,6 +26,7 @@ export default defineConfig({
         },
       },
       {
+        // Preload Scripts
         entry: 'electron/preload.ts',
         onstart(options) {
           options.reload()
@@ -34,7 +36,7 @@ export default defineConfig({
             outDir: path.resolve(__dirname, 'dist-electron'),
             rollupOptions: {
               output: {
-                format: 'cjs',
+                format: 'cjs', // <--- FUERZA COMMONJS AQUÍ TAMBIÉN
                 entryFileNames: '[name].js',
               },
             },
@@ -64,7 +66,7 @@ export default defineConfig({
         find: 'react-native/Libraries/Utilities/codegenNativeComponent', 
         replacement: path.resolve(__dirname, './src/mocks/codegenNativeComponent.ts') 
       },
-      // 2. OTRAS LIBRERÍAS NATIVAS
+      // 2. OTRAS LIBRERÍAS NATIVAS (Mocks de Expo)
       { find: 'expo-camera', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
       { find: 'expo-image-manipulator', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
       { find: 'expo-haptics', replacement: path.resolve(__dirname, './src/mocks/expo.tsx') },
@@ -73,7 +75,7 @@ export default defineConfig({
         find: 'react-native', 
         replacement: path.resolve(__dirname, './src/mocks/react-native-patched.ts') 
       },
-      // 4. OTROS
+      // 4. OTROS / PAQUETES DEL MONOREPO
       { find: /^expo-.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
       { find: /^@react-native-community\/.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
       { find: '@omega/ui', replacement: path.resolve(__dirname, '../../packages/ui/src/index.tsx') },

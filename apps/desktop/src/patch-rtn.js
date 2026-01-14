@@ -1,9 +1,7 @@
+// apps/desktop/src/patch-rtn.js
 import { Buffer } from 'buffer';
-import process from 'process';
 
-if (typeof window.global === 'undefined') {
-  window.global = window;
+// Polyfill global de Buffer para el navegador
+if (typeof globalThis.Buffer === 'undefined') {
+  globalThis.Buffer = Buffer;
 }
-
-window.Buffer = Buffer;
-window.process = process;

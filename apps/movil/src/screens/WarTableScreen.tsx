@@ -39,33 +39,47 @@ export const WarTableScreen: React.FC = () => {
     const navigation = useNavigation();
     const { castle } = useGame();
     const { decrees, updateDecree } = castle;
+
+    // Identify decrees that have already been expanded into separate records
+    const parentIds = useMemo(() => {
+        const set = new Set<string>();
+        decrees.forEach(d => {
+            if (d.parent_id) set.add(d.parent_id);
+        });
+        return set;
+    }, [decrees]);
     
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
     const isDecreeActiveOnDate = (decree: RoyalDecree, dateString: string) => {
-        const checkDate = new Date(dateString);
-        checkDate.setHours(0, 0, 0, 0);
-        
-        const startDate = new Date(decree.created_at);
-        startDate.setHours(0, 0, 0, 0);
-        
-        const endDate = decree.due_date ? new Date(decree.due_date) : null;
-        if (endDate) endDate.setHours(23, 59, 59, 999); // Inclusion till end of day
+        // Strict string-based comparison to avoid Timezone shifts (YYYY-MM-DD)
+        const checkStr = dateString;
+        const startStr = decree.created_at.split('T')[0];
+        const endStr = decree.due_date ? decree.due_date.split('T')[0] : null;
 
-        // If it's completed, we still want to show it on the calendar in its active days
-        // but maybe with a different style or just as it was.
-        
         // Basic range check
-        if (checkDate < startDate) return false;
-        if (endDate && checkDate > endDate) return false;
+        if (checkStr < startStr) return false;
+        if (endStr && checkStr > endStr) return false;
 
         const recurrence = decree.recurrence as any;
-        if (!recurrence || !recurrence.is_repetitive) {
-            // One-shot: only show on target date (due_date)
-            return endDate ? checkDate.toDateString() === endDate.toDateString() : checkDate.toDateString() === startDate.toDateString();
+        
+        // NEW LOGIC: If this decree has separate instances already created, 
+        // we disable the virtual repetition so we don't see duplicates.
+        const isParentWithInstances = parentIds.has(decree.id);
+        const isChild = !!decree.parent_id;
+
+        if (isParentWithInstances || isChild || !recurrence || !recurrence.is_repetitive) {
+            // One-shot or specific instance: only show on its target date
+            const targetDate = endStr || startStr;
+            return checkStr === targetDate;
         }
 
-        // Repetitive logic
+        // --- Fallback: Virtual Repetition (only if not "exploded" into separate records) ---
+        // Using midday for Date objects to prevent TZ shifts during getDay()
+        const checkDate = new Date(dateString + 'T12:00:00');
+        const startDate = new Date(decree.created_at);
+        startDate.setHours(0,0,0,0);
+        
         const freq = recurrence.frequency;
         if (freq === 'DAILY') return true;
         
@@ -77,13 +91,8 @@ export const WarTableScreen: React.FC = () => {
         const diffTime = checkDate.getTime() - startDate.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-        if (freq === 'EVERY_2_DAYS') {
-            return diffDays % 2 === 0;
-        }
-
-        if (freq === 'BIWEEKLY') {
-            return diffDays % 14 === 0;
-        }
+        if (freq === 'EVERY_2_DAYS') return diffDays % 2 === 0;
+        if (freq === 'BIWEEKLY') return diffDays % 14 === 0;
 
         return false;
     };
@@ -92,39 +101,76 @@ export const WarTableScreen: React.FC = () => {
     const markedDates = useMemo(() => {
         const marks: any = {};
         
-        // We calculate marks for a window around the selected date (approx 2 months)
+        const windowStart = new Date(selectedDate);
+        windowStart.setMonth(windowStart.getMonth() - 6);
+        const windowEnd = new Date(selectedDate);
+        windowEnd.setMonth(windowEnd.getMonth() + 6);
+
+        // Include everything that could possibly be visible
+        const relevantDecrees = decrees.filter(d => {
+            if (d.due_date) {
+                const dd = new Date(d.due_date);
+                return dd >= windowStart && dd <= windowEnd;
+            }
+            // If it's repetitive or has no due date, it's always relevant for marking
+            return true;
+        });
+
+        // We calculate marks for a window around the selected date (approx 6 months)
         const centerDate = new Date(selectedDate);
-        for (let i = -45; i <= 45; i++) {
+        for (let i = -180; i <= 180; i++) {
             const d = new Date(centerDate);
             d.setDate(d.getDate() + i);
             const dStr = d.toISOString().split('T')[0];
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             
-            for (const decree of decrees) {
+            let hasActiveDecree = false;
+            let dotColor = '#d4af37';
+
+            for (const decree of relevantDecrees) {
                 if (isDecreeActiveOnDate(decree, dStr)) {
-                    if (!marks[dStr]) {
-                        marks[dStr] = { 
-                            marked: true, 
-                            dotColor: (dStr === new Date().toISOString().split('T')[0] && decree.status === 'COMPLETED') ? '#27ae60' : '#d4af37' 
-                        };
-                    }
-                    // If at least one pending decree is active on this day, keep it yellow
-                    if (decree.status === 'PENDING') {
-                        marks[dStr].dotColor = '#d4af37';
+                    hasActiveDecree = true;
+
+                    const isCompleted = decree.status === 'COMPLETED';
+                    const isFailed = decree.status === 'FAILED';
+                    const completedAt = decree.completed_at ? new Date(decree.completed_at).toISOString().split('T')[0] : null;
+                    const isRepetitive = decree.recurrence && (decree.recurrence as any).is_repetitive;
+
+                    // Color logic
+                    if (isCompleted) {
+                        if (isRepetitive) {
+                            if (completedAt === dStr) {
+                                dotColor = '#27ae60';
+                            } else {
+                                dotColor = '#d4af37';
+                            }
+                        } else {
+                            dotColor = '#27ae60';
+                        }
+                    } else if (isFailed) {
+                        dotColor = '#e74c3c'; // Red for failed
+                    } else {
+                        dotColor = '#d4af37'; // Gold for pending
                     }
                 }
             }
+
+            const isSelected = dStr === selectedDate;
+            
+            if (hasActiveDecree || isSelected || isWeekend) {
+                marks[dStr] = {
+                    marked: hasActiveDecree,
+                    dotColor: dotColor,
+                    selected: isSelected,
+                    selectedColor: '#3d2b1f',
+                    selectedTextColor: '#FFD700',
+                    textColor: isSelected ? '#FFD700' : (isWeekend ? '#555555' : '#3d2b1f')
+                };
+            }
         }
 
-        // Highlight selected date
-        marks[selectedDate] = {
-            ...marks[selectedDate],
-            selected: true,
-            selectedColor: '#3d2b1f',
-            selectedTextColor: '#FFD700'
-        };
-
         return marks;
-    }, [decrees, selectedDate]);
+    }, [decrees, selectedDate, parentIds]);
 
     // Filter decrees for selected day
     const dayDecrees = useMemo(() => {
@@ -188,6 +234,20 @@ export const WarTableScreen: React.FC = () => {
         );
     };
 
+    const handleDayChange = (direction: 'next' | 'prev') => {
+        const current = new Date(selectedDate);
+        if (direction === 'next') {
+            current.setDate(current.getDate() + 1);
+        } else {
+            current.setDate(current.getDate() - 1);
+        }
+        setSelectedDate(current.toISOString().split('T')[0]);
+    };
+
+    const [touchStartX, setTouchStartX] = useState(0);
+    const [touchStartY, setTouchStartY] = useState(0);
+    const [scrollEnabled, setScrollEnabled] = useState(true);
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -198,23 +258,26 @@ export const WarTableScreen: React.FC = () => {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                scrollEnabled={scrollEnabled}
+                contentContainerStyle={styles.scrollContent} 
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Calendar Section */}
                 <ParchmentCard style={styles.calendarCard}>
                     <Calendar
                         onDayPress={day => setSelectedDate(day.dateString)}
                         markedDates={markedDates}
+                        firstDay={1}
+                        enableSwipeMonths={true}
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
                             textSectionTitleColor: '#8b4513',
-                            selectedDayBackgroundColor: '#3d2b1f',
-                            selectedDayTextColor: '#FFD700',
                             todayTextColor: '#e67e22',
                             dayTextColor: '#3d2b1f',
                             textDisabledColor: 'rgba(61, 43, 31, 0.3)',
                             dotColor: '#d4af37',
-                            selectedDotColor: '#FFD700',
                             arrowColor: '#8b4513',
                             monthTextColor: '#3d2b1f',
                             indicatorColor: '#3d2b1f',
@@ -229,7 +292,30 @@ export const WarTableScreen: React.FC = () => {
                 </ParchmentCard>
 
                 {/* Selected Day Agenda */}
-                <View style={styles.agendaSection}>
+                <View 
+                    style={styles.agendaSection}
+                    onTouchStart={(e) => {
+                        setTouchStartX(e.nativeEvent.pageX);
+                        setTouchStartY(e.nativeEvent.pageY);
+                    }}
+                    onTouchMove={(e) => {
+                        const dx = Math.abs(e.nativeEvent.pageX - touchStartX);
+                        const dy = Math.abs(e.nativeEvent.pageY - touchStartY);
+                        // If horizontal move is dominant and significant, lock vertical scroll
+                        if (dx > dy && dx > 10) {
+                            setScrollEnabled(false);
+                        }
+                    }}
+                    onTouchEnd={(e) => {
+                        const dx = e.nativeEvent.pageX - touchStartX;
+                        setScrollEnabled(true);
+                        if (Math.abs(dx) > 60) {
+                            if (dx > 0) handleDayChange('prev');
+                            else handleDayChange('next');
+                        }
+                    }}
+                    onTouchCancel={() => setScrollEnabled(true)}
+                >
                     <View style={styles.agendaHeader}>
                         <Flame size={18} color="#FFD700" />
                         <Text style={styles.agendaTitle}>

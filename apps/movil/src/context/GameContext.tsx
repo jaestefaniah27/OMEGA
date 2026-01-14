@@ -402,12 +402,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => {
         if (!user || !decrees) return;
 
+        const todayStr = new Date().toISOString().split('T')[0];
+
         // Filter valid decrees for this event
-        const pendingDecrees = decrees.filter(d => 
-            d.status === 'PENDING' && 
-            d.type === type && 
-            (!d.required_activity_tag || d.required_activity_tag === tag)
-        );
+        const pendingDecrees = decrees.filter(d => {
+            const matchesType = d.status === 'PENDING' && 
+                               d.type === type && 
+                               (!d.required_activity_tag || d.required_activity_tag === tag);
+            
+            if (!matchesType) return false;
+
+            // If it has a due_date, it MUST match Today to be processed
+            if (d.due_date) {
+                const dueStr = new Date(d.due_date).toISOString().split('T')[0];
+                return dueStr === todayStr;
+            }
+
+            // If no due_date, it's a general task that can be completed anytime
+            return true;
+        });
 
         let updated = false;
 
@@ -594,6 +607,37 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 { decrees: decreeData },
                 profData
             );
+
+            // --- AUTO-FAIL MAINTENANCE ---
+            // If any pending decree is more than 24h past its due_date, mark it as FAILED
+            const now = new Date();
+            const gracePeriod = 24 * 60 * 60 * 1000;
+            const overdue = decreeData.filter(d => 
+                d.status === 'PENDING' && 
+                d.due_date && 
+                (now.getTime() - new Date(d.due_date).getTime()) > gracePeriod
+            );
+
+            if (overdue.length > 0) {
+                const ids = overdue.map(d => d.id);
+                const { error: failError } = await supabase
+                    .from('royal_decrees')
+                    .update({ status: 'FAILED' })
+                    .in('id', ids);
+                
+                if (!failError) {
+                    // Re-fetch once to get updated statuses
+                    const { data: refreshedDecrees } = await supabase
+                        .from('royal_decrees')
+                        .select('*')
+                        .eq('user_id', currentUser.id)
+                        .order('created_at', { ascending: false });
+                    
+                    if (refreshedDecrees) {
+                        setDecrees(refreshedDecrees);
+                    }
+                }
+            }
 
         } catch (error) {
             console.error('GameContext: Fetch Error', error);
@@ -911,9 +955,91 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (!user) return;
         const { calendar_export, ...decreeData } = decree;
 
-        const { data, error } = await supabase.from('royal_decrees').insert([{ ...decreeData, user_id: user.id }]).select().single();
+        // 1. Create the primary/anchor decree
+        const { data: mainDecree, error } = await supabase.from('royal_decrees').insert([{ ...decreeData, user_id: user.id }]).select().single();
         
-        if (!error) {
+        if (!error && mainDecree) {
+            // 2. If it's repetitive, "explode" it into individual records for the next month/instances
+            const recurrence = decreeData.recurrence as any;
+            if (recurrence?.is_repetitive) {
+                const instances: any[] = [];
+                const freq = recurrence.frequency;
+                const interval = recurrence.interval || 1;
+                const days = recurrence.days || [];
+                
+                let runDate = decreeData.due_date ? new Date(decreeData.due_date) : new Date();
+                runDate.setHours(12, 0, 0, 0); // Use midday to avoid TZ jumps
+
+                const userEndDate = recurrence.end_date ? new Date(recurrence.end_date) : null;
+                if (userEndDate) userEndDate.setHours(23, 59, 59, 999);
+
+                const maxFuture = new Date(runDate);
+                maxFuture.setFullYear(maxFuture.getFullYear() + 2);
+                
+                const stopDate = userEndDate && userEndDate < maxFuture ? userEndDate : maxFuture;
+
+                // First instance is the start date itself (only if it matches the frequency/days)
+                // Actually, let's keep it simple: the loop generates 'next' occurrences.
+                // The 'Anchor' record (mainDecree) already occupies the Start date.
+                // So we start calculating from the anchor date to find 'next' dates.
+                
+                let iterationDate = new Date(runDate);
+
+                // Generate instances until stopDate
+                while (iterationDate < stopDate && instances.length < 1000) {
+                    let nextDate = new Date(iterationDate);
+                    
+                    if (freq === 'DAILY') {
+                        nextDate.setDate(iterationDate.getDate() + interval);
+                    } else if (freq === 'EVERY_2_DAYS') {
+                        nextDate.setDate(iterationDate.getDate() + 2);
+                    } else if (freq === 'BIWEEKLY') {
+                        nextDate.setDate(iterationDate.getDate() + 14);
+                    } else if (freq === 'WEEKLY' || freq === 'CUSTOM') {
+                        if (days && days.length > 0) {
+                            let found = false;
+                            for (let j = 1; j <= 7; j++) {
+                                nextDate.setDate(iterationDate.getDate() + j);
+                                if (days.includes(nextDate.getDay())) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) nextDate.setDate(iterationDate.getDate() + 7);
+                        } else {
+                            nextDate.setDate(iterationDate.getDate() + 7);
+                        }
+                    } else if (freq === 'MONTHLY') {
+                        nextDate.setMonth(iterationDate.getMonth() + 1);
+                    } else {
+                        nextDate.setDate(iterationDate.getDate() + 1); 
+                    }
+
+                    if (nextDate > stopDate) break;
+
+                    instances.push({
+                        user_id: user.id,
+                        parent_id: mainDecree.id,
+                        title: mainDecree.title,
+                        description: mainDecree.description,
+                        type: mainDecree.type,
+                        status: 'PENDING',
+                        target_quantity: mainDecree.target_quantity,
+                        unit: mainDecree.unit,
+                        due_date: nextDate.toISOString(),
+                        recurrence: { ...recurrence, is_repetitive: false },
+                        required_activity_tag: mainDecree.required_activity_tag
+                    });
+                    
+                    iterationDate = nextDate;
+                }
+
+                if (instances.length > 0) {
+                    const { error: insError } = await supabase.from('royal_decrees').insert(instances);
+                    if (insError) console.error('Error inserting repetitive instances:', insError);
+                }
+            }
+
             if (calendar_export) {
                 await calendar.exportDecreeToCalendar(
                     decreeData.title || 'Misión Omega', 
@@ -922,8 +1048,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 );
             }
             await fetchAll();
+        } else if (error) {
+            console.error('Error inserting main decree:', error);
         }
-        return data;
+        return mainDecree;
     };
 
     const updateDecree = async (id: string, updates: Partial<RoyalDecree>) => {

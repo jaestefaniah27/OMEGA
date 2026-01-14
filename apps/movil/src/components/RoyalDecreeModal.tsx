@@ -53,9 +53,10 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [freq, setFreq] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM' | 'BIWEEKLY' | 'EVERY_2_DAYS'>('DAILY');
     const [customDays, setCustomDays] = useState<number[]>([]);
     const [librarySubType, setLibrarySubType] = useState<'STUDY' | 'READING' | 'EXAM'>('STUDY');
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [showTimePicker, setShowTimePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
+    const [datePickerMode, setDatePickerMode] = useState<'START' | 'END' | null>(null);
+    const [showTimePicker, setShowTimePicker] = useState(false);
 
     const generateUUID = () => {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -112,7 +113,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     days: (isRepetitive && freq === 'CUSTOM') ? customDays : 
                            (isRepetitive && freq === 'WEEKLY') ? [new Date().getDay()] : null,
                     interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1),
-                    time_based: finalUnit === 'MINUTES' && !isExam
+                    time_based: finalUnit === 'MINUTES' && !isExam,
+                    end_date: (isRepetitive && selectedEndDate) ? selectedEndDate.toISOString() : null
                 },
                 status: 'PENDING',
                 calendar_export: calendarExport
@@ -167,6 +169,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         setCustomDays([]);
         setLibrarySubType('STUDY');
         setSelectedDate(new Date());
+        setSelectedEndDate(null);
         setSelectedSubjectId('');
         setExamTime('');
         setExamPlace('');
@@ -177,9 +180,13 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     };
 
     const onDateChange = (event: any, date?: Date) => {
-        if (Platform.OS === 'android') setShowDatePicker(false);
+        if (Platform.OS === 'android') setDatePickerMode(null);
         if (date) {
-            setSelectedDate(date);
+            if (datePickerMode === 'START') {
+                setSelectedDate(date);
+            } else if (datePickerMode === 'END') {
+                setSelectedEndDate(date);
+            }
         }
     };
 
@@ -221,16 +228,16 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         />
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Fecha Designada (Opcional)</Text>
+                                <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada (Opcional)"}</Text>
                                 <TouchableOpacity 
                                     style={styles.dateSelector} 
-                                    onPress={() => setShowDatePicker(true)}
+                                    onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
                                     <Text style={styles.dateText}>
                                         {selectedDate ? selectedDate.toLocaleDateString() : 'Cualquier día'}
                                     </Text>
-                                    {selectedDate && (
+                                    {selectedDate && !isRepetitive && (
                                         <TouchableOpacity onPress={() => setSelectedDate(null)} style={styles.clearDate}>
                                             <X size={14} color="#8b4513" />
                                         </TouchableOpacity>
@@ -254,10 +261,10 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         />
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Fecha Designada</Text>
+                                <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada"}</Text>
                                 <TouchableOpacity 
                                     style={styles.dateSelector} 
-                                    onPress={() => setShowDatePicker(true)}
+                                    onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
                                     <Text style={styles.dateText}>
@@ -323,7 +330,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                         <Text style={styles.label}>Fecha (Obligatorio)</Text>
                                         <TouchableOpacity 
                                             style={styles.dateSelector} 
-                                            onPress={() => setShowDatePicker(true)}
+                                            onPress={() => setDatePickerMode('START')}
                                         >
                                             <Calendar size={18} color="#8b4513" />
                                             <Text style={styles.dateText}>
@@ -433,10 +440,10 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         />
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Fecha Designada</Text>
+                                <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada"}</Text>
                                 <TouchableOpacity 
                                     style={styles.dateSelector} 
-                                    onPress={() => setShowDatePicker(true)}
+                                    onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
                                     <Text style={styles.dateText}>
@@ -521,20 +528,6 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 </TouchableOpacity>
             </View>
 
-            {type === 'GENERAL' && (
-                <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.label}>Nº de Sesiones</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={targetQuantity}
-                            onChangeText={setTargetQuantity}
-                            keyboardType="numeric"
-                            placeholder="Ej: 1"
-                        />
-                    </View>
-                </View>
-            )}
 
             {isRepetitive && (
                 <>
@@ -577,20 +570,20 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
 
                     <View style={styles.row}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>Fin de repetición (Opcional)</Text>
+                            <Text style={styles.label}>Fin de repetición (Hasta)</Text>
                             <TouchableOpacity 
                                 style={styles.dateSelector} 
-                                onPress={() => setShowDatePicker(true)}
+                                onPress={() => setDatePickerMode('END')}
                             >
                                 <Calendar size={18} color="#8b4513" />
                                 <Text style={styles.dateText}>
-                                    {selectedDate ? selectedDate.toLocaleDateString() : 'Para siempre'}
+                                    {selectedEndDate ? selectedEndDate.toLocaleDateString() : 'Para siempre (2 años)'}
                                 </Text>
-                                {selectedDate && (
+                                {selectedEndDate && (
                                     <TouchableOpacity 
                                         onPress={(e) => {
                                             e.stopPropagation();
-                                            setSelectedDate(null);
+                                            setSelectedEndDate(null);
                                         }}
                                         style={styles.clearDate}
                                     >
@@ -618,13 +611,13 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     );
 
     const renderDatePicker = () => {
-        if (!showDatePicker && !showTimePicker) return null;
+        if (!datePickerMode && !showTimePicker) return null;
 
-        const isDate = showDatePicker;
+        const isDate = !!datePickerMode;
         let value = new Date();
         
         if (isDate) {
-            value = selectedDate || new Date();
+            value = (datePickerMode === 'START' ? selectedDate : selectedEndDate) || new Date();
         } else if (examTime) {
             const [hours, minutes] = examTime.split(':').map(Number);
             value.setHours(hours);
@@ -644,6 +637,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     onChange={handleChange}
                     minimumDate={isDate ? new Date() : undefined}
                     minuteInterval={isDate ? undefined : 15}
+                    locale="es-ES"
                 />
             );
         }
@@ -653,9 +647,9 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
             <Modal
                 transparent={true}
                 animationType="slide"
-                visible={true} // Controlled by showDatePicker/showTimePicker check above
+                visible={true} // Controlled by datePickerMode check above
                 onRequestClose={() => {
-                    if (isDate) setShowDatePicker(false);
+                    if (isDate) setDatePickerMode(null);
                     else setShowTimePicker(false);
                 }}
             >
@@ -664,7 +658,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         <View style={styles.datePickerHeader}>
                             <TouchableOpacity 
                                 onPress={() => {
-                                    if (isDate) setShowDatePicker(false);
+                                    if (isDate) setDatePickerMode(null);
                                     else setShowTimePicker(false);
                                 }}
                             >
@@ -680,6 +674,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             minimumDate={isDate ? new Date() : undefined}
                             textColor="#3d2b1f" // Match theme
                             minuteInterval={isDate ? undefined : 15}
+                            locale="es-ES"
                         />
                     </View>
                 </View>

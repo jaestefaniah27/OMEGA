@@ -204,6 +204,7 @@ export interface RoyalDecree {
     unit: DecreeUnit;
     due_date: string | null;
     recurrence: any;
+    parent_id: string | null;
     created_at: string;
     completed_at: string | null;
 }

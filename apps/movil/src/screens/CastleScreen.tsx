@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -43,8 +43,44 @@ export const CastleScreen: React.FC = () => {
     const horizontalScrollRef = useRef<ScrollView>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
 
-    const activeDecrees = decrees.filter(d => d.status === 'PENDING');
-    const completedDecrees = decrees.filter(d => d.status === 'COMPLETED');
+    const parentIds = useMemo(() => {
+        const set = new Set<string>();
+        decrees.forEach(d => {
+            if (d.parent_id) set.add(d.parent_id);
+        });
+        return set;
+    }, [decrees]);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Filter logic for Throne Room:
+    // 1. Show all non-repetitive pending tasks (Anchor or One-shot)
+    // 2. Show repetitive instances ONLY if they are due TODAY or are OVERDUE
+    // 3. Hide future repetitive instances to avoid clutter
+    const activeDecrees = decrees.filter(d => {
+        if (d.status !== 'PENDING') return false;
+        
+        const isRepetitiveInstance = !!(d as any).parent_id;
+        const isMasterWithInstances = parentIds.has(d.id);
+
+        if (isRepetitiveInstance) {
+            // Only show if due today or past due
+            if (!d.due_date) return true;
+            const dueStr = d.due_date.split('T')[0];
+            return dueStr <= todayStr;
+        }
+
+        if (isMasterWithInstances) {
+            // Hide the master record from the 'Active' list if it has exploded instances
+            // (The instances will show up on their respective days instead)
+            return false;
+        }
+
+        // Masters (without instances yet) or one-shots always show if pending
+        return true;
+    });
+
+    const completedDecrees = decrees.filter(d => d.status === 'COMPLETED').slice(0, 50); // Cap archive view for performance
 
     // --- QUICK ADD HUD LISTENER ---
     useEffect(() => {

@@ -47,6 +47,7 @@ export const useLibrary = () => {
     const [targetMinutes, setTargetMinutes] = useState('25');
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    const [activeSessionType, setActiveSessionType] = useState<'SUBJECT' | 'BOOK' | null>(null);
 
     // --- IRON WILL HEURISTIC REFS ---
     const appState = useRef(AppState.currentState);
@@ -77,6 +78,7 @@ export const useLibrary = () => {
                 setStudyMode(sessionData.mode);
                 setDifficulty(sessionData.difficulty);
                 setTargetMinutes(sessionData.targetMinutes);
+                setActiveSessionType(sessionData.type || null);
 
                 const now = Date.now();
                 setElapsedSeconds(Math.floor((now - sessionData.startTime) / 1000));
@@ -322,6 +324,7 @@ export const useLibrary = () => {
         setIsSessionActive(false);
         setElapsedSeconds(0);
         setStartTime(null);
+        setActiveSessionType(null);
         await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
 
         if (subId && start) {
@@ -355,6 +358,7 @@ export const useLibrary = () => {
         setElapsedSeconds(0);
         setStartTime(now);
         setIsSessionActive(true);
+        setActiveSessionType(type);
         await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
             startTime: now,
             subjectId: type === 'SUBJECT' ? selectedSubject?.id : undefined,
@@ -416,6 +420,7 @@ export const useLibrary = () => {
             setIsSessionActive(false);
             setElapsedSeconds(0);
             setStartTime(null);
+            setActiveSessionType(null);
         }
     };
 
@@ -498,6 +503,7 @@ export const useLibrary = () => {
         targetMinutes, setTargetMinutes,
         selectedSubject, setSelectedSubject,
         selectedBook, setSelectedBook,
+        activeSessionType,
         startSession, stopSession, failSession,
     };
 };

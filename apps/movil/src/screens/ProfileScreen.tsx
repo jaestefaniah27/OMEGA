@@ -15,12 +15,13 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock } from 'lucide-react-native';
 import { useUserStats } from '../hooks/useUserStats';
+import { MuscleHeatMap } from '../components/MuscleHeatMap';
 
 const { width } = Dimensions.get('window');
 
 export const ProfileScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { profile, loading: statsLoading } = useUserStats();
+    const { profile, loading: statsLoading, muscleFatigue } = useUserStats();
     const [loading, setLoading] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [isLogin, setIsLogin] = useState(true);
@@ -261,6 +262,8 @@ export const ProfileScreen: React.FC = () => {
                             </Text>
                         </View>
                     </View>
+                    <View style={styles.statsSeparator} />
+                    <MuscleHeatMap fatigue={muscleFatigue} />
                 </ParchmentCard>
 
                 <MedievalButton

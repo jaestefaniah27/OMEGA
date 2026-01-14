@@ -94,7 +94,8 @@ export const LibraryScreen: React.FC = () => {
         reactivateBook,
         bookStats,
         saveCustomColor,
-        customColors
+        customColors,
+        activeSessionType
     } = useLibrary();
 
     // UI-only States
@@ -721,7 +722,7 @@ export const LibraryScreen: React.FC = () => {
             <Modal visible={isSessionActive} transparent animationType="slide">
                 <View style={styles.sessionOverlay}>
                     <View style={styles.sessionContent}>
-                        {isReadingStopModalVisible ? (
+                        {activeSessionType === 'BOOK' && isReadingStopModalVisible ? (
                             // --- VIEW: STOP READING INPUT ---
                             <View style={styles.stopReadingContainer}>
                                 <Text style={styles.modalTitle}>FIN DE LECTURA</Text>
@@ -747,20 +748,20 @@ export const LibraryScreen: React.FC = () => {
                             <>
                                 <View style={styles.sessionHeaderBox}>
                                     <View style={styles.sessionSubjectBox}>
-                                        {selectedBook ? <Scroll size={20} color="#FFD700" /> : <BookOpen size={20} color="#FFD700" />}
+                                        {activeSessionType === 'BOOK' ? <Scroll size={20} color="#FFD700" /> : <BookOpen size={20} color="#FFD700" />}
                                         <Text style={styles.sessionSubjectName}>
-                                            {selectedBook ? selectedBook.title : selectedSubject?.name}
+                                            {activeSessionType === 'BOOK' ? selectedBook?.title : selectedSubject?.name}
                                         </Text>
                                     </View>
 
-                                    {!selectedBook && (
+                                    {activeSessionType === 'SUBJECT' && (
                                         <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
                                             {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
                                             <Text style={styles.badgeText}>{difficulty}</Text>
                                         </View>
                                     )}
 
-                                    {!selectedBook && difficulty === 'CRUSADE' && (
+                                    {activeSessionType === 'SUBJECT' && difficulty === 'CRUSADE' && (
                                         <View style={styles.warnBox}>
                                             <AlertTriangle size={14} color="#e74c3c" />
                                             <Text style={styles.warnText}>Iron Will Activo</Text>
@@ -770,19 +771,19 @@ export const LibraryScreen: React.FC = () => {
 
                                 <View style={styles.sessionTimerBox}>
                                     <Text style={styles.sessionTimeText}>
-                                        {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && !selectedBook ? '+' : ''}
+                                        {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && activeSessionType === 'SUBJECT' ? '+' : ''}
                                         {formatElapsedTime(elapsedSeconds)}
                                     </Text>
                                 </View>
 
-                                {!selectedBook && studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
+                                {activeSessionType === 'SUBJECT' && studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
                                     <Text style={styles.overtimeText}>✨ ¡Objetivo Cumplido! Extra...</Text>
                                 )}
 
                                 <MedievalButton
-                                    title={selectedBook ? "FINALIZAR LECTURA" : (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60 ? "RENDIRSE" : "FINALIZAR")}
-                                    onPress={selectedBook ? handleStopReadingPress : handleStopStudyPress}
-                                    variant={!selectedBook && ((studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE') ? "danger" : "primary"}
+                                    title={activeSessionType === 'BOOK' ? "FINALIZAR LECTURA" : (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60 ? "RENDIRSE" : "FINALIZAR")}
+                                    onPress={activeSessionType === 'BOOK' ? handleStopReadingPress : handleStopStudyPress}
+                                    variant={activeSessionType === 'SUBJECT' && ((studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE') ? "danger" : "primary"}
                                     style={styles.stopBtn}
                                 />
                             </>

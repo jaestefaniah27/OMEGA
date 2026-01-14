@@ -100,3 +100,71 @@ export interface CustomColor {
     name: string | null;
     created_at: string;
 }
+
+// --- TRAINING SYSTEM ---
+
+export interface Exercise {
+    id: string;
+    name: string;
+    name_es: string | null;
+    primary_muscles: string[];
+    secondary_muscles: string[];
+    equipment: string;
+    category: string;
+    intensity_factor: number;
+    bodyweight_factor: number;
+    is_popular: boolean;
+    muscle_heads?: any[];
+}
+
+export interface Routine {
+    id: string;
+    user_id: string;
+    name: string;
+    description: string | null;
+    created_at: string;
+}
+
+export interface RoutineExercise {
+    id: string;
+    routine_id: string;
+    exercise_id: string;
+    order_index: number;
+    target_sets: number;
+    target_reps: number;
+    created_at: string;
+}
+
+export interface WorkoutSession {
+    id: string;
+    user_id: string;
+    routine_id: string | null;
+    started_at: string;
+    ended_at: string | null;
+    bodyweight: number | null;
+    note: string | null;
+    created_at: string;
+}
+
+export interface WorkoutSet {
+    id: string;
+    session_id: string;
+    exercise_id: string;
+    set_number: number;
+    weight_kg: number;
+    reps: number;
+    rpe: number | null;
+    type: 'warmup' | 'normal' | 'failure';
+    created_at: string;
+}
+
+export interface MuscleFatigue {
+    [muscle: string]: number;
+}
+
+export interface PersonalRecord {
+    exercise_id: string;
+    exercise_name: string;
+    max_weight: number;
+    achieved_at: string;
+}

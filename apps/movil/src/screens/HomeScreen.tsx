@@ -44,7 +44,7 @@ export const HomeScreen: React.FC = () => {
                 <MapLocationPin
                     title="Castillo"
                     icon="🏰"
-                    top="15%"
+                    top="24%"
                     left="50%"
                     onPress={() => navigation.navigate('Castle')}
                 />
@@ -53,7 +53,7 @@ export const HomeScreen: React.FC = () => {
                 <MapLocationPin
                     title="Biblioteca"
                     icon="📚"
-                    top="12%"
+                    top="20%"
                     left="82%"
                     onPress={() => navigation.navigate('Library')}
                 />
@@ -62,7 +62,7 @@ export const HomeScreen: React.FC = () => {
                 <MapLocationPin
                     title="Torre del Mago"
                     icon="🧙‍♂️"
-                    top="28%"
+                    top="36%"
                     left="88%"
                     onPress={() => navigation.navigate('WizardTower')}
                 />
@@ -71,7 +71,7 @@ export const HomeScreen: React.FC = () => {
                 <MapLocationPin
                     title="Templo"
                     icon="⛪"
-                    top="35%"
+                    top="42%"
                     left="18%"
                     onPress={() => navigation.navigate('Temple')}
                 />

@@ -61,7 +61,10 @@ export default defineConfig({
     alias: [
       { find: /^react-native$/, replacement: path.resolve(__dirname, './src/mocks/react-native.ts') },
       { find: /^react-native\/.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
-      { find: '@react-native-community/datetimepicker', replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
+      { find: 'expo-camera', replacement: path.resolve(__dirname, './src/mocks/expo-modules.tsx') },
+      { find: 'expo-image-manipulator', replacement: path.resolve(__dirname, './src/mocks/expo-modules.tsx') },
+      { find: /^expo-.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
+      { find: /^@react-native-community\/.*/, replacement: path.resolve(__dirname, './src/mocks/empty.ts') },
       { find: '@omega/ui', replacement: path.resolve(__dirname, '../../packages/ui/src/index.tsx') },
       { find: '@omega/logic', replacement: path.resolve(__dirname, '../../packages/logic/src/index.ts') },
     ],

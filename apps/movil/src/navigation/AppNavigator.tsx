@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { CastleScreen } from '../screens/CastleScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
@@ -26,14 +26,7 @@ export type RootStackParamList = {
     WarTable: undefined;
 };
 
-const Stack = createStackNavigator<RootStackParamList>();
-
-const fastTransitionSpec = {
-    animation: 'timing' as const,
-    config: {
-        duration: 250,
-    },
-};
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
     return (
@@ -41,11 +34,8 @@ export const AppNavigator: React.FC = () => {
             initialRouteName="Home"
             screenOptions={{
                 headerShown: false,
-                cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
-                transitionSpec: {
-                    open: fastTransitionSpec,
-                    close: fastTransitionSpec,
-                }
+                animation: 'fade',
+                animationDuration: 200, // Faster transition
             }}
         >
             <Stack.Screen name="Home" component={HomeScreen} />

@@ -43,6 +43,26 @@ export default function App() {
   );
 }
 
+
+
+const WorkoutHeader: React.FC<{ onWorkoutPress: () => void; currentRoute: string | undefined }> = ({ onWorkoutPress, currentRoute }) => {
+  const { workout } = useGame();
+  const EPIC_QUOTES = ["FORJANDO LEYENDA", "ACERO Y SANGRE", "VOLUNTAD DE HIERRO", "CAMINO AL VALHALLA", "LATIDO GUERRERO", "FORJANDO AL TITÁN", "NÉMESIS DEL LÍMITE", "SUDOR Y GLORIA"];
+  const [quote] = React.useState(() => EPIC_QUOTES[Math.floor(Math.random() * EPIC_QUOTES.length)]);
+
+  if (!workout.isSessionActive || currentRoute === 'Barracks') return null;
+
+  return (
+    <TouchableOpacity style={styles.workoutHeader} onPress={onWorkoutPress} activeOpacity={0.9}>
+      <View style={styles.timerContainer}>
+        <Timer size={14} color="#FFD700" />
+        <Text style={styles.timerText}>{workout.formatTime}</Text>
+      </View>
+      <Text style={styles.epicQuote}>{quote}</Text>
+    </TouchableOpacity>
+  );
+};
+
 function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
   const handleProfilePress = () => {
     if (navigationRef.isReady()) {
@@ -80,10 +100,6 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     DeviceEventEmitter.emit('GLOBAL_QUICK_ADD');
   };
 
-  const { workout } = useGame();
-  const EPIC_QUOTES = ["FORJANDO LEYENDA", "ACERO Y SANGRE", "VOLUNTAD DE HIERRO", "CAMINO AL VALHALLA", "LATIDO GUERRERO", "FORJANDO AL TITÁN", "NÉMESIS DEL LÍMITE", "SUDOR Y GLORIA"];
-  const [quote] = React.useState(() => EPIC_QUOTES[Math.floor(Math.random() * EPIC_QUOTES.length)]);
-
   const handleWorkoutPress = () => {
     if (navigationRef.isReady()) {
       navigationRef.navigate('Barracks' as any);
@@ -92,15 +108,10 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
 
   return (
     <>
-      {workout.isSessionActive && currentRoute !== 'Barracks' && (
-        <TouchableOpacity style={styles.workoutHeader} onPress={handleWorkoutPress} activeOpacity={0.9}>
-          <View style={styles.timerContainer}>
-            <Timer size={14} color="#FFD700" />
-            <Text style={styles.timerText}>{workout.formatTime}</Text>
-          </View>
-          <Text style={styles.epicQuote}>{quote}</Text>
-        </TouchableOpacity>
-      )}
+      <WorkoutHeader 
+        onWorkoutPress={handleWorkoutPress} 
+        currentRoute={currentRoute} 
+      />
       <GameHUD
         onProfilePress={handleProfilePress}
         onMapPress={handleMapPress}

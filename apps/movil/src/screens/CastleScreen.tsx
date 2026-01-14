@@ -93,9 +93,10 @@ export const CastleScreen: React.FC = () => {
                     <View style={styles.progressContainer}>
                         <View style={styles.progressHeader}>
                             <Text style={styles.progressLabel}>
-                                {decree.current_quantity} / {decree.target_quantity} 
-                                {decree.unit === 'SESSIONS' ? ' Sesiones' : 
-                                 decree.unit === 'PAGES' ? ' Páginas' : ' Minutos'}
+                                {decree.unit === 'MINUTES' 
+                                    ? `${decree.current_quantity}m / ${decree.target_quantity}m` 
+                                    : `${decree.current_quantity} / ${decree.target_quantity} ${decree.unit === 'SESSIONS' ? 'Sesiones' : 'Páginas'}`
+                                }
                             </Text>
                             {!isArchive && <Text style={styles.progressValue}>{Math.round(progress)}%</Text>}
                         </View>
@@ -204,11 +205,6 @@ export const CastleScreen: React.FC = () => {
 
                     {/* Quick Access Buttons */}
                     <View style={styles.actionSection}>
-                        <MedievalButton
-                            title="MESA DE GUERRA (Agenda)"
-                            onPress={() => navigation.navigate('WarTable' as any)}
-                            style={styles.actionButton}
-                        />
                         <MedievalButton
                             title="ARCHIVOS REALES"
                             onPress={() => console.log('Biblioteca')}

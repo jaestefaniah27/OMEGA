@@ -50,21 +50,21 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         let finalDescription = description;
         let finalQuantity = parseInt(targetQuantity) || 1;
 
+        const finalUnit: DecreeUnit = (type === 'LIBRARY' || type === 'THEATRE' || type === 'BARRACKS') ? 'MINUTES' : 'SESSIONS';
+        
         if (type === 'BARRACKS') {
             finalTitle = "Mandato de la Forja";
-            finalDescription = `Completar ${finalQuantity} sesiones de entrenamiento.`;
+            finalDescription = `Entrenar un total de ${finalQuantity} minutos.`;
         } else if (type === 'LIBRARY') {
             const isReading = librarySubType === 'READING';
             finalTitle = isReading ? "Hábito del Lector" : "Erudición Real";
-            const timeDesc = parseInt(minTime) > 0 ? ` de al menos ${minTime} min` : "";
             finalDescription = isReading 
-                ? `Alimentar el alma con la lectura${timeDesc}.` 
-                : `Fortalecer la mente con el estudio${timeDesc}.`;
+                ? `Leer un total de ${finalQuantity} minutos.`
+                : `Estudiar un total de ${finalQuantity} minutos.`;
         } else if (type === 'THEATRE') {
             const activity = activities.find(a => a.id === selectedActivityId);
             finalTitle = `Maestría: ${activity?.name || 'Actividad'}`;
-            const timeDesc = parseInt(minTime) > 0 ? ` de al menos ${minTime} min` : "";
-            finalDescription = `Cumplir el ritual${timeDesc}.`;
+            finalDescription = `Ejercer maestría por ${finalQuantity} minutos.`;
         }
 
         setLoading(true);
@@ -74,9 +74,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 description: finalDescription,
                 type,
                 target_quantity: finalQuantity,
-                unit: 'SESSIONS',
-                required_activity_tag: type === 'THEATRE' ? selectedActivityId : 
-                                       type === 'LIBRARY' ? librarySubType : null,
+                unit: finalUnit,
                 due_date: selectedDate ? selectedDate.toISOString() : null,
                 recurrence: {
                     min_time: parseInt(minTime) || 0,
@@ -84,7 +82,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     frequency: isRepetitive ? freq : null,
                     days: (isRepetitive && freq === 'CUSTOM') ? customDays : 
                            (isRepetitive && freq === 'WEEKLY') ? [new Date().getDay()] : null,
-                    interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1)
+                    interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1),
+                    time_based: finalUnit === 'MINUTES'
                 },
                 status: 'PENDING'
             });
@@ -103,7 +102,6 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         setTargetQuantity('1');
         setIsRepetitive(false);
         setMinTime('0');
-        setSelectedActivityId('');
         setDueDate('');
         setFreq('DAILY');
         setCustomDays([]);
@@ -150,7 +148,19 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     </>
                 );
             case 'BARRACKS':
-                return renderRecurrenceFields();
+                return (
+                    <>
+                        <Text style={styles.label}>Tiempo Objetivo (minutos)</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={targetQuantity}
+                            onChangeText={setTargetQuantity}
+                            keyboardType="numeric"
+                            placeholder="Ej: 30"
+                        />
+                        {renderRecurrenceFields()}
+                    </>
+                );
             case 'LIBRARY':
                 return (
                     <>
@@ -169,15 +179,15 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                 <Text style={[styles.tabText, librarySubType === 'READING' && styles.tabTextActive]}>Lectura</Text>
                             </TouchableOpacity>
                         </View>
-                        {renderRecurrenceFields()}
-                        <Text style={styles.label}>Tiempo Mínimo (minutos)</Text>
+                        <Text style={styles.label}>Tiempo Objetivo (minutos)</Text>
                         <TextInput
                             style={styles.input}
-                            value={minTime}
-                            onChangeText={setMinTime}
+                            value={targetQuantity}
+                            onChangeText={setTargetQuantity}
                             keyboardType="numeric"
-                            placeholder="0 = Sin mínimo"
+                            placeholder="Ej: 60"
                         />
+                        {renderRecurrenceFields()}
                     </>
                 );
             case 'THEATRE':
@@ -197,15 +207,15 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        {renderRecurrenceFields()}
-                        <Text style={styles.label}>Tiempo Mínimo (minutos)</Text>
+                        <Text style={styles.label}>Tiempo Objetivo (minutos)</Text>
                         <TextInput
                             style={styles.input}
-                            value={minTime}
-                            onChangeText={setMinTime}
+                            value={targetQuantity}
+                            onChangeText={setTargetQuantity}
                             keyboardType="numeric"
-                            placeholder="0 = Sin mínimo"
+                            placeholder="Ej: 45"
                         />
+                        {renderRecurrenceFields()}
                     </>
                 );
             default:
@@ -241,6 +251,21 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     <Text style={[styles.tabText, isRepetitive && styles.tabTextActive]}>Repetitivo</Text>
                 </TouchableOpacity>
             </View>
+
+            {type === 'GENERAL' && (
+                <View style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Nº de Sesiones</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={targetQuantity}
+                            onChangeText={setTargetQuantity}
+                            keyboardType="numeric"
+                            placeholder="Ej: 1"
+                        />
+                    </View>
+                </View>
+            )}
 
             {isRepetitive && (
                 <>

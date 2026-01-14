@@ -172,8 +172,16 @@ export const WarTableScreen: React.FC = () => {
                 <Text style={styles.decreeDesc}>{decree.description}</Text>
                 
                 {decree.target_quantity > 1 && (
-                    <View style={styles.miniProgress}>
-                        <View style={[styles.miniProgressBar, { width: `${Math.min(progress, 100)}%` }]} />
+                    <View style={styles.progressSection}>
+                        <View style={styles.miniProgress}>
+                            <View style={[styles.miniProgressBar, { width: `${Math.min(progress, 100)}%` }]} />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {decree.unit === 'MINUTES' 
+                                ? `${decree.current_quantity}m / ${decree.target_quantity}m`
+                                : `${decree.current_quantity} / ${decree.target_quantity} ses.`
+                            } ({Math.round(progress)}%)
+                        </Text>
                     </View>
                 )}
             </View>
@@ -351,17 +359,25 @@ const styles = StyleSheet.create({
         marginLeft: 30,
         fontStyle: 'italic',
     },
+    progressSection: {
+        marginLeft: 30,
+        marginTop: 10,
+    },
     miniProgress: {
         height: 3,
         backgroundColor: 'rgba(0,0,0,0.3)',
         borderRadius: 2,
-        marginTop: 10,
-        marginLeft: 30,
         overflow: 'hidden',
     },
     miniProgressBar: {
         height: '100%',
         backgroundColor: '#d4af37',
+    },
+    progressText: {
+        fontSize: 10,
+        color: 'rgba(212, 175, 55, 0.6)',
+        marginTop: 4,
+        fontWeight: 'bold',
     },
     emptyAgenda: {
         alignItems: 'center',

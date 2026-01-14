@@ -387,6 +387,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => {
         if (!user || !decrees) return;
 
+        // Filter valid decrees for this event
         const pendingDecrees = decrees.filter(d => 
             d.status === 'PENDING' && 
             d.type === type && 
@@ -396,13 +397,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         let updated = false;
 
         for (const decree of pendingDecrees) {
-            // Validate minimum time if specified in recurrence
             const minTime = decree.recurrence?.min_time || 0;
+            const isTimeBased = decree.unit === 'MINUTES';
+            
+            // 1. Requirements Check
             if (minTime > 0 && durationMinutes !== undefined && durationMinutes < minTime) {
-                continue; // Does not meet minimum requirements
+                continue; // Too short to count
             }
 
-            const newQuantity = (decree.current_quantity || 0) + amount;
+            // 2. Increment Logic
+            // If unit is MINUTES, we add the duration. If SESSIONS, we add the fixed amount (usually 1).
+            const increment = isTimeBased ? (durationMinutes || 0) : amount;
+            
+            if (increment <= 0) continue;
+
+            const newQuantity = (decree.current_quantity || 0) + increment;
             const isCompleted = newQuantity >= (decree.target_quantity || 1);
             
             const updates: Partial<RoyalDecree> = {

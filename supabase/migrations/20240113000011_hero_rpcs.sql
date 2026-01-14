@@ -28,7 +28,6 @@ declare
 begin
   update profiles
   set current_xp = current_xp + amount,
-      total_study_minutes = total_study_minutes + amount, -- Asumiendo 1 XP = 1 Minuto de estudio por defecto (puede ajustarse)
       updated_at = now()
   where id = auth.uid()
   returning * into p_row;

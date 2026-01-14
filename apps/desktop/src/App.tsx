@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -77,13 +77,23 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>('Home');
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => {
+    console.log("App Mounted");
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  try {
+    return (
     <SafeAreaProvider>
       <NavigationContainer
         ref={navigationRef}
         onStateChange={() => {
             setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+            console.log("Route changed to:", navigationRef.getCurrentRoute()?.name);
         }}
       >
         <ToastProvider>
@@ -107,4 +117,8 @@ export default function App() {
       </NavigationContainer>
     </SafeAreaProvider>
   );
+  } catch (e) {
+    console.error("Render Error:", e);
+    return <div style={{color: 'red'}}>Error: {JSON.stringify(e)}</div>;
+  }
 }

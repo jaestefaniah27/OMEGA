@@ -38,15 +38,16 @@ export default defineConfig({
     extensions: ['.web.tsx', '.tsx', '.ts', '.jsx', '.js', '.json'],
     alias: [
       { find: 'react-native/Libraries/Utilities/codegenNativeComponent', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
-      { find: 'react-native', replacement: 'react-native-web' },
+      { find: 'react-native', replacement: path.resolve(__dirname, './electron/mocks/react-native.js') },
       { find: 'expo-calendar', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-background-fetch', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-task-manager', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-file-system', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-modules-core', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
-      { find: 'expo-camera', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-camera', replacement: path.resolve(__dirname, './electron/mocks/expo-camera.js') },
       { find: 'expo-image-manipulator', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-notifications', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: '@react-native-community/datetimepicker', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
     ],
   },
   optimizeDeps: {

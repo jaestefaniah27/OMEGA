@@ -4,9 +4,10 @@ import {
     Text,
     StyleSheet,
     ImageBackground,
-    Dimensions
+    Dimensions,
+    useWindowDimensions
 } from 'react-native';
-import { MapLocationPin } from '@omega/ui';
+import { MapLocationPin } from '..';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -31,13 +32,21 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 export const HomeScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp>();
 
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768;
+
     return (
         <View style={styles.container}>
-            {/* 
-        TODO: Use a real isometric map image once available.
-        Using a dark background with a subtle tint as placeholder.
-      */}
-            <View style={styles.mapBase}>
+            <View style={[
+                styles.mapBase, 
+                isDesktop && { 
+                    maxWidth: 1024, 
+                    alignSelf: 'center',
+                    borderLeftWidth: 1,
+                    borderRightWidth: 1,
+                    borderColor: '#333'
+                }
+            ]}>
                 <Text style={styles.mapTitle}>REINO DE OMEGA</Text>
 
                 {/* Castle: North-Center */}

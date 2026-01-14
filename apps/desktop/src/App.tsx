@@ -1,55 +1,110 @@
-import { useState, useEffect } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import { MedievalButton } from '@omega/ui'
-import { supabase } from '@omega/db'
+import React, { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { 
+    HomeScreen,
+    CastleScreen,
+    LibraryScreen,
+    WizardTowerScreen,
+    BarracksScreen,
+    TavernScreen,
+    TempleScreen,
+    TheatreScreen,
+    MarketScreen,
+    ProfileScreen,
+    WarTableScreen,
+    GameHUD 
+} from '@omega/ui';
+import { GameProvider, ToastProvider } from '@omega/logic';
+import { DeviceEventEmitter } from 'react-native';
+import { Castle, Calendar } from 'lucide-react-native';
 
-function App() {
-  const [count, setCount] = useState(0)
-  const [dbStatus, setDbStatus] = useState<string>('Esperando...')
+// Simple style reset for web
+import './App.css';
 
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const { error } = await supabase.from('profiles').select('count');
-        if (error) throw error;
-        setDbStatus('✅ Conectado a Supabase');
-      } catch (err) {
-        setDbStatus('❌ Error de conexión (revisa el .env)');
+const Stack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef();
+
+function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
+  const handleProfilePress = () => {
+    if (navigationRef.isReady()) {
+      if (currentRoute === 'Profile') {
+        navigationRef.goBack();
+      } else {
+        navigationRef.navigate('Profile' as any);
       }
-    };
-    testConnection();
-  }, []);
+    }
+  };
+
+  const handleMapPress = () => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Home' as any);
+    }
+  };
+
+  const handleCastlePress = () => {
+    if (navigationRef.isReady()) {
+      if (currentRoute === 'Castle') {
+        navigationRef.navigate('WarTable' as any);
+      } else {
+        navigationRef.navigate('Castle' as any);
+      }
+    }
+  };
+
+  const handleTheatrePress = () => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Theatre' as any);
+    }
+  };
+
+  const handleZurronPress = () => {
+    DeviceEventEmitter.emit('GLOBAL_QUICK_ADD');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React + Electron</h1>
-      <div className="card">
-        <p>Base de Datos: <strong>{dbStatus}</strong></p>
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <div style={{ marginTop: 20 }}>
-        <MedievalButton title="Hola desde Desktop RPG!" />
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <GameHUD
+        onProfilePress={handleProfilePress}
+        onMapPress={handleMapPress}
+        onZurronPress={handleZurronPress}
+        onCastlePress={handleCastlePress}
+        onTheatrePress={handleTheatrePress}
+        castleIcon={currentRoute === 'Castle' ? Calendar : Castle}
+      />
+  );
 }
 
-export default App
+export default function App() {
+  const [currentRoute, setCurrentRoute] = useState<string | undefined>('Home');
+
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer
+        ref={navigationRef}
+        onStateChange={() => {
+            setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+        }}
+      >
+        <ToastProvider>
+            <GameProvider>
+                <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+                    <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen name="Castle" component={CastleScreen} />
+                    <Stack.Screen name="Library" component={LibraryScreen} />
+                    <Stack.Screen name="WizardTower" component={WizardTowerScreen} />
+                    <Stack.Screen name="Barracks" component={BarracksScreen} />
+                    <Stack.Screen name="Tavern" component={TavernScreen} />
+                    <Stack.Screen name="Temple" component={TempleScreen} />
+                    <Stack.Screen name="Theatre" component={TheatreScreen} />
+                    <Stack.Screen name="Market" component={MarketScreen} />
+                    <Stack.Screen name="Profile" component={ProfileScreen} />
+                    <Stack.Screen name="WarTable" component={WarTableScreen} />
+                </Stack.Navigator>
+                <AppContent currentRoute={currentRoute} />
+            </GameProvider>
+        </ToastProvider>
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+}

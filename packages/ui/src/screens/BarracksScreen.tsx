@@ -14,7 +14,7 @@ import {
     DeviceEventEmitter,
     Alert
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { 
     Swords, 
     Shield, 

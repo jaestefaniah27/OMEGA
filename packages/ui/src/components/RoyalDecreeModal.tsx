@@ -12,7 +12,7 @@ import {
     Platform,
     KeyboardAvoidingView
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { X, Sword, BookOpen, Music, Target, Calendar, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DecreeType, DecreeUnit, useGame } from '@omega/logic';

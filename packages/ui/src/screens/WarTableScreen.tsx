@@ -10,7 +10,7 @@ import {
     DeviceEventEmitter
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { ParchmentCard, MedievalButton } from '@omega/ui';
+import { ParchmentCard, MedievalButton } from '..';
 import { 
     ChevronLeft, 
     ChevronRight, 

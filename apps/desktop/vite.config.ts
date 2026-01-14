@@ -39,11 +39,14 @@ export default defineConfig({
     alias: [
       { find: 'react-native/Libraries/Utilities/codegenNativeComponent', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'react-native', replacement: 'react-native-web' },
-      { find: 'react-native-svg', replacement: 'react-native-svg-web' },
       { find: 'expo-calendar', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-background-fetch', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-task-manager', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
       { find: 'expo-file-system', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-modules-core', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-camera', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-image-manipulator', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-notifications', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
     ],
   },
   optimizeDeps: {

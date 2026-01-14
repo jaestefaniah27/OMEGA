@@ -17,6 +17,10 @@
         "react-native": "*"
     },
     "dependencies": {
-        "lucide-react-native": "^0.562.0"
+        "lucide-react-native": "^0.562.0",
+        "@omega/logic": "*",
+        "@react-navigation/native": "^7.0.0",
+        "@react-navigation/native-stack": "^7.0.0",
+        "react-native-svg": "*"
     }
 }

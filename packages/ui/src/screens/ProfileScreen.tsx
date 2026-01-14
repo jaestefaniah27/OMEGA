@@ -10,7 +10,7 @@ import {
     Dimensions,
     TouchableOpacity
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { supabase, useUserStats, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins } from 'lucide-react-native';

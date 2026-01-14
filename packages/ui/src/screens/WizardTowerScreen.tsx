@@ -6,7 +6,7 @@ import {
     ScrollView,
     Dimensions
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { useNavigation } from '@react-navigation/native';
 import { Zap, Sparkles, Code, Cpu } from 'lucide-react-native';
 

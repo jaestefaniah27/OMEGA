@@ -11,7 +11,7 @@ import {
     KeyboardAvoidingView,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { Timer, X, Plus, Save, Trash2, History, ChevronRight } from 'lucide-react-native';
 import { useActiveWorkout, useExercises, Exercise } from '@omega/logic';
 

@@ -14,7 +14,7 @@ import {
     Animated,
     DeviceEventEmitter
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '@omega/ui';
+import { MedievalButton, ParchmentCard } from '..';
 import { useNavigation } from '@react-navigation/native';
 import {
     BookOpen,
@@ -34,7 +34,7 @@ import {
     Camera,
     Palette
 } from 'lucide-react-native';
-import { CameraColorPicker, ManualColorPicker } from '@omega/ui';
+import { CameraColorPicker, ManualColorPicker } from '..';
 import { useLibrary, Subject, Book, Exam } from '@omega/logic';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 

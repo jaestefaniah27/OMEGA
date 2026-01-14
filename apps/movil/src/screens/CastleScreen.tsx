@@ -113,6 +113,20 @@ export const CastleScreen: React.FC = () => {
                     </View>
                 )}
 
+                {!isGeneral && !isArchive && decree.type === 'EXAM' && new Date() >= new Date(decree.due_date || '') && (
+                     <MedievalButton
+                        title="CONCLUIR EXAMEN"
+                        onPress={async () => {
+                             await updateDecree(decree.id, {
+                                status: 'COMPLETED',
+                                current_quantity: decree.target_quantity,
+                                completed_at: new Date().toISOString()
+                            });
+                        }}
+                        style={{ marginTop: 10, paddingVertical: 6, minHeight: 32 }}
+                    />
+                )}
+
                 {decree.due_date && !isArchive && (
                     <Text style={styles.dueDate}>
                         Límite: {new Date(decree.due_date).toLocaleDateString()}

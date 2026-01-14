@@ -13,7 +13,7 @@ import {
     KeyboardAvoidingView
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
-import { X, Sword, BookOpen, Music, Target, Calendar } from 'lucide-react-native';
+import { X, Sword, BookOpen, Music, Target, Calendar, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DecreeType, DecreeUnit } from '../types/supabase';
 import { useGame } from '../context/GameContext';
@@ -39,6 +39,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [minTime, setMinTime] = useState('0');
     const [selectedActivityId, setSelectedActivityId] = useState('');
     const [dueDate, setDueDate] = useState('');
+    const [calendarExport, setCalendarExport] = useState(false);
     const [loading, setLoading] = useState(false);
 
     // Exam Related
@@ -55,6 +56,13 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
+    const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    };
 
     const handleSave = async () => {
         let finalTitle = title;
@@ -86,7 +94,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
 
         setLoading(true);
         try {
-            const decreeId = Math.random().toString(36).substr(2, 9);
+            const decreeId = generateUUID();
             const isExam = type === 'LIBRARY' && librarySubType === 'EXAM';
             
             const decreeData = {
@@ -106,7 +114,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1),
                     time_based: finalUnit === 'MINUTES' && !isExam
                 },
-                status: 'PENDING'
+                status: 'PENDING',
+                calendar_export: calendarExport
             };
 
             await onSave(decreeData);
@@ -115,7 +124,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 const subject = subjects.find(s => s.id === selectedSubjectId);
                 if (subject) {
                     const newExam = {
-                        id: Math.random().toString(36).substr(2, 9),
+                        id: generateUUID(),
                         title: title || 'Examen',
                         date: (selectedDate || new Date()).toISOString(),
                         time: examTime,
@@ -164,6 +173,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         setExamWeight(100);
         setOtherExamWeights({});
         onClose();
+        setCalendarExport(false);
     };
 
     const onDateChange = (event: any, date?: Date) => {
@@ -592,6 +602,18 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     </View>
                 </>
             )}
+            
+            <View style={{ marginTop: 15 }}>
+                <TouchableOpacity 
+                    style={[styles.row, { alignItems: 'center' }]} 
+                    onPress={() => setCalendarExport(!calendarExport)}
+                >
+                    <View style={[styles.checkbox, calendarExport && styles.checkboxActive]}>
+                        {calendarExport && <Check size={12} color="#fff" />}
+                    </View>
+                    <Text style={[styles.label, { marginBottom: 0, marginLeft: 10 }]}>Exportar a móvil</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -599,9 +621,15 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         if (!showDatePicker && !showTimePicker) return null;
 
         const isDate = showDatePicker;
-        const value = isDate ? (selectedDate || new Date()) : new Date(); // Time picker needs a date object, we can just use new Date() if we only care about time creation or extract from state if we stored it differently. 
-                                                                          // But for examTime (string), we might want to parse it if we wanted to show current selection, 
-                                                                          // but for now defaulting to now/selectedDate is fine as per original code.
+        let value = new Date();
+        
+        if (isDate) {
+            value = selectedDate || new Date();
+        } else if (examTime) {
+            const [hours, minutes] = examTime.split(':').map(Number);
+            value.setHours(hours);
+            value.setMinutes(minutes);
+        }
         
         const handleChange = isDate ? onDateChange : onTimeChange;
         const mode = isDate ? 'date' : 'time';
@@ -615,6 +643,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     display="default"
                     onChange={handleChange}
                     minimumDate={isDate ? new Date() : undefined}
+                    minuteInterval={isDate ? undefined : 15}
                 />
             );
         }
@@ -650,6 +679,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             onChange={handleChange}
                             minimumDate={isDate ? new Date() : undefined}
                             textColor="#3d2b1f" // Match theme
+                            minuteInterval={isDate ? undefined : 15}
                         />
                     </View>
                 </View>
@@ -978,5 +1008,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#8b4513',
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: '#8b4513',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    checkboxActive: {
+        backgroundColor: '#8b4513',
     },
 });

@@ -21,7 +21,9 @@ import {
     DecreeStatus,
     DecreeUnit
 } from '../types/supabase';
+import { useCalendar } from '../hooks/useCalendar';
 import { showGlobalToast } from './ToastContext';
+
 
 export interface RoutineWithExercises extends Routine {
     exercises: (RoutineExercise & { exercise: Exercise })[];
@@ -112,10 +114,23 @@ interface GameContextType {
         refresh: () => Promise<void>;
 
         // Mutations
-        addDecree: (decree: Partial<RoyalDecree>) => Promise<any>;
+        addDecree: (decree: Partial<RoyalDecree> & { calendar_export?: boolean }) => Promise<any>;
         updateDecree: (id: string, updates: Partial<RoyalDecree>) => Promise<void>;
         deleteDecree: (id: string) => Promise<void>;
         checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => Promise<void>;
+    };
+
+    // --- CALENDAR INTEGRATION ---
+    calendar: {
+        calendars: any[];
+        status: any;
+        requestPermission: () => Promise<any>;
+        importCalendarId: string | null;
+        exportCalendarId: string | null;
+        isSyncing: boolean;
+        saveSettings: (importId: string | null, exportId: string | null) => Promise<void>;
+        syncNativeEventsToDecrees: () => Promise<void>;
+        registerBackgroundFetch: () => Promise<void>;
     };
 
     // --- GLOBAL ---
@@ -881,11 +896,33 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         await fetchAll();
     };
 
+    // --- CALENDAR HOOK ---
+    const calendar = useCalendar(user?.id);
+
+    // Sync on load if configured
+    useEffect(() => {
+        if (user && calendar.importCalendarId) {
+            calendar.syncNativeEventsToDecrees();
+        }
+    }, [user, calendar.importCalendarId]);
+
     // --- MUTATORS (CASTLE) ---
-    const addDecree = async (decree: Partial<RoyalDecree>) => {
+    const addDecree = async (decree: Partial<RoyalDecree> & { calendar_export?: boolean }) => {
         if (!user) return;
-        const { data, error } = await supabase.from('royal_decrees').insert([{ ...decree, user_id: user.id }]).select().single();
-        if (!error) await fetchAll();
+        const { calendar_export, ...decreeData } = decree;
+
+        const { data, error } = await supabase.from('royal_decrees').insert([{ ...decreeData, user_id: user.id }]).select().single();
+        
+        if (!error) {
+            if (calendar_export) {
+                await calendar.exportDecreeToCalendar(
+                    decreeData.title || 'Misión Omega', 
+                    decreeData.due_date ? new Date(decreeData.due_date) : new Date(), 
+                    decreeData.description || ''
+                );
+            }
+            await fetchAll();
+        }
         return data;
     };
 
@@ -951,6 +988,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             deleteDecree,
             checkDecreeProgress
         },
+        calendar,
         workout: {
             isSessionActive,
             elapsedSeconds,

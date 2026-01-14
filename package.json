@@ -19,6 +19,9 @@
   },
   "packageManager": "npm@10.2.4",
   "dependencies": {
+    "expo-background-fetch": "~14.0.9",
+    "expo-calendar": "~15.0.8",
+    "expo-task-manager": "~14.0.9",
     "lodash": "^4.17.21"
   }
 }

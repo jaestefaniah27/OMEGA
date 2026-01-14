@@ -16,6 +16,117 @@ import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins } from 'lucide-react-native';
 import { useUserStats } from '../hooks/useUserStats';
 import { MuscleHeatMap } from '../components/MuscleHeatMap';
+import { useGame } from '../context/GameContext';
+import { Calendar as CalendarIcon, RefreshCw, CheckCircle, Smartphone } from 'lucide-react-native';
+
+const CalendarSettings = () => {
+    const { calendar } = useGame();
+    const [showImportList, setShowImportList] = useState(false);
+    const [showExportList, setShowExportList] = useState(false);
+
+    if (!calendar) return null;
+
+    const { 
+        status, 
+        requestPermission, 
+        calendars, 
+        saveSettings, 
+        importCalendarId, 
+        exportCalendarId,
+        syncNativeEventsToDecrees,
+        isSyncing
+    } = calendar;
+
+    const handleGrant = async () => {
+        await requestPermission();
+    };
+
+    if (status?.status !== 'granted') {
+        return (
+            <ParchmentCard style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                    <CalendarIcon size={20} color="#8b4513" />
+                    <Text style={styles.sectionTitle}>Sincronización de Calendario</Text>
+                </View>
+                <Text style={styles.sectionText}>
+                    Concede permisos para sincronizar tus exámenes y entrenamientos con el calendario de tu móvil.
+                </Text>
+                <MedievalButton title="Conceder Permisos" onPress={handleGrant} variant="primary" style={{ marginTop: 10 }} />
+            </ParchmentCard>
+        );
+    }
+
+    const importCalName = calendars.find(c => c.id === importCalendarId)?.title || 'Seleccionar...';
+    const exportCalName = calendars.find(c => c.id === exportCalendarId)?.title || 'Seleccionar...';
+
+    return (
+        <ParchmentCard style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <CalendarIcon size={20} color="#8b4513" />
+                    <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>Sincronización</Text>
+                </View>
+                {isSyncing && <ActivityIndicator color="#8b4513" size="small" />}
+            </View>
+
+            <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Importar desde:</Text>
+                <TouchableOpacity onPress={() => setShowImportList(!showImportList)} style={styles.calSelector}>
+                    <Text style={styles.calSelectorText}>{importCalName}</Text>
+                </TouchableOpacity>
+            </View>
+            {showImportList && (
+                <View style={styles.calList}>
+                    {calendars.map(cal => (
+                        <TouchableOpacity 
+                            key={cal.id} 
+                            style={[styles.calOption, cal.id === importCalendarId && styles.calOptionSelected]}
+                            onPress={() => {
+                                saveSettings(cal.id, exportCalendarId);
+                                setShowImportList(false);
+                            }}
+                        >
+                            <View style={[styles.colorDot, { backgroundColor: cal.color }]} />
+                            <Text style={styles.calOptionText}>{cal.title}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+
+            <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Exportar a:</Text>
+                <TouchableOpacity onPress={() => setShowExportList(!showExportList)} style={styles.calSelector}>
+                    <Text style={styles.calSelectorText}>{exportCalName}</Text>
+                </TouchableOpacity>
+            </View>
+            {showExportList && (
+                <View style={styles.calList}>
+                    {calendars.map(cal => (
+                        <TouchableOpacity 
+                            key={cal.id} 
+                            style={[styles.calOption, cal.id === exportCalendarId && styles.calOptionSelected]}
+                            onPress={() => {
+                                saveSettings(importCalendarId, cal.id);
+                                setShowExportList(false);
+                            }}
+                        >
+                             <View style={[styles.colorDot, { backgroundColor: cal.color }]} />
+                             <Text style={styles.calOptionText}>{cal.title}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+
+            <MedievalButton 
+                title={isSyncing ? "Sincronizando..." : "Sincronizar Ahora"} 
+                onPress={syncNativeEventsToDecrees} 
+                variant="primary" 
+                style={{ marginTop: 15 }}
+                disabled={isSyncing}
+            />
+        </ParchmentCard>
+    );
+};
 
 const { width } = Dimensions.get('window');
 
@@ -305,6 +416,7 @@ export const ProfileScreen: React.FC = () => {
                     <View style={styles.statsSeparator} />
                     <MuscleHeatMap fatigue={muscleFatigue} />
                 </ParchmentCard>
+                <CalendarSettings />
 
                 <MedievalButton
                     title="CERRAR SESIÓN"
@@ -614,5 +726,73 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-    }
+    },
+    sectionCard: {
+        width: width * 0.9,
+        padding: 20,
+        marginBottom: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        justifyContent: 'space-between',
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    sectionText: {
+        fontSize: 14,
+        color: '#5d4037',
+        lineHeight: 20,
+    },
+    settingRow: {
+        marginBottom: 12,
+    },
+    settingLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8b4513',
+        marginBottom: 5,
+    },
+    calSelector: {
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.2)',
+    },
+    calSelectorText: {
+        fontSize: 14,
+        color: '#3d2b1f',
+    },
+    calList: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 5,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.1)',
+    },
+    calOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        borderRadius: 5,
+    },
+    calOptionSelected: {
+        backgroundColor: 'rgba(139, 69, 19, 0.1)',
+    },
+    colorDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginRight: 10,
+    },
+    calOptionText: {
+        fontSize: 14,
+        color: '#3d2b1f',
+    },
 });

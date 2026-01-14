@@ -37,7 +37,7 @@ import {
 import { CameraColorPicker, ManualColorPicker } from '@omega/ui';
 import { useLibrary } from '../hooks/useLibrary';
 import { Subject, Book, Exam } from '../types/supabase';
-import Svg, { G, Path, Circle } from 'react-native-svg';
+import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -69,41 +69,176 @@ const ExamPieChart = ({ exams, size = 100 }: { exams: Exam[], size?: number }) =
 
     if (exams.length === 0) return null;
 
+    const renderSlice = (startAngle: number, sweepAngle: number, color: string, key: string, opacity: number = 1) => {
+        // Validation for full circle or tiny slices
+        if (sweepAngle >= 360) {
+            return <Circle key={key} cx={0} cy={0} r={radius - 5} fill={color} stroke="#3d2b1f" strokeWidth={1} opacity={opacity} />;
+        }
+        if (sweepAngle <= 0) return null;
+
+        const rad1 = (startAngle * Math.PI) / 180;
+        const x1 = (radius - 5) * Math.cos(rad1);
+        const y1 = (radius - 5) * Math.sin(rad1);
+        
+        const rad2 = ((startAngle + sweepAngle) * Math.PI) / 180;
+        const x2 = (radius - 5) * Math.cos(rad2);
+        const y2 = (radius - 5) * Math.sin(rad2);
+        
+        const largeArc = sweepAngle > 180 ? 1 : 0;
+        const d = `M 0 0 L ${x1} ${y1} A ${radius - 5} ${radius - 5} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+        return <Path key={key} d={d} fill={color} stroke="#3d2b1f" strokeWidth={1} opacity={opacity} />;
+    };
+
     return (
         <Svg width={size} height={size}>
             <G transform={`translate(${center}, ${center})`}>
                 {exams.map((ex, idx) => {
-                    const sliceAngle = (ex.weight / (totalWeight || 100)) * 360;
-                    const rad1 = (currentAngle * Math.PI) / 180;
-                    const x1 = (radius - 5) * Math.cos(rad1);
-                    const y1 = (radius - 5) * Math.sin(rad1);
+                    const weightPct = ex.weight / (totalWeight || 100);
+                    const sliceAngle = weightPct * 360;
                     
-                    const rad2 = ((currentAngle + sliceAngle) * Math.PI) / 180;
-                    const x2 = (radius - 5) * Math.cos(rad2);
-                    const y2 = (radius - 5) * Math.sin(rad2);
+                    const baseColors = ['#d4af37', '#8b4513', '#c0392b', '#2980b9', '#27ae60', '#8e44ad'];
+                    const baseColor = baseColors[idx % baseColors.length];
                     
-                    const largeArc = sliceAngle > 180 ? 1 : 0;
-                    const d = `M 0 0 L ${x1} ${y1} A ${radius - 5} ${radius - 5} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-                    
-                    const colors = ['#d4af37', '#8b4513', '#c0392b', '#2980b9', '#27ae60', '#8e44ad'];
-                    const fillColor = ex.is_completed ? '#27ae60' : (colors[idx % colors.length]);
+                    const elements = [];
+
+                    if (ex.is_completed && ex.grade !== null) {
+                        // Grade is 0-10.
+                        const validGrade = Math.max(0, Math.min(10, ex.grade));
+                        const gradeRatio = validGrade / 10;
+                        
+                        const achievedAngle = sliceAngle * gradeRatio;
+                        const missedAngle = sliceAngle - achievedAngle;
+
+                        // Achieved part (Green)
+                        if (achievedAngle > 0.5) {
+                            elements.push(renderSlice(currentAngle, achievedAngle, '#27ae60', `${ex.id}-achieved`));
+                        }
+                        
+                        // Missed part (Darkened Base or Dark Grey) - "active" logic usually uses base color, but user wants to show missed potential.
+                        // User said: "si has sacado un 5 se quede medio quesito mas oscuro para indicar que es nota que no conseguiste"
+                        // So I will use the base color but darker/opaque, or a specific "missed" color.
+                        // Let's use a dark grey or semi-transparent version of the base to indicate "void".
+                        if (missedAngle > 0.5) {
+                            elements.push(renderSlice(currentAngle + achievedAngle, missedAngle, '#555', `${ex.id}-missed`, 1)); 
+                        }
+                    } else {
+                        // Not completed or no grade
+                        elements.push(renderSlice(currentAngle, sliceAngle, baseColor, ex.id, ex.is_completed ? 1 : 0.7));
+                    }
                     
                     currentAngle += sliceAngle;
-                    
-                    return (
-                        <Path 
-                            key={ex.id} 
-                            d={d} 
-                            fill={fillColor} 
-                            stroke="#3d2b1f" 
-                            strokeWidth={1}
-                            opacity={ex.is_completed ? 1 : 0.7}
-                        />
-                    );
+                    return elements;
                 })}
-                <Circle cx={0} cy={0} r={radius / 3} fill="#fff7e6" />
+                <Circle cx={0} cy={0} r={radius / 2.5} fill="#fff7e6" />
+                <SvgText
+                    x="0"
+                    y="0"
+                    fill="#3d2b1f"
+                    fontSize="16"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    alignmentBaseline="middle"
+                >
+                    {Math.round(exams.reduce((acc, ex) => {
+                        if (!ex.is_completed || ex.grade === null) return acc;
+                        const validGrade = Math.max(0, Math.min(10, ex.grade));
+                        return acc + ((validGrade / 10) * ex.weight); // Contribution
+                    }, 0))}
+                </SvgText>
             </G>
         </Svg>
+    );
+};
+
+const WeightInput = ({ weight, onChange }: { weight: number, onChange: (val: number) => void }) => {
+    const [localValue, setLocalValue] = useState(weight.toString());
+    const [isEditing, setIsEditing] = useState(false);
+
+    useEffect(() => {
+        setLocalValue(weight.toString());
+    }, [weight]);
+
+    const handleFinishEditing = () => {
+        const num = parseFloat(localValue.replace(',', '.'));
+        if (!isNaN(num)) onChange(num);
+        else setLocalValue(weight.toString());
+        setIsEditing(false);
+    };
+
+    return (
+        <TouchableOpacity 
+            style={styles.examItemWeight} 
+            onLongPress={() => setIsEditing(true)}
+            activeOpacity={0.8}
+        >
+            {isEditing ? (
+                <TextInput
+                    style={[styles.weightValue, { minWidth: 20, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.5)', padding: 0 }]}
+                    keyboardType="numeric"
+                    value={localValue}
+                    onChangeText={setLocalValue}
+                    onBlur={handleFinishEditing}
+                    autoFocus
+                />
+            ) : (
+                <Text style={styles.weightValue}>{weight}%</Text>
+            )}
+        </TouchableOpacity>
+    );
+};
+
+const GradeInput = ({ grade, onChange }: { grade: number | null, onChange: (val: number) => void }) => {
+    const [localValue, setLocalValue] = useState(grade !== null ? grade.toString() : '');
+    const [isEditing, setIsEditing] = useState(false);
+
+    useEffect(() => {
+        setLocalValue(grade !== null ? grade.toString() : '');
+    }, [grade]);
+
+    const handleFinishEditing = () => {
+        const num = parseFloat(localValue.replace(',', '.'));
+        if (!isNaN(num)) onChange(num);
+        setIsEditing(false);
+    };
+
+    return (
+        <View style={styles.gradeEditor}>
+            <Text style={styles.gradeLabel}>Calificación:</Text>
+            <TouchableOpacity 
+                style={styles.gradeInputRow} 
+                onLongPress={() => setIsEditing(true)}
+                activeOpacity={0.8}
+            >
+                {isEditing ? (
+                    <TextInput
+                        style={styles.gradeInput}
+                        keyboardType="decimal-pad"
+                        value={localValue}
+                        placeholder="0-10"
+                        onChangeText={setLocalValue}
+                        onBlur={handleFinishEditing}
+                        autoFocus
+                    />
+                ) : (
+                    <View style={styles.gradeBarBg}>
+                        <View 
+                            style={[
+                                styles.gradeBarFill, 
+                                { 
+                                    width: `${Math.min((parseFloat(localValue.replace(',', '.') || '0')) * 10, 100)}%`,
+                                    backgroundColor: (parseFloat(localValue.replace(',', '.') || '0')) >= 5 ? '#27ae60' : '#c0392b'
+                                }
+                            ]} 
+                        />
+                    </View>
+                )}
+                
+                <Text style={[styles.gradePercentText, { fontSize: 14 }]}>
+                    {localValue ? Math.round((parseFloat(localValue.replace(',', '.') || '0')) * 10) : 0}%
+                </Text>
+            </TouchableOpacity>
+        </View>
     );
 };
 
@@ -343,6 +478,11 @@ export const LibraryScreen: React.FC = () => {
         const exams = item.exams || [];
         const completedExams = exams.filter(e => e.is_completed);
 
+        const handleUpdateExamWeight = async (examId: string, weight: number) => {
+            const updatedExams = exams.map(ex => ex.id === examId ? { ...ex, weight } : ex);
+            await updateSubject(item.id, { exams: updatedExams });
+        };
+
         const handleUpdateExamGrade = async (examId: string, grade: number) => {
             const updatedExams = exams.map(ex => ex.id === examId ? { ...ex, grade } : ex);
             await updateSubject(item.id, { exams: updatedExams });
@@ -420,40 +560,33 @@ export const LibraryScreen: React.FC = () => {
                                                     {ex.place ? ` @ ${ex.place}` : ''}
                                                 </Text>
                                             </View>
-                                            <View style={styles.examItemWeight}>
-                                                <Text style={styles.weightValue}>{ex.weight}%</Text>
-                                            </View>
+                                            <WeightInput 
+                                                weight={ex.weight} 
+                                                onChange={(val) => handleUpdateExamWeight(ex.id, val)} 
+                                            />
                                         </View>
 
                                         {ex.is_completed ? (
-                                            <View style={styles.gradeEditor}>
-                                                <Text style={styles.gradeLabel}>Nota Real:</Text>
-                                                <View style={styles.gradeInputRow}>
-                                                    <TextInput
-                                                        style={styles.gradeInput}
-                                                        keyboardType="numeric"
-                                                        value={ex.grade !== null ? ex.grade.toString() : ''}
-                                                        placeholder="0-10"
-                                                        onChangeText={(val) => handleUpdateExamGrade(ex.id, parseFloat(val) || 0)}
-                                                    />
-                                                    <View style={styles.gradeBarBg}>
-                                                        <View 
-                                                            style={[
-                                                                styles.gradeBarFill, 
-                                                                { 
-                                                                    width: `${(ex.grade || 0) * 10}%`,
-                                                                    backgroundColor: (ex.grade || 0) >= 5 ? '#27ae60' : '#c0392b'
-                                                                }
-                                                            ]} 
-                                                        />
-                                                    </View>
-                                                    <Text style={styles.gradePercentText}>{Math.round((ex.grade || 0) * 10)}%</Text>
-                                                </View>
-                                            </View>
+                                            <GradeInput 
+                                                grade={ex.grade} 
+                                                onChange={(val) => handleUpdateExamGrade(ex.id, val)}
+                                            />
                                         ) : (
-                                            <View style={styles.pendingExamStatus}>
-                                                <Clock size={14} color="#f39c12" />
-                                                <Text style={styles.pendingText}>Pendiente de realización</Text>
+                                            <View style={styles.pendingContainer}>
+                                                <View style={styles.pendingExamStatus}>
+                                                    <Clock size={14} color="#f39c12" />
+                                                    <Text style={styles.pendingText}>Pendiente de realización</Text>
+                                                </View>
+                                                {new Date().setHours(0,0,0,0) >= new Date(ex.date).setHours(0,0,0,0) && (
+                                                    <MedievalButton 
+                                                        title="COMPLETAR" 
+                                                        onPress={async () => {
+                                                            const updatedExams = exams.map(e => e.id === ex.id ? { ...e, is_completed: true, grade: 0 } : e);
+                                                            await updateSubject(item.id, { exams: updatedExams });
+                                                        }}
+                                                        style={{ marginTop: 8, paddingVertical: 5, minHeight: 30 }}
+                                                    />
+                                                )}
                                             </View>
                                         )}
                                     </View>
@@ -1849,12 +1982,16 @@ const styles = StyleSheet.create({
         color: '#3d2b1f',
         marginBottom: 5,
     },
+    pendingContainer: {
+        marginTop: 10,
+        alignItems: 'flex-start',
+    },
     gradeInputRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     gradeInput: {
-        width: 45,
+        width: 60,
         height: 30,
         backgroundColor: '#fff',
         borderRadius: 4,
@@ -1881,7 +2018,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 'bold',
         color: '#3d2b1f',
-        width: 40,
+        width: 50,
         textAlign: 'right',
     },
     pendingExamStatus: {

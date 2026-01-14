@@ -193,6 +193,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // Initial Load Flag to prevent double-fetch issues or hydration flicker
     const isHydrated = useRef(false);
+    const lastProcessedSync = useRef<string | null>(null);
 
     // --- PERSISTENCE HELPERS ---
     const loadFromLocal = async () => {
@@ -256,6 +257,35 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(dump));
         } catch (e) {
             console.error('Offline Mode: Failed to save local data', e);
+        }
+    };
+
+    const clearState = async () => {
+        try {
+            // Reset States
+            setUser(null);
+            setProfile(null);
+            setSubjects([]);
+            setBooks([]);
+            setCustomColors([]);
+            setBookStats({});
+            setActivities([]);
+            setMovies([]);
+            setSeries([]);
+            setActivityStats({});
+            setRoutines([]);
+            setHistory([]);
+            setMuscleFatigue({});
+            setRecords([]);
+            setDecrees([]);
+            
+            // Clear Storage
+            await AsyncStorage.removeItem(GAME_STATE_STORAGE_KEY);
+            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+            
+            console.log('GameContext: State cleared successfully');
+        } catch (e) {
+            console.error('GameContext: Failed to clear state', e);
         }
     };
 
@@ -599,6 +629,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setRecords(recordData);
             setDecrees(decreeData);
 
+            if (profData?.last_synced_at) {
+                lastProcessedSync.current = profData.last_synced_at;
+            }
+
             // --- PERSIST ---
             saveToLocal(
                 { subjects: subData, books: bookData, customColors: colData, bookStats: bStats },
@@ -666,8 +700,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        // 4. Periodic Polling (Every 2 minutes)
-        // Ensure freshness even if Realtime disconnects silently
         const intervalId = setInterval(() => {
             if (AppState.currentState === 'active') {
                 console.log('GameContext: Periodic Poll...');
@@ -675,35 +707,83 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
         }, 120000); // 2 minutes
 
-        // 5. Realtime Subscriptions
-        const setupRealtime = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+        // 6. Auth State Changes
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log(`GameContext: Auth Event -> ${event}`);
+            
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+                if (session?.user) {
+                    setUser(session.user);
+                    // Force refresh on initial load or sign in
+                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                        fetchAll();
+                    }
+                }
+            } else if (event === 'SIGNED_OUT') {
+                const { data: { session: activeSession } } = await supabase.auth.getSession();
+                if (!activeSession) {
+                    console.log('GameContext: Executing clearState due to verified SIGNED_OUT');
+                    clearState();
+                } else {
+                    console.log('GameContext: Ignored SIGNED_OUT event - active session still prevails.');
+                }
+            }
+        });
 
-            const channel = supabase.channel('game_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'books', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_colors', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'theatre_activities', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'theatre_movies', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'theatre_series', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'theatre_seasons' }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'study_sessions', filter: `user_id=eq.${user.id}` }, () => fetchAll())
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => fetchAll())
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
-        };
-
-        const sub = setupRealtime();
         return () => {
-            sub.then(cleanup => cleanup && cleanup());
             subscription.remove();
             clearInterval(intervalId);
+            authListener.subscription.unsubscribe();
         };
     }, []);
+
+    // 5. Realtime Subscription (Optimized Master Sync)
+    // This effect re-runs when 'user' changes, ensuring we are subscribed to the correct profile.
+    useEffect(() => {
+        if (!user) return;
+
+        let channel: any;
+
+        const setupChannel = async () => {
+            console.log(`GameContext: Setting up Realtime sync for user: ${user.id}`);
+            
+            channel = supabase.channel(`sync_${user.id}`)
+                .on('postgres_changes', 
+                    { 
+                        event: '*', // Listen to INSERT/UPDATE to be safe
+                        schema: 'public', 
+                        table: 'profiles', 
+                        filter: `id=eq.${user.id}` 
+                    }, 
+                    (payload: any) => {
+                        const newSync = payload.new?.last_synced_at || payload.new?.updated_at;
+                        
+                        if (newSync) {
+                            const newTime = new Date(newSync).getTime();
+                            const lastTime = lastProcessedSync.current ? new Date(lastProcessedSync.current).getTime() : 0;
+
+                            // Only fetch if the new timestamp is physically different/newer
+                            if (newTime !== lastTime) {
+                                console.log(`GameContext: Sync triggered (${newTime} vs ${lastTime})`);
+                                fetchAll();
+                            }
+                        }
+                    }
+                )
+                .subscribe((status) => {
+                    console.log(`GameContext: Realtime status: ${status}`);
+                });
+        };
+
+        setupChannel();
+
+        return () => {
+            if (channel) {
+                console.log('GameContext: Cleaning up Realtime channel');
+                supabase.removeChannel(channel);
+            }
+        };
+    }, [user]);
 
     // --- RPC HELPERS ---
     const addGold = async (amount: number) => {

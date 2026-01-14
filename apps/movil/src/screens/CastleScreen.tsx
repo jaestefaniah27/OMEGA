@@ -24,7 +24,8 @@ import {
     History,
     Sword,
     Scroll,
-    GraduationCap
+    GraduationCap,
+    Clock
 } from 'lucide-react-native';
 import { useGame } from '../context/GameContext';
 import { RoyalDecree } from '../types/supabase';
@@ -78,6 +79,14 @@ export const CastleScreen: React.FC = () => {
 
         // Masters (without instances yet) or one-shots always show if pending
         return true;
+    }).sort((a, b) => {
+        // If neither has a date, keep order
+        if (!a.due_date && !b.due_date) return 0;
+        // Move tasks without date to the end
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        // Chronological sort
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
 
     const completedDecrees = decrees.filter(d => d.status === 'COMPLETED').slice(0, 50); // Cap archive view for performance
@@ -105,10 +114,59 @@ export const CastleScreen: React.FC = () => {
         const progress = (decree.current_quantity / (decree.target_quantity || 1)) * 100;
         const isGeneral = decree.type === 'GENERAL';
         
+        const isInstance = !!(decree as any).parent_id;
+        const examDate = decree.due_date ? new Date(decree.due_date) : null;
+        const now = new Date();
+        const hoursLeft = examDate ? (examDate.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
+        const isTodayOrPast = !decree.due_date || hoursLeft! <= 0 || (decree.due_date.split('T')[0] <= todayStr);
+
+        const renderExamCountdown = () => {
+            if (!examDate || isArchive || decree.status === 'COMPLETED') return null;
+            
+            const maxCountdownHours = 100;
+            const currentHours = Math.max(0, hoursLeft!);
+            const percentage = Math.min(100, (currentHours / maxCountdownHours) * 100);
+            
+            // Color interpolation (Green -> Yellow -> Red)
+            let barColor = '#27ae60'; // Green
+            if (percentage < 30) {
+                barColor = '#c0392b'; // Red
+            } else if (percentage < 60) {
+                barColor = '#d35400'; // Orange
+            } else if (percentage < 85) {
+                barColor = '#f1c40f'; // Yellow
+            }
+
+            return (
+                <View style={styles.examCountdownWrapper}>
+                    <View style={styles.progressHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Clock size={12} color={currentHours > 0 ? "#8b4513" : "#c0392b"} />
+                            <Text style={[styles.countdownLabel, currentHours <= 0 && { color: '#c0392b' }]}>
+                                {currentHours > 0 ? "Tiempo para el inicio" : "Examen en curso/vencido"}
+                            </Text>
+                        </View>
+                        {currentHours > 0 && (
+                            <Text style={styles.countdownValue}>{Math.floor(currentHours)}h</Text>
+                        )}
+                    </View>
+                    
+                    {currentHours > 0 && (
+                        <View style={styles.examProgressBarBg}>
+                            <View style={[
+                                styles.examProgressBarFill, 
+                                { width: `${percentage}%`, backgroundColor: barColor }
+                            ]} />
+                        </View>
+                    )}
+                </View>
+            );
+        };
+        
         return (
             <View key={decree.id} style={styles.decreeItem}>
                 <View style={styles.decreeHeader}>
-                    {isGeneral && !isArchive ? (
+                    {isGeneral && !isArchive && (!isInstance || isTodayOrPast) ? (
                         <TouchableOpacity onPress={() => toggleGeneralDecree(decree)}>
                             <Square size={20} color="#3d2b1f" />
                         </TouchableOpacity>
@@ -117,7 +175,7 @@ export const CastleScreen: React.FC = () => {
                     ) : (
                         <ScrollIcon size={20} color="#3d2b1f" />
                     )}
-                    <Text style={[styles.decreeTitle, isGeneral && { marginLeft: 10 }]}>{decree.title}</Text>
+                    <Text style={[styles.decreeTitle, isGeneral && (!isInstance || isTodayOrPast) && { marginLeft: 10 }]}>{decree.title}</Text>
                     {isArchive && (
                         <View style={styles.completedBadge}>
                             <Trophy size={10} color="#27ae60" />
@@ -128,28 +186,30 @@ export const CastleScreen: React.FC = () => {
                 
                 <Text style={styles.decreeDesc}>{decree.description}</Text>
                 
-                {(!isGeneral || decree.target_quantity > 1) && (
-                    <View style={styles.progressContainer}>
-                        <View style={styles.progressHeader}>
-                            <Text style={styles.progressLabel}>
-                                {decree.unit === 'MINUTES' 
-                                    ? `${decree.current_quantity}m / ${decree.target_quantity}m` 
-                                    : `${decree.current_quantity} / ${decree.target_quantity} ${decree.unit === 'SESSIONS' ? 'Sesiones' : 'Páginas'}`
-                                }
-                            </Text>
-                            {!isArchive && <Text style={styles.progressValue}>{Math.round(progress)}%</Text>}
+                {decree.type === 'EXAM' ? renderExamCountdown() : (
+                    (!isGeneral || decree.target_quantity > 1) && (
+                        <View style={styles.progressContainer}>
+                            <View style={styles.progressHeader}>
+                                <Text style={styles.progressLabel}>
+                                    {decree.unit === 'MINUTES' 
+                                        ? `${decree.current_quantity}m / ${decree.target_quantity}m` 
+                                        : `${decree.current_quantity} / ${decree.target_quantity} ${decree.unit === 'SESSIONS' ? 'Sesiones' : 'Páginas'}`
+                                    }
+                                </Text>
+                                {!isArchive && <Text style={styles.progressValue}>{Math.round(progress)}%</Text>}
+                            </View>
+                            <View style={styles.progressBarBg}>
+                                <View style={[
+                                    styles.progressBarFill, 
+                                    { width: `${Math.min(progress, 100)}%` },
+                                    isArchive && { backgroundColor: '#27ae60' }
+                                ]} />
+                            </View>
                         </View>
-                        <View style={styles.progressBarBg}>
-                            <View style={[
-                                styles.progressBarFill, 
-                                { width: `${Math.min(progress, 100)}%` },
-                                isArchive && { backgroundColor: '#27ae60' }
-                            ]} />
-                        </View>
-                    </View>
+                    )
                 )}
 
-                {!isGeneral && !isArchive && decree.type === 'EXAM' && new Date() >= new Date(decree.due_date || '') && (
+                {!isGeneral && !isArchive && decree.type === 'EXAM' && isTodayOrPast && (
                      <MedievalButton
                         title="CONCLUIR EXAMEN"
                         onPress={async () => {
@@ -165,7 +225,7 @@ export const CastleScreen: React.FC = () => {
 
                 {decree.due_date && !isArchive && (
                     <Text style={styles.dueDate}>
-                        Límite: {new Date(decree.due_date).toLocaleDateString()}
+                        Fecha: {new Date(decree.due_date).toLocaleDateString()}
                     </Text>
                 )}
 
@@ -481,5 +541,35 @@ const styles = StyleSheet.create({
     actionButton: {
         width: '100%',
         marginBottom: 12,
+    },
+    examCountdownWrapper: {
+        marginTop: 10,
+        backgroundColor: 'rgba(139, 69, 19, 0.05)',
+        padding: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.1)',
+    },
+    countdownLabel: {
+        fontSize: 11,
+        color: '#8b4513',
+        marginLeft: 6,
+        fontStyle: 'italic',
+    },
+    countdownValue: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    examProgressBarBg: {
+        height: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: 4,
+        marginTop: 8,
+        overflow: 'hidden',
+    },
+    examProgressBarFill: {
+        height: '100%',
+        borderRadius: 4,
     },
 });

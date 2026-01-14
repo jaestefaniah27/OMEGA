@@ -54,6 +54,8 @@ export const WarTableScreen: React.FC = () => {
     
     
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().split('T')[0]);
+    const [calendarKey, setCalendarKey] = useState(0);
 
     // --- QUICK ADD HUD LISTENER ---
     useEffect(() => {
@@ -264,10 +266,27 @@ export const WarTableScreen: React.FC = () => {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <ChevronLeft size={24} color="#FFD700" />
+                </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.headerTitle}>MESA DE GUERRA</Text>
                     <Text style={styles.headerSubtitle}>Crónicas del Destino</Text>
                 </View>
+                <TouchableOpacity 
+                    style={styles.todayButton}
+                    onPress={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setSelectedDate(today);
+                        setCurrentMonth(today);
+                        setCalendarKey(prev => prev + 1);
+                    }}
+                >
+                    <Text style={styles.todayButtonText}>HOY</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView 
@@ -278,7 +297,13 @@ export const WarTableScreen: React.FC = () => {
                 {/* Calendar Section */}
                 <ParchmentCard style={styles.calendarCard}>
                     <Calendar
-                        onDayPress={day => setSelectedDate(day.dateString)}
+                        key={calendarKey}
+                        current={currentMonth}
+                        onDayPress={day => {
+                            setSelectedDate(day.dateString);
+                            setCurrentMonth(day.dateString);
+                        }}
+                        onMonthChange={month => setCurrentMonth(month.dateString)}
                         markedDates={markedDates}
                         firstDay={1}
                         enableSwipeMonths={true}
@@ -364,13 +389,29 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingBottom: 20,
         paddingHorizontal: 15,
         backgroundColor: '#2d1a12',
         borderBottomWidth: 2,
         borderBottomColor: '#FFD700',
+        justifyContent: 'space-between',
+    },
+    todayButton: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        minWidth: 50,
+        alignItems: 'center',
+    },
+    todayButtonText: {
+        color: '#FFD700',
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 1,
     },
     backButton: {
         width: 40,

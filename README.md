@@ -38,20 +38,20 @@ Omega no es una simple lista de tareas. Es un **Sistema Operativo Vital Gamifica
 
 ### 🌲 Fase 2: Módulo de Enfoque y Proyectos (Biblioteca y Torre)
 *Objetivo: Gestión del conocimiento, estudio teórico y creación práctica.*
-- [ ] **Castillo (Gestión):**
-    - [ ] *Mesa de Guerra:* Calendario de "Jefes Finales" (Exámenes).
+- [x] **Castillo (Gestión):**
+    - [x] *Mesa de Guerra:* Calendario de "Jefes Finales" (Exámenes).
     - [ ] *Archivos Reales:* Subida y visualización de PDFs en Supabase Storage.
-- [ ] **Biblioteca (Estudio Teórico):**
-    - [ ] *Sección Prohibida:* Cronómetro con bloqueo estricto. Usar `AppState` para detectar salidas de la app y penalizar HP.
-    - [ ] *Atril:* Sistema de Flashcards.
+- [x] **Biblioteca (Estudio Teórico):**
+    - [x] *Sección Prohibida:* Cronómetro con bloqueo estricto. Usar `AppState` para detectar salidas de la app y penalizar HP.
+    - [x] *Atril:* Sistema de Flashcards.
 - [ ] **Torre de Hechicería (Proyectos/Maker):**
     - [ ] *Grimorio de Proyectos:* Gestor de proyectos personales (Programación, Electrónica). Permite anidar tareas, ideas y recursos.
     - [ ] *Modo "Casteo":* Interfaz específica para cuando estás trabajando en el PC (Timer + Lista de tareas del proyecto activo).
 
 ### ⚔️ Fase 3: Módulo Físico (Barracones y Salud)
 *Objetivo: El tracker de gimnasio más avanzado y visual del mundo.*
-- [ ] **Datos Semilla:** Script para importar ejercicios de Wger/ExerciseDB a Supabase (evitar entrada manual).
-- [ ] **Motor de Rutinas:** Lógica de ciclos complejos y alternos (Ej: Semana A: PPL / Semana B: Arnold Split).
+- [x] **Datos Semilla:** Script para importar ejercicios de Wger/ExerciseDB a Supabase (evitar entrada manual).
+- [x] **Motor de Rutinas:** Lógica de ciclos complejos y alternos (Ej: Semana A: PPL / Semana B: Arnold Split).
 - [ ] **Heatmap Corporal:** SVG interactivo del cuerpo humano.
     - [ ] Lógica: `Ejercicio` -> `Músculos` -> `Calculo de Volumen` -> `Pintar Rojo en SVG`.
 - [ ] **Sub-módulos de Salud:**
@@ -71,9 +71,9 @@ Omega no es una simple lista de tareas. Es un **Sistema Operativo Vital Gamifica
 
 ### 📅 Fase 5: Gestión y Agenda
 *Objetivo: Unir el juego con la realidad obligatoria.*
-- [ ] **Calendario Nativo (`expo-calendar`):**
-    - [ ] Importar eventos del móvil a la "Mesa de Guerra" para evitar conflictos.
-    - [ ] Exportar Exámenes (Jefes) al calendario de Google/iOS automáticamente.
+- [x] **Calendario Nativo (`expo-calendar`):**
+    - [x] Importar eventos del móvil a la "Mesa de Guerra" para evitar conflictos.
+    - [x] Exportar Exámenes (Jefes) al calendario de Google/iOS automáticamente.
 - [ ] **Tareas RPG:** Clasificar tareas en Principales (Obligatorias/Penalizan), Secundarias (Oro/XP) y Diarias (Mantenimiento).
 
 ### 🚀 Fase 6: Despliegue Multiplataforma

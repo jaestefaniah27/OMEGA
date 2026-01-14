@@ -1,8 +1,8 @@
 import * as RNW from 'react-native-web';
 
 // Helper to get or mock
-const getOrMock = (name, fallback = {}) => {
-  return RNW[name] !== undefined ? RNW[name] : fallback;
+const getOrMock = (name: string, fallback: any = {}) => {
+  return (RNW as any)[name] !== undefined ? (RNW as any)[name] : fallback;
 };
 
 // Explicit exports to satisfy ESM imports
@@ -46,7 +46,7 @@ export const PanResponder = getOrMock('PanResponder');
 export const PixelRatio = getOrMock('PixelRatio');
 export const Platform = getOrMock('Platform');
 export const Share = getOrMock('Share');
-export const UIManager = getOrMock('UIManager');
+export const UIManager = getOrMock('UIManager', {});
 export const Vibration = getOrMock('Vibration');
 export const useColorScheme = getOrMock('useColorScheme', () => 'light');
 export const useWindowDimensions = getOrMock('useWindowDimensions');
@@ -55,7 +55,7 @@ export const DeviceEventEmitter = getOrMock('DeviceEventEmitter', {
   addListener: () => ({ remove: () => {} }),
   emit: () => {},
 });
-export const processColor = getOrMock('processColor', (c) => c);
+export const processColor = getOrMock('processColor', (c: any) => c);
 export const findNodeHandle = getOrMock('findNodeHandle', () => null);
 export const I18nManager = getOrMock('I18nManager', { isRTL: false });
 export const NativeModules = getOrMock('NativeModules', {});

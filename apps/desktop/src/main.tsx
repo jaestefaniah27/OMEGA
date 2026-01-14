@@ -1,4 +1,5 @@
 import { AppRegistry } from 'react-native';
+import './patch-rtn'; // Import before App
 import App from './App';
 import './App.css';
 

@@ -12,7 +12,11 @@ function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.js")
+      preload: path.join(__dirname$1, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false
+      // Temporary for debugging
     }
   });
   if (VITE_DEV_SERVER_URL) {

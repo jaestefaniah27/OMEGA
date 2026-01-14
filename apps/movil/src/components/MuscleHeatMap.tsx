@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { MuscleFatigue } from '../types/supabase';
+import { MuscleFatigue } from '@omega/logic';
 
 const { width } = Dimensions.get('window');
 

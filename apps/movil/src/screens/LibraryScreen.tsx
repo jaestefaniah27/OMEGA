@@ -35,8 +35,7 @@ import {
     Palette
 } from 'lucide-react-native';
 import { CameraColorPicker, ManualColorPicker } from '@omega/ui';
-import { useLibrary } from '../hooks/useLibrary';
-import { Subject, Book, Exam } from '../types/supabase';
+import { useLibrary, Subject, Book, Exam } from '@omega/logic';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');

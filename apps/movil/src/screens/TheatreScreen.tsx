@@ -31,9 +31,7 @@ import {
     PlayCircle,
     History
 } from 'lucide-react-native';
-import { useTheatre } from '../hooks/useTheatre';
-import { TheatreActivity, TheatreMovie, TheatreSeries, TheatreSeason } from '../types/supabase';
-import { formatTimeDisplay, formatElapsedTime } from '../utils/formatTime';
+import { useTheatre, TheatreActivity, TheatreMovie, TheatreSeries, TheatreSeason, formatTimeDisplay, formatElapsedTime } from '@omega/logic';
 
 const { width } = Dimensions.get('window');
 const AnimatedMusic = Animated.createAnimatedComponent(Music);

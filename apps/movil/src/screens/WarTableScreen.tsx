@@ -20,9 +20,8 @@ import {
     Map as MapIcon,
     Flame
 } from 'lucide-react-native';
-import { useGame } from '../context/GameContext';
+import { useGame, RoyalDecree } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
-import { RoyalDecree } from '../types/supabase';
 import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
 
 // Configure Calendar Locale

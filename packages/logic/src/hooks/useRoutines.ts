@@ -1,9 +1,5 @@
 import { useGame } from '../context/GameContext';
-import { Routine, RoutineExercise, Exercise } from '../types/supabase';
-
-export interface RoutineWithExercises extends Routine {
-    exercises: (RoutineExercise & { exercise: Exercise })[];
-}
+import { Routine, RoutineExercise, Exercise, RoutineWithExercises } from '../types/supabase';
 
 export const useRoutines = () => {
     const { barracks } = useGame();

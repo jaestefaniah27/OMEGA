@@ -34,11 +34,8 @@ import {
     ChevronDown,
     Trash2
 } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
-import { useRoutines } from '../hooks/useRoutines';
-import { useWorkout } from '../hooks/useWorkout';
+import { supabase, useRoutines, useWorkout, useUserStats } from '@omega/logic';
 import { MuscleHeatMap } from '../components/MuscleHeatMap';
-import { useUserStats } from '../hooks/useUserStats';
 
 const { width, height } = Dimensions.get('window');
 

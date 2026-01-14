@@ -1,20 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import coreExercises from '../data/core_exercises.json';
-
-export interface Exercise {
-    id: string; // UUID
-    name: string;
-    name_es: string | null;
-    primary_muscles: string[];
-    secondary_muscles: string[];
-    equipment: string;
-    category: string;
-    intensity_factor: number;
-    bodyweight_factor: number;
-    is_popular: boolean;
-    muscle_heads?: any[];
-}
+import { Exercise } from '../types/supabase';
 
 export const useExercises = (searchQuery: string = '', onlyPopular: boolean = false, onlyFavorites: boolean = false) => {
     const [exercises, setExercises] = useState<Exercise[]>([]);

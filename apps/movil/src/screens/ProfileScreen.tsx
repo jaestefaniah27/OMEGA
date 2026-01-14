@@ -11,12 +11,10 @@ import {
     TouchableOpacity
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
-import { supabase } from '../lib/supabase';
+import { supabase, useUserStats, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins } from 'lucide-react-native';
-import { useUserStats } from '../hooks/useUserStats';
 import { MuscleHeatMap } from '../components/MuscleHeatMap';
-import { useGame } from '../context/GameContext';
 import { Calendar as CalendarIcon, RefreshCw, CheckCircle, Smartphone } from 'lucide-react-native';
 
 const CalendarSettings = () => {

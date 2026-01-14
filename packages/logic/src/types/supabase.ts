@@ -208,3 +208,7 @@ export interface RoyalDecree {
     created_at: string;
     completed_at: string | null;
 }
+
+export interface RoutineWithExercises extends Routine {
+    exercises: (RoutineExercise & { exercise: Exercise })[];
+}

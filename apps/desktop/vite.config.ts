@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
+import path from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,11 +12,17 @@ export default defineConfig({
       {
         // Main-Process entry file of the Electron App.
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ['active-win'],
+            },
+          },
+        },
       },
       {
         entry: 'electron/preload.ts',
         onstart(options) {
-          // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete.
           options.reload()
         },
       },
@@ -29,8 +36,22 @@ export default defineConfig({
   },
   resolve: {
     extensions: ['.web.tsx', '.tsx', '.ts', '.jsx', '.js', '.json'],
-    alias: {
-      'react-native': 'react-native-web',
+    alias: [
+      { find: 'react-native/Libraries/Utilities/codegenNativeComponent', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'react-native', replacement: 'react-native-web' },
+      { find: 'react-native-svg', replacement: 'react-native-svg-web' },
+      { find: 'expo-calendar', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-background-fetch', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-task-manager', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+      { find: 'expo-file-system', replacement: path.resolve(__dirname, './electron/mocks/empty.js') },
+    ],
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        '.js': 'jsx',
+      },
     },
+    include: ['lucide-react-native', 'react-native-web', 'react-native-url-polyfill'],
   },
 })

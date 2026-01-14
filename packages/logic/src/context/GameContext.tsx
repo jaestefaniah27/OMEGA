@@ -19,15 +19,11 @@ import {
     RoyalDecree,
     DecreeType,
     DecreeStatus,
-    DecreeUnit
+    DecreeUnit,
+    RoutineWithExercises
 } from '../types/supabase';
 import { useCalendar } from '../hooks/useCalendar';
 import { showGlobalToast } from './ToastContext';
-
-
-export interface RoutineWithExercises extends Routine {
-    exercises: (RoutineExercise & { exercise: Exercise })[];
-}
 
 export interface WorkoutHistoryItem {
     id: string;

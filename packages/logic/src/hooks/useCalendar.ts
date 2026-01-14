@@ -155,7 +155,7 @@ export const useCalendar = (userId: string | undefined) => {
             endDate.setHours(endDate.getHours() + 1); // Default 1 hour duration
 
             const eventId = await Calendar.createEventAsync(exportCalendarId, {
-                title: `[Omega] ${title}`,
+                title: title,
                 startDate: date,
                 endDate: endDate,
                 notes: notes,

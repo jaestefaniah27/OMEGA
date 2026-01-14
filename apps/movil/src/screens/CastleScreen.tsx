@@ -27,8 +27,7 @@ import {
     GraduationCap,
     Clock
 } from 'lucide-react-native';
-import { useGame } from '../context/GameContext';
-import { RoyalDecree } from '../types/supabase';
+import { useGame, RoyalDecree } from '@omega/logic';
 import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
 
 const { width } = Dimensions.get('window');

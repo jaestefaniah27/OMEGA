@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { Timer, X, Plus, Save, Trash2, History, ChevronRight } from 'lucide-react-native';
-import { useActiveWorkout } from '../hooks/useActiveWorkout';
-import { useExercises, Exercise } from '../hooks/useExercises';
+import { useActiveWorkout, useExercises, Exercise } from '@omega/logic';
 
 const { width, height } = Dimensions.get('window');
 

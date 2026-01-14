@@ -8,6 +8,7 @@ export interface RoutineWithExercises extends Routine {
 
 export const useRoutines = () => {
     const [routines, setRoutines] = useState<RoutineWithExercises[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchRoutines = useCallback(async () => {
@@ -37,7 +38,46 @@ export const useRoutines = () => {
         }
     }, []);
 
-    const createRoutine = async (name: string, description?: string, exercises: { exercise_id: string, order_index: number, target_sets?: number, target_reps?: number }[] = []) => {
+    const fetchHistory = useCallback(async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('workout_sessions')
+                .select(`
+                    *,
+                    routine:routines(name),
+                    sets:workout_sets(weight_kg, reps)
+                `)
+                .eq('user_id', user.id)
+                .order('started_at', { ascending: false })
+                .limit(5);
+
+            if (error) throw error;
+
+            const formattedHistory = (data || []).map(session => {
+                const totalTonnage = session.sets.reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
+                const duration = session.ended_at 
+                    ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
+                    : 'En curso';
+                
+                return {
+                    id: session.id,
+                    date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                    routine: session.routine?.name || 'Misión Libre',
+                    duration,
+                    tonnage: totalTonnage.toLocaleString() + 'kg'
+                };
+            });
+
+            setHistory(formattedHistory);
+        } catch (e) {
+            console.error('Error fetching history:', e);
+        }
+    }, []);
+
+    const createRoutine = async (name: string, category?: string, description?: string, exercises: { exercise_id: string, order_index: number, target_sets?: number, target_reps?: number }[] = []) => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user');
@@ -45,7 +85,7 @@ export const useRoutines = () => {
             // 1. Create Routine
             const { data: routine, error: rError } = await supabase
                 .from('routines')
-                .insert([{ name, description, user_id: user.id }])
+                .insert([{ name, category, description, user_id: user.id }])
                 .select()
                 .single();
 
@@ -83,15 +123,68 @@ export const useRoutines = () => {
         }
     };
 
+    const addExerciseToRoutine = async (routineId: string, exerciseId: string, orderIndex: number) => {
+        try {
+            const { error } = await supabase
+                .from('routine_exercises')
+                .insert([{
+                    routine_id: routineId,
+                    exercise_id: exerciseId,
+                    order_index: orderIndex,
+                    target_sets: 3,
+                    target_reps: 10
+                }]);
+            if (error) throw error;
+            await fetchRoutines();
+        } catch (e) {
+            console.error('Error adding exercise to routine:', e);
+            throw e;
+        }
+    };
+
+    const removeExerciseFromRoutine = async (routineExerciseId: string) => {
+        try {
+            const { error } = await supabase
+                .from('routine_exercises')
+                .delete()
+                .eq('id', routineExerciseId);
+            if (error) throw error;
+            await fetchRoutines();
+        } catch (e) {
+            console.error('Error removing exercise from routine:', e);
+            throw e;
+        }
+    };
+
+    const updateRoutineExercise = async (id: string, updates: { target_sets?: number, target_reps?: number }) => {
+        try {
+            const { error } = await supabase
+                .from('routine_exercises')
+                .update(updates)
+                .eq('id', id);
+            if (error) throw error;
+            await fetchRoutines();
+        } catch (e) {
+            console.error('Error updating routine exercise:', e);
+            throw e;
+        }
+    };
+
     useEffect(() => {
         fetchRoutines();
-    }, [fetchRoutines]);
+        fetchHistory();
+    }, [fetchRoutines, fetchHistory]);
 
     return {
         routines,
+        history,
         loading,
         refreshRoutines: fetchRoutines,
+        refreshHistory: fetchHistory,
         createRoutine,
-        deleteRoutine
+        deleteRoutine,
+        addExerciseToRoutine,
+        removeExerciseFromRoutine,
+        updateRoutineExercise
     };
 };

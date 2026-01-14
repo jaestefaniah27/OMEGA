@@ -10,7 +10,9 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
-    Animated
+    Animated,
+    DeviceEventEmitter,
+    Alert
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '@omega/ui';
 import { 
@@ -26,99 +28,105 @@ import {
     History, 
     Trophy,
     Settings,
-    Flame
+    Flame,
+    Search,
+    ChevronUp,
+    ChevronDown,
+    Trash2
 } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
+import { useRoutines } from '../hooks/useRoutines';
+import { useWorkout } from '../hooks/useWorkout';
+import { MuscleHeatMap } from '../components/MuscleHeatMap';
+import { useUserStats } from '../hooks/useUserStats';
 
 const { width, height } = Dimensions.get('window');
 
-// --- INTERNAL MOCKS ---
+// --- INTERNAL COMPONENTS ---
 
-const useRoutinesMock = () => {
-    const [routines] = useState([
-        { id: '1', name: 'Empuje de Gladiador', sets: 12, lastPerformed: 'Hace 2 días' },
-        { id: '2', name: 'Tracción Norteña', sets: 15, lastPerformed: 'Hace 5 días' },
-        { id: '3', name: 'Pilares del Reino', sets: 10, lastPerformed: 'Ayer' },
-    ]);
+interface MedievalNumericInputProps {
+    value: number;
+    onChange: (val: number) => void;
+    step?: number;
+    min?: number;
+}
 
-    const [history] = useState([
-        { id: 'h1', date: '14 Ene', routine: 'Empuje de Gladiador', duration: '45m', tonnage: '4,500kg' },
-        { id: 'h2', date: '12 Ene', routine: 'Pilares del Reino', duration: '52m', tonnage: '6,200kg' },
-        { id: 'h3', date: '10 Ene', routine: 'Tracción Norteña', duration: '40m', tonnage: '3,800kg' },
-    ]);
-
-    const [records] = useState([
-        { id: 'r1', exercise: 'Press de Banca', weight: '100kg', date: '10 Ene' },
-        { id: 'r2', exercise: 'Sentadilla', weight: '140kg', date: '12 Ene' },
-        { id: 'r3', exercise: 'Peso Muerto', weight: '180kg', date: '05 Ene' },
-    ]);
-
-    return { routines, history, records };
-};
-
-const useActiveSessionMock = () => {
-    const [isActive, setIsActive] = useState(false);
-    const [seconds, setSeconds] = useState(0);
-    const [sets, setSets] = useState([
-        { id: 's1', exercise: 'Press de Banca', weight: 80, reps: 10, type: 'EFFORT', completed: false },
-        { id: 's2', exercise: 'Press de Banca', weight: 80, reps: 9, type: 'EFFORT', completed: false },
-        { id: 's3', exercise: 'Aperturas con Mancuerna', weight: 15, reps: 12, type: 'WARMUP', completed: false },
-    ]);
+const MedievalNumericInput: React.FC<MedievalNumericInputProps> = ({ value, onChange, step = 1, min = 1 }) => {
+    const [inputValue, setInputValue] = useState(value.toString());
 
     useEffect(() => {
-        let interval: any;
-        if (isActive) {
-            interval = setInterval(() => setSeconds(s => s + 1), 1000);
-        } else {
-            setSeconds(0);
+        setInputValue(value.toString());
+    }, [value]);
+
+    const handleTextChange = (v: string) => {
+        const clean = v.replace(',', '.');
+        setInputValue(clean);
+        const parsed = parseFloat(clean);
+        if (!isNaN(parsed)) {
+            onChange(parsed);
         }
-        return () => clearInterval(interval);
-    }, [isActive]);
-
-    const formatTime = (s: number) => {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
     };
 
-    const toggleSet = (id: string) => {
-        setSets(prev => prev.map(s => s.id === id ? { ...s, completed: !s.completed } : s));
+    const handleBlur = () => {
+        if (inputValue === '' || isNaN(parseFloat(inputValue))) {
+            setInputValue(value.toString());
+        }
     };
 
-    const cycleType = (id: string) => {
-        const types = ['WARMUP', 'EFFORT', 'FAILURE'];
-        setSets(prev => prev.map(s => {
-            if (s.id === id) {
-                const currentIdx = types.indexOf(s.type);
-                const nextType = types[(currentIdx + 1) % types.length];
-                return { ...s, type: nextType };
-            }
-            return s;
-        }));
-    };
+    return (
+        <View style={numericStyles.container}>
+            <TouchableOpacity 
+                style={numericStyles.btn} 
+                onPress={() => onChange(Math.max(min, value - step))}
+            >
+                <ChevronDown size={20} color="#8b4513" />
+            </TouchableOpacity>
+            
+            <TextInput
+                style={numericStyles.input}
+                value={inputValue}
+                keyboardType="numeric"
+                onChangeText={handleTextChange}
+                onBlur={handleBlur}
+            />
 
-    const addSet = () => {
-        const newSet = {
-            id: `s${Date.now()}`,
-            exercise: 'Nuevo Ejercicio',
-            weight: 0,
-            reps: 0,
-            type: 'EFFORT',
-            completed: false
-        };
-        setSets([...sets, newSet]);
-    };
-
-    return { 
-        isActive, 
-        setIsActive, 
-        seconds, 
-        formatTime: formatTime(seconds), 
-        sets,
-        toggleSet,
-        cycleType,
-        addSet
-    };
+            <TouchableOpacity 
+                style={numericStyles.btn} 
+                onPress={() => onChange(value + step)}
+            >
+                <ChevronUp size={20} color="#8b4513" />
+            </TouchableOpacity>
+        </View>
+    );
 };
+
+const numericStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.2)',
+        height: 40,
+        overflow: 'hidden'
+    },
+    btn: {
+        width: 30,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(139, 69, 19, 0.1)',
+    },
+    input: {
+        width: 40,
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        padding: 0,
+    }
+});
 
 // --- MAIN SCREEN ---
 
@@ -128,28 +136,126 @@ export const BarracksScreen: React.FC = () => {
     const horizontalScrollRef = useRef<ScrollView>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
     const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
-    const { routines, history, records } = useRoutinesMock();
-    const { isActive, setIsActive, formatTime, sets, toggleSet, cycleType, addSet } = useActiveSessionMock();
 
-    const handleStartPress = () => {
-        setIsActive(true);
+    const { routines, history, createRoutine, refreshHistory, addExerciseToRoutine, removeExerciseFromRoutine, updateRoutineExercise } = useRoutines();
+    const { muscleFatigue, records } = useUserStats();
+    const { isSessionActive, formatTime, setsLog, startSession, finishSession, addSet, updateSet, removeSet } = useWorkout();
+
+    const [exerciseSearchVisible, setExerciseSearchVisible] = useState(false);
+    const [searchText, setSearchText] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchMode, setSearchMode] = useState<'WORKOUT' | 'ROUTINE'>('WORKOUT');
+
+    // Routine Creation/Detail States
+    const [createRoutineVisible, setCreateRoutineVisible] = useState(false);
+    const [newRoutineName, setNewRoutineName] = useState('');
+    const [newRoutineCategory, setNewRoutineCategory] = useState('');
+    const [detailRoutineId, setDetailRoutineId] = useState<string | null>(null);
+    const selectedDetailRoutine = routines.find(r => r.id === detailRoutineId);
+    const [epicBattleStatus, setEpicBattleStatus] = useState('');
+
+    const EPIC_QUOTES = [
+        "FORJANDO LEYENDA",
+        "ACERO Y SANGRE",
+        "VOLUNTAD DE HIERRO",
+        "CAMINO AL VALHALLA",
+        "LATIDO GUERRERO",
+        "FORJANDO AL TITÁN",
+        "NÉMESIS DEL LÍMITE",
+        "SUDOR Y GLORIA"
+    ];
+
+    useEffect(() => {
+        setModalVisible(isSessionActive);
+        if (isSessionActive && !epicBattleStatus) {
+            setEpicBattleStatus(EPIC_QUOTES[Math.floor(Math.random() * EPIC_QUOTES.length)]);
+        } else if (!isSessionActive) {
+            setEpicBattleStatus('');
+        }
+    }, [isSessionActive]);
+
+    // HUD QuickAdd Listener
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('GLOBAL_QUICK_ADD', () => {
+            if (detailRoutineId) {
+                setSearchMode('ROUTINE');
+                setExerciseSearchVisible(true);
+            } else if (modalVisible) {
+                setSearchMode('WORKOUT');
+                setExerciseSearchVisible(true);
+            } else if (viewMode === 'ESTRATEGIA') {
+                setCreateRoutineVisible(true);
+            }
+        });
+        return () => sub.remove();
+    }, [viewMode, detailRoutineId, modalVisible]);
+
+    const handleStartPress = async () => {
+        const routine = routines.find(r => r.id === selectedRoutineId);
+        await startSession(selectedRoutineId, routine?.exercises || []);
         setModalVisible(true);
+    };
+
+    const handleFinishBattle = async () => {
+        const success = await finishSession();
+        if (success) {
+            refreshHistory();
+        }
+    };
+
+    const handleSearchExercise = async (text: string) => {
+        setSearchText(text);
+        if (text.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        const { data } = await supabase
+            .from('exercises')
+            .select('id, name, name_es')
+            .or(`name.ilike.%${text}%,name_es.ilike.%${text}%`)
+            .limit(10);
+        setSearchResults(data || []);
+    };
+
+    const handleSelectExercise = async (ex: any) => {
+        if (searchMode === 'WORKOUT') {
+            addSet(ex.id, ex.name_es || ex.name);
+        } else if (searchMode === 'ROUTINE' && detailRoutineId) {
+            const currentExCount = selectedDetailRoutine?.exercises?.length || 0;
+            await addExerciseToRoutine(detailRoutineId, ex.id, currentExCount);
+        }
+        setExerciseSearchVisible(false);
+        setSearchText('');
+        setSearchResults([]);
+    };
+
+    const handleCreateRoutine = async () => {
+        if (!newRoutineName.trim()) return;
+        try {
+            await createRoutine(newRoutineName.trim(), newRoutineCategory.trim());
+            setNewRoutineName('');
+            setNewRoutineCategory('');
+            setCreateRoutineVisible(false);
+            Alert.alert("Plan Forjado", `La rutina "${newRoutineName}" ha sido añadida a la Sala de Estrategia.`);
+        } catch (e: any) {
+            Alert.alert("Error", e.message);
+        }
     };
 
     const getTypeColor = (type: string) => {
         switch(type) {
-            case 'WARMUP': return '#3498db'; // Blue
-            case 'EFFORT': return '#e67e22'; // Orange
-            case 'FAILURE': return '#c0392b'; // Red
+            case 'warmup': return '#3498db'; // Blue
+            case 'normal': return '#e67e22'; // Orange
+            case 'failure': return '#c0392b'; // Red
             default: return '#8b4513';
         }
     };
 
     const getTypeText = (type: string) => {
         switch(type) {
-            case 'WARMUP': return 'C';
-            case 'EFFORT': return 'E';
-            case 'FAILURE': return 'F';
+            case 'warmup': return 'C';
+            case 'normal': return 'E';
+            case 'failure': return 'F';
             default: return 'E';
         }
     };
@@ -256,10 +362,8 @@ export const BarracksScreen: React.FC = () => {
                             <Flame size={18} color="#e67e22" />
                             <Text style={styles.sectionTitle}>FATIGA MUSCULAR</Text>
                         </View>
-                        <View style={styles.heatmapMock}>
-                            <View style={styles.heatZone}><Text style={styles.heatText}>Pecho: 85%</Text></View>
-                            <View style={[styles.heatZone, { opacity: 0.6 }]}><Text style={styles.heatText}>Espalda: 50%</Text></View>
-                            <View style={[styles.heatZone, { opacity: 0.2 }]}><Text style={styles.heatText}>Piernas: 15%</Text></View>
+                        <View style={styles.heatmapBox}>
+                            <MuscleHeatMap fatigue={muscleFatigue} />
                         </View>
                     </ParchmentCard>
 
@@ -300,11 +404,11 @@ export const BarracksScreen: React.FC = () => {
                             <Trophy size={18} color="#FFD700" />
                             <Text style={styles.sectionTitle}>RÉCORDS HISTÓRICOS</Text>
                         </View>
-                        {records.map(record => (
-                            <View key={record.id} style={styles.recordRow}>
-                                <Text style={styles.recordExercise}>{record.exercise}</Text>
-                                <Text style={styles.recordWeight}>{record.weight}</Text>
-                                <Text style={styles.recordDate}>{record.date}</Text>
+                        {records.map((record: any) => (
+                            <View key={record.exercise_id} style={styles.recordRow}>
+                                <Text style={styles.recordExercise}>{record.exercise_name}</Text>
+                                <Text style={styles.recordWeight}>{record.max_weight}kg</Text>
+                                <Text style={styles.recordDate}>{new Date(record.achieved_at).toLocaleDateString()}</Text>
                             </View>
                         ))}
                     </ParchmentCard>
@@ -314,10 +418,15 @@ export const BarracksScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>PLANES DE ATAQUE</Text>
                     </View>
                     {routines.map(r => (
-                        <TouchableOpacity key={r.id} style={styles.routineCard}>
+                        <TouchableOpacity 
+                            key={r.id} 
+                            style={styles.routineCard}
+                            onPress={() => setDetailRoutineId(r.id)}
+                        >
                             <View style={styles.routineInfo}>
                                 <Text style={styles.routineName}>{r.name}</Text>
-                                <Text style={styles.routineDetail}>{r.sets} series • {r.lastPerformed}</Text>
+                                {r.category && <Text style={styles.routineCategoryTag}>{r.category.toUpperCase()}</Text>}
+                                <Text style={styles.routineDetail}>{r.exercises?.length || 0} habilidades registradas</Text>
                             </View>
                             <ChevronRight size={20} color="#FFD700" />
                         </TouchableOpacity>
@@ -327,65 +436,252 @@ export const BarracksScreen: React.FC = () => {
                 </ScrollView>
             </ScrollView>
 
-            {/* IMMERSIVE WORKOUT MODAL */}
-            <Modal visible={modalVisible} animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+            {/* IMMERSIVE WORKOUT VIEW */}
+            {modalVisible && (
+                <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a', zIndex: 1500 }]}>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                     <View style={styles.modalHeader}>
-                        <View style={styles.dummySpace} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.epicStatusText}>{epicBattleStatus}</Text>
+                        </View>
                         <View style={styles.modalTimer}><Timer size={18} color="#FFD700" /><Text style={styles.timerDigits}>{formatTime}</Text></View>
-                        <View style={styles.dummySpace} />
+                        <View style={{ flex: 1 }} />
                     </View>
                     <ScrollView style={styles.modalBody}>
                         <Text style={styles.modalTitle}>FORJA TÁCTICA</Text>
                         
-                        <ParchmentCard style={styles.exerciseCard}>
-                            <View style={styles.exerciseHeader}><Text style={styles.exerciseTitle}>Press de Banca</Text><Settings size={18} color="#3d2b1f" /></View>
-                            <View style={styles.setContainer}>
-                                <View style={styles.setLabelRow}>
-                                    <Text style={styles.setLabel}>SERIE</Text>
-                                    <Text style={styles.setLabel}>KG</Text>
-                                    <Text style={styles.setLabel}>REPS</Text>
-                                    <Text style={styles.setLabel}>MODO</Text>
-                                    <Text style={styles.setLabel}>HECHO</Text>
-                                </View>
-                                {sets.slice(0, 3).map((s, idx) => (
-                                    <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
-                                        <Text style={styles.setNumber}>{idx + 1}</Text>
-                                        <TextInput style={styles.setInput} value={s.weight.toString()} keyboardType="numeric" />
-                                        <TextInput style={styles.setInput} value={s.reps.toString()} keyboardType="numeric" />
-                                        
-                                        <TouchableOpacity 
-                                            style={[styles.typeToggle, { backgroundColor: getTypeColor(s.type) }]} 
-                                            onPress={() => cycleType(s.id)}
-                                        >
-                                            <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
-                                        </TouchableOpacity>
+                        {(() => {
+                            const exercises: { id: string, name: string, sets: any[] }[] = [];
+                            setsLog.forEach(s => {
+                                let ex = exercises.find(e => e.id === s.exercise_id);
+                                if (!ex) {
+                                    ex = { id: s.exercise_id, name: s.exercise_name, sets: [] };
+                                    exercises.push(ex);
+                                }
+                                ex.sets.push(s);
+                            });
 
-                                        <TouchableOpacity onPress={() => toggleSet(s.id)}>
-                                            <CheckCircle2 size={22} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
+                            return exercises.map(ex => (
+                                <ParchmentCard key={ex.id} style={styles.exerciseCard}>
+                                    <View style={styles.exerciseHeader}>
+                                        <Text style={styles.exerciseTitle}>{ex.name}</Text>
+                                        <TouchableOpacity onPress={() => {
+                                            // Optional exercise settings
+                                        }}>
+                                            <Settings size={18} color="#3d2b1f" />
                                         </TouchableOpacity>
                                     </View>
-                                ))}
-                                
-                                <TouchableOpacity style={styles.addSetButton} onPress={addSet}>
-                                    <Plus size={14} color="#8b4513" />
-                                    <Text style={styles.addSetText}>AÑADIR SERIE</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </ParchmentCard>
+                                    
+                                    <View style={styles.setContainer}>
+                                        <View style={styles.setLabelRow}>
+                                            <Text style={styles.compShortLabel}>SET</Text>
+                                            <Text style={[styles.compShortLabel, { flex: 2 }]}>REPS</Text>
+                                            <Text style={[styles.compShortLabel, { flex: 2 }]}>KG</Text>
+                                            <Text style={styles.compShortLabel}>TIPO</Text>
+                                            <Text style={styles.compShortLabel}>OK</Text>
+                                        </View>
+                                        
+                                        {ex.sets.map((s, sIdx) => (
+                                            <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
+                                                <Text style={styles.setNumberCompact}>{sIdx + 1}</Text>
+                                                
+                                                <View style={{ flex: 2, alignItems: 'center' }}>
+                                                    <MedievalNumericInput 
+                                                        value={s.reps} 
+                                                        onChange={(v) => updateSet(s.id, { reps: v })}
+                                                        step={1}
+                                                    />
+                                                </View>
 
-                        <MedievalButton 
-                            title="AÑADIR EJERCICIO" 
-                            variant="primary"
-                            onPress={() => {}} 
-                            style={{ marginTop: 10, backgroundColor: 'rgba(255,215,0,0.1)' }} 
-                        />
+                                                <View style={{ flex: 2, alignItems: 'center' }}>
+                                                    <MedievalNumericInput 
+                                                        value={s.weight} 
+                                                        onChange={(v) => updateSet(s.id, { weight: v })}
+                                                        step={2.5}
+                                                    />
+                                                </View>
+                                                
+                                                <TouchableOpacity 
+                                                    style={[styles.typeToggleCompact, { backgroundColor: getTypeColor(s.type) }]} 
+                                                    onPress={() => {
+                                                        const types = ['warmup', 'normal', 'failure'];
+                                                        const next = types[(types.indexOf(s.type) + 1) % 3] as any;
+                                                        updateSet(s.id, { type: next });
+                                                    }}
+                                                >
+                                                    <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
+                                                </TouchableOpacity>
 
-                        <MedievalButton title="FINALIZAR BATALLA" onPress={() => { setIsActive(false); setModalVisible(false); }} style={{ marginTop: 30 }} />
+                                                <TouchableOpacity onPress={() => updateSet(s.id, { completed: !s.completed })}>
+                                                    <CheckCircle2 size={24} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+
+                                        <TouchableOpacity 
+                                            style={styles.addSetButton} 
+                                            onPress={() => addSet(ex.id, ex.name)}
+                                        >
+                                            <Plus size={14} color="#8b4513" />
+                                            <Text style={styles.addSetText}>AÑADIR SERIE</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </ParchmentCard>
+                            ));
+                        })()}
+
+                        <MedievalButton title="FINALIZAR BATALLA" onPress={handleFinishBattle} style={{ marginTop: 30 }} />
                         <View style={{ height: 50 }} />
                     </ScrollView>
                 </KeyboardAvoidingView>
-            </Modal>
+            </View>
+            )}
+
+            {/* Exercise Selector View */}
+            {exerciseSearchVisible && (
+                <View style={[styles.absoluteOverlay, { zIndex: 2000 }]}>
+                    <TouchableOpacity 
+                        style={styles.overlayDismiss} 
+                        activeOpacity={1} 
+                        onPress={() => setExerciseSearchVisible(false)} 
+                    />
+                    <ParchmentCard style={styles.searchContainer}>
+                        <View style={styles.searchHeader}>
+                            <Search size={20} color="#3d2b1f" />
+                            <TextInput 
+                                style={styles.searchInput}
+                                placeholder="Buscar ejercicio..."
+                                placeholderTextColor="rgba(61,43,31,0.4)"
+                                value={searchText}
+                                onChangeText={handleSearchExercise}
+                                autoFocus
+                            />
+                            <TouchableOpacity onPress={() => setExerciseSearchVisible(false)}>
+                                <X size={20} color="#3d2b1f" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.resultsList}>
+                            {searchResults.map(ex => (
+                                <TouchableOpacity 
+                                    key={ex.id} 
+                                    style={styles.resultItem}
+                                    onPress={() => handleSelectExercise(ex)}
+                                >
+                                    <Text style={styles.resultText}>{ex.name_es || ex.name}</Text>
+                                    <Plus size={16} color="#8b4513" />
+                                </TouchableOpacity>
+                            ))}
+                            {searchText.length > 1 && searchResults.length === 0 && (
+                                <Text style={styles.noResultsText}>No se encontraron ejercicios</Text>
+                            )}
+                        </ScrollView>
+                    </ParchmentCard>
+                </View>
+            )}
+
+            {/* Routine Creation View */}
+            {createRoutineVisible && (
+                <View style={styles.absoluteOverlay}>
+                    <TouchableOpacity 
+                        style={styles.overlayDismiss} 
+                        activeOpacity={1} 
+                        onPress={() => setCreateRoutineVisible(false)} 
+                    />
+                    <ParchmentCard style={styles.createRoutineContainer}>
+                        <Text style={styles.modalTitleDark}>NUEVO PLAN DE ATAQUE</Text>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>NOMBRE DE LA RUTINA</Text>
+                            <TextInput 
+                                style={styles.medievalInput}
+                                placeholder="E.j. Empuje de Titán"
+                                placeholderTextColor="rgba(61,43,31,0.4)"
+                                value={newRoutineName}
+                                onChangeText={setNewRoutineName}
+                                autoFocus
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>SAGA / PROGRAMA (OPCIONAL)</Text>
+                            <TextInput 
+                                style={styles.medievalInput}
+                                placeholder="E.j. PPL, Bro Split, Arnold..."
+                                placeholderTextColor="rgba(61,43,31,0.4)"
+                                value={newRoutineCategory}
+                                onChangeText={setNewRoutineCategory}
+                            />
+                        </View>
+                        
+                        <View style={styles.modalActionsRow}>
+                            <TouchableOpacity 
+                                style={styles.cancelActionBtn}
+                                onPress={() => setCreateRoutineVisible(false)}
+                            >
+                                <Text style={styles.cancelActionText}>DESCARTAR</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.confirmActionBtn}
+                                onPress={handleCreateRoutine}
+                            >
+                                <Text style={styles.confirmActionText}>FORJAR PLAN</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ParchmentCard>
+                </View>
+            )}
+
+            {/* Routine Detail View */}
+            {!!detailRoutineId && (
+                <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a' }]}>
+                    <View style={styles.modalHeader}>
+                        <TouchableOpacity onPress={() => setDetailRoutineId(null)}>
+                            <X size={24} color="#FFD700" />
+                        </TouchableOpacity>
+                        <View style={{ alignItems: 'center', flex: 1 }}>
+                            <Text style={styles.headerTitleSmall}>{selectedDetailRoutine?.name.toUpperCase()}</Text>
+                            {selectedDetailRoutine?.category && <Text style={[styles.routineCategoryTag, { color: 'rgba(255,215,0,0.6)', marginTop: 2 }]}>{selectedDetailRoutine.category.toUpperCase()}</Text>}
+                        </View>
+                        <View style={{ width: 24 }} />
+                    </View>
+
+                    <ScrollView style={styles.modalBody}>
+                        <Text style={styles.modalTitle}>SALA DE MEJORA</Text>
+                        
+                        {selectedDetailRoutine?.exercises?.map((re: any) => (
+                            <ParchmentCard key={re.id} style={styles.exerciseCard}>
+                                <View style={styles.exerciseHeader}>
+                                    <View>
+                                        <Text style={styles.exerciseTitle}>{re.exercise?.name_es || re.exercise?.name}</Text>
+                                        <Text style={styles.exerciseSubtitle}>{re.exercise?.category}</Text>
+                                    </View>
+                                    <TouchableOpacity onPress={() => removeExerciseFromRoutine(re.id)}>
+                                        <Trash2 size={20} color="#c0392b" />
+                                    </TouchableOpacity>
+                                </View>
+                                
+                                <View style={styles.routineSettingsRow}>
+                                    <View style={styles.settingItem}>
+                                        <Text style={styles.stepperLabelMini}>REPS OBJETIVO</Text>
+                                        <MedievalNumericInput 
+                                            value={re.target_reps} 
+                                            onChange={(v) => updateRoutineExercise(re.id, { target_reps: v })}
+                                        />
+                                    </View>
+                                    <View style={styles.settingItem}>
+                                        <Text style={styles.stepperLabelMini}>SERIES OBJETIVO</Text>
+                                        <MedievalNumericInput 
+                                            value={re.target_sets} 
+                                            onChange={(v) => updateRoutineExercise(re.id, { target_sets: v })}
+                                        />
+                                    </View>
+                                </View>
+                            </ParchmentCard>
+                        ))}
+
+                        <View style={{ height: 150 }} />
+                    </ScrollView>
+                </View>
+            )}
         </View>
     );
 };
@@ -561,24 +857,11 @@ const styles = StyleSheet.create({
     strategySection: {
         marginBottom: 20,
     },
-    heatmapMock: {
+    heatmapBox: {
         height: 140,
         backgroundColor: 'rgba(0,0,0,0.03)',
         borderRadius: 8,
         padding: 12,
-        justifyContent: 'center',
-    },
-    heatZone: {
-        backgroundColor: '#e67e22',
-        padding: 8,
-        borderRadius: 4,
-        marginBottom: 5,
-    },
-    heatText: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 'bold',
-        textAlign: 'center',
     },
     recordRow: {
         flexDirection: 'row',
@@ -765,5 +1048,209 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#8b4513',
         marginLeft: 5,
+    },
+    exerciseHeaderMini: {
+        paddingTop: 10,
+        paddingBottom: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(61,43,31,0.05)',
+        marginBottom: 8,
+    },
+    exerciseTitleMini: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    searchOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    searchContainer: {
+        maxHeight: '70%',
+        padding: 15,
+    },
+    searchHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(61,43,31,0.2)',
+        paddingBottom: 10,
+        marginBottom: 10,
+    },
+    searchInput: {
+        flex: 1,
+        marginHorizontal: 10,
+        fontSize: 16,
+        color: '#3d2b1f',
+    },
+    resultsList: {
+        minHeight: 100,
+    },
+    resultItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(61,43,31,0.05)',
+    },
+    resultText: {
+        fontSize: 15,
+        color: '#3d2b1f',
+        fontWeight: '500',
+    },
+    noResultsText: {
+        textAlign: 'center',
+        color: 'rgba(61,43,31,0.5)',
+        marginTop: 20,
+        fontStyle: 'italic',
+    },
+    createRoutineContainer: {
+        padding: 20,
+    },
+    modalTitleDark: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        textAlign: 'center',
+        marginBottom: 20,
+        letterSpacing: 2,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    inputLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#8b4513',
+        marginBottom: 8,
+        letterSpacing: 1,
+    },
+    medievalInput: {
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(139, 69, 19, 0.2)',
+        borderRadius: 8,
+        padding: 12,
+        color: '#3d2b1f',
+        fontSize: 16,
+    },
+    modalActionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    cancelActionBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    cancelActionText: {
+        color: '#8b4513',
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    confirmActionBtn: {
+        flex: 2,
+        backgroundColor: '#3d2b1f',
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    confirmActionText: {
+        color: '#FFD700',
+        fontWeight: 'bold',
+        fontSize: 12,
+        letterSpacing: 1,
+    },
+    headerTitleSmall: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        letterSpacing: 1,
+    },
+    epicStatusText: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: 'rgba(255,215,0,0.4)',
+        letterSpacing: 1,
+    },
+    routineCategoryTag: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#e67e22',
+        letterSpacing: 0.5,
+    },
+    exerciseSubtitle: {
+        fontSize: 11,
+        color: 'rgba(61,43,31,0.6)',
+        fontStyle: 'italic',
+    },
+    routineSettingsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingTop: 10,
+    },
+    settingItem: {
+        alignItems: 'center',
+    },
+    settingLabel: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: 'rgba(61,43,31,0.5)',
+        marginBottom: 5,
+    },
+    stepperWithLabel: {
+        alignItems: 'center',
+    },
+    stepperLabelMini: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        color: 'rgba(61,43,31,0.4)',
+        marginBottom: 2,
+        textTransform: 'uppercase',
+    },
+    compShortLabel: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: 'rgba(61,43,31,0.4)',
+        textAlign: 'center',
+        flex: 1,
+    },
+    setNumberCompact: {
+        width: 30,
+        textAlign: 'center',
+        fontWeight: 'bold',
+        color: '#8b4513',
+        fontSize: 12,
+    },
+    typeToggleCompact: {
+        width: 30,
+        height: 30,
+        borderRadius: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 5,
+    },
+    absoluteOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        padding: 20,
+        zIndex: 10000,
+    },
+    overlayDismiss: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    absoluteFullScreen: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 1000,
+        paddingBottom: 90, // Space for HUD
     }
 });

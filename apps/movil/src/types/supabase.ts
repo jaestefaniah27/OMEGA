@@ -122,6 +122,7 @@ export interface Routine {
     user_id: string;
     name: string;
     description: string | null;
+    category: string | null;
     created_at: string;
 }
 

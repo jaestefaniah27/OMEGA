@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -53,6 +53,19 @@ interface GameContextType {
         updateSeason: (id: string, updates: Partial<TheatreSeason>) => Promise<void>;
     };
 
+    // --- WORKOUT DATA ---
+    workout: {
+        isSessionActive: boolean;
+        elapsedSeconds: number;
+        formatTime: string;
+        setsLog: any[];
+        startSession: (routineId: string | null, exercises: any[]) => Promise<void>;
+        finishSession: () => Promise<boolean>;
+        addSet: (exerciseId: string, exerciseName: string) => void;
+        updateSet: (id: string, updates: Partial<any>) => void;
+        removeSet: (id: string) => void;
+    };
+
     // --- GLOBAL ---
     user: any | null;
     profile: Profile | null;
@@ -90,6 +103,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [series, setSeries] = useState<(TheatreSeries & { seasons: TheatreSeason[] })[]>([]);
     const [activityStats, setActivityStats] = useState<Record<string, { totalMinutes: number, daysCount: number }>>({});
     const [theatreLoading, setTheatreLoading] = useState(true);
+
+    // Workout State
+    const [isSessionActive, setIsSessionActive] = useState(false);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [startTime, setStartTime] = useState<string | null>(null);
+    const [workoutRoutineId, setWorkoutRoutineId] = useState<string | null>(null);
+    const [setsLog, setSetsLog] = useState<any[]>([]);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const WORKOUT_STORAGE_KEY = '@omega_active_workout_v2';
 
     // Initial Load Flag to prevent double-fetch issues or hydration flicker
     const isHydrated = useRef(false);
@@ -142,6 +164,140 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('Offline Mode: Failed to save local data', e);
         }
+    };
+
+    // --- WORKOUT LOGIC ---
+    useEffect(() => {
+        const loadWorkout = async () => {
+            const saved = await AsyncStorage.getItem(WORKOUT_STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                setStartTime(data.startTime);
+                setWorkoutRoutineId(data.routineId);
+                setSetsLog(data.sets);
+                setIsSessionActive(true);
+                const start = new Date(data.startTime).getTime();
+                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+            }
+        };
+        loadWorkout();
+    }, []);
+
+    useEffect(() => {
+        if (isSessionActive && startTime) {
+            timerRef.current = setInterval(() => {
+                const start = new Date(startTime).getTime();
+                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+            }, 1000);
+        } else {
+            if (timerRef.current) clearInterval(timerRef.current);
+        }
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [isSessionActive, startTime]);
+
+    useEffect(() => {
+        if (isSessionActive && startTime) {
+            const state = { startTime, routineId: workoutRoutineId, sets: setsLog };
+            AsyncStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(state));
+        }
+    }, [isSessionActive, startTime, workoutRoutineId, setsLog]);
+
+    const startSession = async (routineId: string | null = null, initialExercises: any[] = []) => {
+        const now = new Date().toISOString();
+        setStartTime(now);
+        setWorkoutRoutineId(routineId);
+        setElapsedSeconds(0);
+        setIsSessionActive(true);
+
+        const initialSets: any[] = [];
+        initialExercises.forEach(ex => {
+            const targetSets = ex.target_sets || 3;
+            const targetReps = ex.target_reps || 10;
+            for (let i = 0; i < targetSets; i++) {
+                initialSets.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    exercise_id: ex.exercise_id,
+                    exercise_name: ex.exercise?.name_es || ex.exercise?.name || 'Ejercicio',
+                    weight: 0,
+                    reps: targetReps,
+                    type: 'normal',
+                    completed: false
+                });
+            }
+        });
+        setSetsLog(initialSets);
+    };
+
+    const finishSession = async () => {
+        if (!isSessionActive || !startTime) return false;
+        const completedSets = setsLog.filter(s => s.completed);
+        if (completedSets.length === 0) {
+            return new Promise<boolean>((resolve) => {
+                Alert.alert("Aviso", "¿Terminar sin registrar ninguna serie?", [
+                    { text: "No", style: "cancel", onPress: () => resolve(false) },
+                    { text: "Sí, abandonar", style: "destructive", onPress: async () => {
+                        await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+                        setIsSessionActive(false);
+                        resolve(true);
+                    }}
+                ]);
+            });
+        }
+
+        try {
+            const { data: { user: u } } = await supabase.auth.getUser();
+            if (!u) throw new Error('No user');
+            const totalVolume = completedSets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
+            const { data: session, error: sError } = await supabase.from('workout_sessions').insert([{
+                user_id: u.id, routine_id: workoutRoutineId, started_at: startTime,
+                ended_at: new Date().toISOString(), bodyweight: profile?.hp_current || 0,
+                note: `Volumen total: ${totalVolume}kg`
+            }]).select().single();
+            if (sError) throw sError;
+            const setsToInsert = completedSets.map((s, idx) => ({
+                session_id: session.id, exercise_id: s.exercise_id, set_number: idx + 1,
+                weight_kg: s.weight, reps: s.reps, type: s.type
+            }));
+            const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert);
+            if (setsError) throw setsError;
+
+            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+            setIsSessionActive(false);
+            setStartTime(null);
+            setSetsLog([]);
+            await fetchAll();
+            Alert.alert("¡Batalla Concluida!", `Has causado ${totalVolume} puntos de daño (tonelaje).`);
+            return true;
+        } catch (e: any) {
+            Alert.alert("Error al guardar", e.message);
+            return false;
+        }
+    };
+
+    const addSet = (exerciseId: string, exerciseName: string) => {
+        const newSet = {
+            id: Math.random().toString(36).substr(2, 9),
+            exercise_id: exerciseId, exercise_name: exerciseName,
+            weight: 0, reps: 0, type: 'normal', completed: false
+        };
+        setSetsLog(prev => [...prev, newSet]);
+    };
+
+    const updateSet = (id: string, updates: Partial<any>) => {
+        setSetsLog(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    };
+
+    const removeSet = (id: string) => {
+        setSetsLog(prev => prev.filter(s => s.id !== id));
+    };
+
+    const formatTime = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return h > 0 
+            ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+            : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
     // --- FETCH ---
@@ -645,6 +801,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             updateSeries,
             addSeason,
             updateSeason
+        },
+        workout: {
+            isSessionActive,
+            elapsedSeconds,
+            formatTime: formatTime(elapsedSeconds),
+            setsLog,
+            startSession,
+            finishSession,
+            addSet,
+            updateSet,
+            removeSet
         },
         user,
         profile,

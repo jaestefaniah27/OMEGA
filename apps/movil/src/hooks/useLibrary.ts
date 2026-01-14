@@ -21,7 +21,7 @@ Notifications.setNotificationHandler({
 
 export const useLibrary = () => {
     // --- CONSUME CONTEXT ---
-    const { library } = useGame();
+    const { library, workout } = useGame();
     const {
         subjects,
         books,
@@ -351,6 +351,10 @@ export const useLibrary = () => {
     };
 
     const startSession = async (type: 'SUBJECT' | 'BOOK' = 'SUBJECT') => {
+        if (workout.isSessionActive) {
+            Alert.alert("⚠️ Batalla en Curso", "No puedes estudiar ni leer mientras estás en la Forja Táctica. ¡Termina tu entrenamiento primero!");
+            return;
+        }
         if (type === 'SUBJECT' && !selectedSubject) return;
         if (type === 'BOOK' && !selectedBook) return;
 

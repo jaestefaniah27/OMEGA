@@ -6,6 +6,7 @@ import { MuscleFatigue } from '../types/supabase';
 export const useUserStats = () => {
     const { profile, user } = useGame();
     const [muscleFatigue, setMuscleFatigue] = useState<MuscleFatigue>({});
+    const [records, setRecords] = useState<any[]>([]);
     const [loadingStats, setLoadingStats] = useState(false);
 
     const fetchMuscleFatigue = async () => {
@@ -24,17 +25,36 @@ export const useUserStats = () => {
         }
     };
 
+    const fetchRecords = async () => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase.rpc('get_personal_records', {
+                user_uuid: user.id
+            });
+            if (error) throw error;
+            setRecords(data || []);
+        } catch (e) {
+            console.error('Error fetching records:', e);
+        }
+    };
+
+    const refreshAll = () => {
+        fetchMuscleFatigue();
+        fetchRecords();
+    };
+
     useEffect(() => {
         if (user) {
-            fetchMuscleFatigue();
+            refreshAll();
         }
     }, [user]);
 
     return {
         profile,
         muscleFatigue,
+        records,
         loading: (!profile && !!user) || loadingStats,
-        refreshStats: fetchMuscleFatigue,
+        refreshStats: refreshAll,
         error: null
     };
 };

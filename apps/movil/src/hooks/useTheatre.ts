@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import {
     TheatreActivity,
@@ -13,7 +14,7 @@ const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
     // --- CONSUME CONTEXT ---
-    const { theatre } = useGame();
+    const { theatre, workout } = useGame();
     const {
         activities,
         movies,
@@ -102,6 +103,10 @@ export const useTheatre = () => {
 
     // Session Methods
     const startSession = async (activity: TheatreActivity) => {
+        if (workout.isSessionActive) {
+            Alert.alert("⚠️ Batalla en Curso", "No puedes realizar actividades en el Teatro mientras estás en la Forja Táctica. ¡Termina tu entrenamiento primero!");
+            return;
+        }
         const start = new Date();
         setStartTime(start);
         setSelectedActivity(activity);

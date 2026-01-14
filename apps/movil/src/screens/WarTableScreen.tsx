@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,7 +6,8 @@ import {
     ScrollView,
     Dimensions,
     TouchableOpacity,
-    Platform
+    Platform,
+    DeviceEventEmitter
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { ParchmentCard, MedievalButton } from '@omega/ui';
@@ -22,6 +23,7 @@ import {
 import { useGame } from '../context/GameContext';
 import { useNavigation } from '@react-navigation/native';
 import { RoyalDecree } from '../types/supabase';
+import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
 
 // Configure Calendar Locale
 LocaleConfig.locales['es'] = {
@@ -38,7 +40,8 @@ const { width } = Dimensions.get('window');
 export const WarTableScreen: React.FC = () => {
     const navigation = useNavigation();
     const { castle } = useGame();
-    const { decrees, updateDecree } = castle;
+    const { decrees, updateDecree, addDecree } = castle;
+    const [modalVisible, setModalVisible] = useState(false);
 
     // Identify decrees that have already been expanded into separate records
     const parentIds = useMemo(() => {
@@ -49,7 +52,16 @@ export const WarTableScreen: React.FC = () => {
         return set;
     }, [decrees]);
     
+    
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // --- QUICK ADD HUD LISTENER ---
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('GLOBAL_QUICK_ADD', () => {
+            setModalVisible(true);
+        });
+        return () => sub.remove();
+    }, []);
 
     const isDecreeActiveOnDate = (decree: RoyalDecree, dateString: string) => {
         // Strict string-based comparison to avoid Timezone shifts (YYYY-MM-DD)
@@ -335,6 +347,11 @@ export const WarTableScreen: React.FC = () => {
 
                 <View style={{ height: 100 }} />
             </ScrollView>
+            <RoyalDecreeModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onSave={addDecree}
+            />
         </View>
     );
 };

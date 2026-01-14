@@ -5,7 +5,7 @@ import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { Decree } from '../types/supabase';
+import { RoyalDecree } from '../types/supabase';
 
 const CALENDAR_STORAGE_KEY = 'omega_calendar_settings';
 const BACKGROUND_FETCH_TASK = 'background-calendar-sync';

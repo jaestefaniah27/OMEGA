@@ -999,14 +999,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         if (days && days.length > 0) {
                             let found = false;
                             for (let j = 1; j <= 7; j++) {
-                                nextDate.setDate(iterationDate.getDate() + j);
-                                if (days.includes(nextDate.getDay())) {
+                                let testDate = new Date(iterationDate);
+                                testDate.setDate(iterationDate.getDate() + j);
+                                if (days.includes(testDate.getDay())) {
+                                    nextDate = testDate;
                                     found = true;
                                     break;
                                 }
                             }
-                            if (!found) nextDate.setDate(iterationDate.getDate() + 7);
+                            if (!found) {
+                                nextDate = new Date(iterationDate);
+                                nextDate.setDate(iterationDate.getDate() + 7);
+                            }
                         } else {
+                            nextDate = new Date(iterationDate);
                             nextDate.setDate(iterationDate.getDate() + 7);
                         }
                     } else if (freq === 'MONTHLY') {

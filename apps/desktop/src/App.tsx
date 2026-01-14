@@ -20,9 +20,6 @@ import { GameProvider, ToastProvider } from '@omega/logic';
 import { DeviceEventEmitter } from 'react-native';
 import { Castle, Calendar } from 'lucide-react-native';
 
-// Simple style reset for web
-import './App.css';
-
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
 
@@ -80,7 +77,7 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    console.log("App Mounted");
+    console.log("App Mounted - Restored Full Logic");
     setMounted(true);
   }, []);
 
@@ -119,6 +116,9 @@ export default function App() {
   );
   } catch (e) {
     console.error("Render Error:", e);
-    return <div style={{color: 'red'}}>Error: {JSON.stringify(e)}</div>;
+    return <div style={{color: 'red', padding: 20}}>
+        <h1>Critical Render Error</h1>
+        <pre>{JSON.stringify(e, null, 2)}</pre>
+    </div>;
   }
 }

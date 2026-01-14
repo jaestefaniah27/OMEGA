@@ -1,10 +1,12 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { AppRegistry } from 'react-native';
+import App from './App';
+import './App.css';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Register the app
+AppRegistry.registerComponent('desktop', () => App);
+
+// Run the app (web-specific)
+AppRegistry.runApplication('desktop', {
+  initialProps: {},
+  rootTag: document.getElementById('root'),
+});

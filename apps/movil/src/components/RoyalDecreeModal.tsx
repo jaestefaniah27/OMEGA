@@ -171,7 +171,6 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         if (date) {
             setSelectedDate(date);
         }
-        if (Platform.OS === 'ios' && event.type === 'set') setShowDatePicker(false);
     };
 
     const onTimeChange = (event: any, date?: Date) => {
@@ -181,7 +180,6 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
             const minutes = date.getMinutes().toString().padStart(2, '0');
             setExamTime(`${hours}:${minutes}`);
         }
-        if (Platform.OS === 'ios' && event.type === 'set') setShowTimePicker(false);
     };
 
     const types: { label: string; value: DecreeType; icon: any }[] = [

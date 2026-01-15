@@ -1,122 +1,177 @@
 require('dotenv').config();
 const { app, Tray, Menu } = require('electron');
 const { createClient } = require('@supabase/supabase-js');
-const path = require('path');
+const { exec } = require('child_process');
+const path = require('path'); // Para normalizar rutas
 
-// 1. Configuración
-const CHECK_INTERVAL = 5000; // Chequear ventana cada 5s
-const UPLOAD_INTERVAL = 60000; // Subir a la BD cada 1min
+// CONFIGURACIÓN
+const CHECK_INTERVAL = 5000;
+const UPLOAD_INTERVAL = 60000;
+// Lista negra de procesos de sistema que hacen ruido
+const IGNORED_PROCESSES = [
+    'ApplicationFrameHost', 'SystemSettings', 'TextInputHost',
+    'SearchHost', 'StartMenuExperienceHost', 'explorer'
+];
 
 let supabase;
 let tray = null;
-let activityBuffer = {}; // Aquí acumulamos el tiempo: { "VS Code": 120, "Chrome": 60 }
+let activityBuffer = {};
 
-// Inicializar Supabase
+// --- CONEXIÓN A LA TORRE (SUPABASE) ---
 try {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    console.log("✅ Conectado a Supabase");
+    const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    const userId = process.env.USER_ID;
+
+    if (!url || !key || !userId) throw new Error("Faltan credenciales");
+
+    supabase = createClient(url, key);
+    console.log("✅ Familiar V2: Sistema de identificación por ruta activo.");
 } catch (e) {
-    console.error("❌ Error Supabase:", e);
+    console.error("❌ Error de credenciales:", e.message);
 }
 
-// --- LÓGICA DEL ESPÍA ---
+// --- OJOS DEL FAMILIAR ---
+
+// 1. Ojo de Precisión (Devuelve objeto con nombre y ruta)
+async function getActiveAppInfo() {
+    try {
+        const { default: activeWin } = await import('active-win');
+        const activeWinFunc = activeWin.activeWindow || activeWin.default || activeWin;
+
+        if (typeof activeWinFunc !== 'function') return null;
+
+        const win = await activeWinFunc();
+        if (win && win.owner) {
+            return {
+                name: win.owner.name, // "Google Chrome"
+                path: win.owner.path  // "C:\Program Files\...\chrome.exe"
+            };
+        }
+        return null;
+    } catch { return null; }
+}
+
+// 2. Ojo de Área (Devuelve lista de objetos con nombre y ruta)
+function getAllOpenAppsInfo() {
+    return new Promise((resolve) => {
+        // Pedimos ProcessName, MainWindowTitle y Path
+        const cmd = `powershell "Get-Process | Where-Object {$_.MainWindowTitle -ne ''} | Select-Object ProcessName, Path | ConvertTo-Json -Compress"`;
+
+        exec(cmd, (err, stdout) => {
+            if (err) { resolve([]); return; }
+            try {
+                const data = JSON.parse(stdout);
+                const list = Array.isArray(data) ? data : [data];
+
+                // Filtramos basura y formateamos
+                const apps = list
+                    .filter(item =>
+                        item.Path &&
+                        item.ProcessName &&
+                        !IGNORED_PROCESSES.includes(item.ProcessName)
+                    )
+                    .map(item => ({
+                        name: item.ProcessName, // "chrome"
+                        path: item.Path         // "C:\Program Files\...\chrome.exe"
+                    }));
+
+                resolve(apps);
+            } catch { resolve([]); }
+        });
+    });
+}
+
+// --- CEREBRO DEL FAMILIAR ---
 
 async function checkActivity() {
     try {
-        // 1. Importación robusta (igual que hicimos antes)
-        const imported = await import('active-win');
-        const activeWin = imported.activeWindow || imported.default || imported;
+        const focused = await getActiveAppInfo();
+        const allOpen = await getAllOpenAppsInfo();
 
-        // 2. Verificación de seguridad
-        if (typeof activeWin !== 'function') {
-            console.error("⚠️ Error crítico: active-win no es una función", imported);
-            return;
+        // Normalizamos la ruta del foco para comparar (minúsculas)
+        const focusedPath = focused ? focused.path.toLowerCase() : '';
+
+        // 1. Registrar FOCO
+        if (focused) {
+            trackTime(focused.name, 'focus');
+            if (tray) tray.setToolTip(`Foco: ${focused.name}`);
+            console.log(`🎯 FOCUS: ${focused.name}`);
         }
 
-        // 3. Ejecutar el espionaje
-        const window = await activeWin();
+        // 2. Registrar FONDO (Evitando duplicados)
+        const backgroundApps = new Set(); // Usamos Set para no repetir si hay 5 ventanas de Chrome
 
-        if (window && window.owner) {
-            const appName = window.owner.name;
+        allOpen.forEach(app => {
+            const appPath = app.path.toLowerCase();
 
-            // Sumamos tiempo
-            if (!activityBuffer[appName]) {
-                activityBuffer[appName] = 0;
+            // LA CLAVE: Comparamos rutas, no nombres
+            if (appPath !== focusedPath) {
+                backgroundApps.add(app.name);
             }
-            activityBuffer[appName] += (CHECK_INTERVAL / 1000);
+        });
 
-            // LOG PARA QUE LO VEAS EN LA TERMINAL
-            console.log(`👀 Viendo: ${appName}`);
+        // Guardamos tiempo para las únicas en background
+        backgroundApps.forEach(appName => {
+            trackTime(appName, 'background');
+            // console.log(`   💤 Background: ${appName}`); // Descomenta si quieres ver todo
+        });
 
-            // TOOLTIP PARA EL ICONO
-            if (tray) {
-                try {
-                    tray.setToolTip(`Omega Vigilando: ${appName}`);
-                } catch (err) { /* Ignorar error de tray si falla */ }
-            }
-        }
     } catch (error) {
-        // AHORA SÍ VEREMOS EL ERROR SI FALLA
-        console.error("❌ Fallo en el ciclo de espionaje:", error);
+        console.error("Error vigilando:", error);
     }
+}
+
+function trackTime(appName, state) {
+    if (!activityBuffer[appName]) {
+        activityBuffer[appName] = { focus: 0, background: 0 };
+    }
+    activityBuffer[appName][state] += (CHECK_INTERVAL / 1000);
 }
 
 async function uploadActivities() {
-    const apps = Object.keys(activityBuffer);
-    if (apps.length === 0) return;
+    const appNames = Object.keys(activityBuffer);
+    if (appNames.length === 0) return;
 
-    // VERIFICACIÓN DE SEGURIDAD
+    const updates = [];
     const userId = process.env.USER_ID;
-    if (!userId) {
-        console.error("❌ Error: Falta USER_ID en el archivo .env");
-        return;
-    }
 
-    console.log("📤 Subiendo reporte...", activityBuffer);
+    appNames.forEach(name => {
+        const data = activityBuffer[name];
+        if (data.focus > 0) {
+            updates.push({ user_id: userId, app_name: name, duration_seconds: data.focus, state: 'focus' });
+        }
+        if (data.background > 0) {
+            updates.push({ user_id: userId, app_name: name, duration_seconds: data.background, state: 'background' });
+        }
+    });
 
-    const updates = apps.map(appName => ({
-        app_name: appName,
-        duration_seconds: activityBuffer[appName],
-        user_id: userId // <--- ¡AQUÍ ESTÁ LA CLAVE!
-    }));
+    if (updates.length > 0) {
+        console.log(`📤 Subiendo reporte (${updates.length} apps)...`);
+        const { error } = await supabase.from('computer_activities').insert(updates);
 
-    const { error } = await supabase
-        .from('computer_activities')
-        .insert(updates);
-
-    if (error) console.error("❌ Fallo subida:", error);
-    else {
-        console.log("✅ Reporte guardado con éxito.");
-        activityBuffer = {};
+        if (error) console.error("❌ Error Supabase:", error.message);
+        else {
+            console.log("✅ Guardado correctamente.");
+            activityBuffer = {};
+        }
     }
 }
 
-// --- CICLO DE VIDA DE ELECTRON ---
-
 app.whenReady().then(() => {
-    // 1. Ocultar del Dock/Barra de tareas (comportamiento fantasma)
     if (app.dock) app.dock.hide();
 
-    // 2. Crear icono en la bandeja del sistema (Tray)
-    // Necesitas un icono pequeño 'icon.png' en la carpeta o fallará. 
-    // Si no tienes, comenta las líneas del Tray temporalmente.
+    // Icono (Opcional)
+    try {
+        tray = new Tray(path.join(__dirname, 'icon.png'));
+        tray.setToolTip('Omega Vigilante V2');
+        tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Salir', click: () => app.quit() }]));
+    } catch (e) { }
 
-    tray = new Tray('icon.png');
-    const contextMenu = Menu.buildFromTemplate([
-        { label: 'Familiar Omega: Vigilando...', enabled: false },
-        { type: 'separator' },
-        { label: 'Cerrar', click: () => app.quit() }
-    ]);
-    tray.setToolTip('Omega Tracker');
-    tray.setContextMenu(contextMenu);
-
-
-    // 3. Arrancar bucles
     setInterval(checkActivity, CHECK_INTERVAL);
     setInterval(uploadActivities, UPLOAD_INTERVAL);
 
-    console.log("🦇 El Familiar ha despertado.");
+    console.log("🦇 Familiar V2 iniciado.");
 });
 
-// Evitar que la app se cierre si no hay ventanas (porque no tendremos ninguna)
-app.on('window-all-closed', (e) => e.preventDefault());
+app.on('window-all-closed', e => e.preventDefault());

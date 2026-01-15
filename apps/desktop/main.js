@@ -5,7 +5,7 @@ const path = require('path');
 
 // 1. Configuración
 const CHECK_INTERVAL = 5000; // Chequear ventana cada 5s
-const UPLOAD_INTERVAL = 10000; // Subir a la BD cada 1min
+const UPLOAD_INTERVAL = 60000; // Subir a la BD cada 1min
 
 let supabase;
 let tray = null;
@@ -23,23 +23,41 @@ try {
 
 async function checkActivity() {
     try {
-        // Importación dinámica para active-win
-        const { default: activeWin } = await import('active-win');
+        // 1. Importación robusta (igual que hicimos antes)
+        const imported = await import('active-win');
+        const activeWin = imported.activeWindow || imported.default || imported;
+
+        // 2. Verificación de seguridad
+        if (typeof activeWin !== 'function') {
+            console.error("⚠️ Error crítico: active-win no es una función", imported);
+            return;
+        }
+
+        // 3. Ejecutar el espionaje
         const window = await activeWin();
 
         if (window && window.owner) {
             const appName = window.owner.name;
 
-            // Sumamos el intervalo al buffer local
+            // Sumamos tiempo
             if (!activityBuffer[appName]) {
                 activityBuffer[appName] = 0;
             }
             activityBuffer[appName] += (CHECK_INTERVAL / 1000);
 
-            console.log(`👀 Viendo: ${appName}`); // Descomentar para depurar
+            // LOG PARA QUE LO VEAS EN LA TERMINAL
+            console.log(`👀 Viendo: ${appName}`);
+
+            // TOOLTIP PARA EL ICONO
+            if (tray) {
+                try {
+                    tray.setToolTip(`Omega Vigilando: ${appName}`);
+                } catch (err) { /* Ignorar error de tray si falla */ }
+            }
         }
     } catch (error) {
-        // A veces falla si no hay ventana activa o permisos, ignoramos
+        // AHORA SÍ VEREMOS EL ERROR SI FALLA
+        console.error("❌ Fallo en el ciclo de espionaje:", error);
     }
 }
 
@@ -47,12 +65,19 @@ async function uploadActivities() {
     const apps = Object.keys(activityBuffer);
     if (apps.length === 0) return;
 
+    // VERIFICACIÓN DE SEGURIDAD
+    const userId = process.env.USER_ID;
+    if (!userId) {
+        console.error("❌ Error: Falta USER_ID en el archivo .env");
+        return;
+    }
+
     console.log("📤 Subiendo reporte...", activityBuffer);
 
     const updates = apps.map(appName => ({
         app_name: appName,
         duration_seconds: activityBuffer[appName],
-        // user_id: 'TU_UUID_FIJO_SI_QUIERES' // Opcional
+        user_id: userId // <--- ¡AQUÍ ESTÁ LA CLAVE!
     }));
 
     const { error } = await supabase
@@ -61,8 +86,8 @@ async function uploadActivities() {
 
     if (error) console.error("❌ Fallo subida:", error);
     else {
-        console.log("✅ Reporte guardado.");
-        activityBuffer = {}; // Limpiamos el buffer
+        console.log("✅ Reporte guardado con éxito.");
+        activityBuffer = {};
     }
 }
 

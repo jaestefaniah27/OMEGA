@@ -12,13 +12,19 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RootStackParamList } from './src/navigation/AppNavigator';
 import { MobilePlatformProvider } from './src/services/MobilePlatformProvider';
+// Importamos el hook del espía
+import { useDesktopSpy } from './src/hooks/useDesktopSpy';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>('Home');
 
+  // 👁️ Activamos el espía
+  const { activeApp, windowTitle } = useDesktopSpy();
+
   return (
+    // IMPORTANTE: Todo debe estar dentro de este GestureHandlerRootView
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <MobilePlatformProvider>
@@ -38,11 +44,19 @@ export default function App() {
           </NavigationContainer>
         </MobilePlatformProvider>
       </SafeAreaProvider>
+
+      {/* 👁️ VISUALIZACIÓN DEL ESPÍA (Absoluta, flotando encima) */}
+      {activeApp && (
+        <View style={styles.spyContainer}>
+          <Text style={styles.spyText}>👁️ {activeApp}</Text>
+          <Text style={styles.spySubtext} numberOfLines={1}>{windowTitle}</Text>
+        </View>
+      )}
     </GestureHandlerRootView>
   );
 }
 
-
+// --- Componentes Auxiliares ---
 
 const WorkoutHeader: React.FC<{ onWorkoutPress: () => void; currentRoute: string | undefined }> = ({ onWorkoutPress, currentRoute }) => {
   const { workout } = useGame();
@@ -107,9 +121,9 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
 
   return (
     <>
-      <WorkoutHeader 
-        onWorkoutPress={handleWorkoutPress} 
-        currentRoute={currentRoute} 
+      <WorkoutHeader
+        onWorkoutPress={handleWorkoutPress}
+        currentRoute={currentRoute}
       />
       <GameHUD
         onProfilePress={handleProfilePress}
@@ -156,5 +170,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 1,
+  },
+  // ESTILOS DEL ESPÍA
+  spyContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    backgroundColor: '#330000', // Rojo oscuro sangre
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'red',
+    zIndex: 10000, // Por encima de todo
+    maxWidth: 200,
+  },
+  spyText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  spySubtext: {
+    color: '#ffcccc',
+    fontSize: 10,
   }
 });

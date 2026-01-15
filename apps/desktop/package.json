@@ -1,49 +1,14 @@
 {
-  "name": "desktop",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "main": "dist-electron/main.js",
-  "scripts": {
-    "dev": "rimraf dist-electron && vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@omega/db": "*",
-    "@omega/logic": "*",
-    "@omega/ui": "*",
-    "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-navigation/native": "^7.0.0",
-    "@react-navigation/native-stack": "^7.0.0",
-    "buffer": "^6.0.3",
-    "process": "^0.11.10",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-native-gesture-handler": "~2.0.0",
-    "react-native-safe-area-context": "*",
-    "react-native-screens": "~4.0.0",
-    "react-native-svg": "15.12.1",
-    "react-native-url-polyfill": "^3.0.0",
-    "react-native-web": "^0.19.10"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "electron": "^33.0.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "rimraf": "^6.1.2",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
-  }
+    "name": "omega-desktop",
+    "version": "1.0.0",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.90.1",
+        "active-win": "^9.0.0",
+        "dotenv": "^17.2.3",
+        "electron": "^28.2.0"
+    }
 }

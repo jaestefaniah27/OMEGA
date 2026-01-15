@@ -114,7 +114,7 @@ async function checkActivity() {
         // Guardamos tiempo para las únicas en background
         backgroundApps.forEach(appName => {
             trackTime(appName, 'background');
-            // console.log(`   💤 Background: ${appName}`); // Descomenta si quieres ver todo
+            console.log(`   💤 Background: ${appName}`); // Descomenta si quieres ver todo
         });
 
     } catch (error) {

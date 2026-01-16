@@ -1,80 +1,101 @@
-# 🧠 OMEGA AI CONTEXT & RULES
+# 🏰 PROYECTO OMEGA: Contexto Técnico y Funcional
 
-## 1. Resumen del Proyecto
-Omega es un "Life RPG" (Gestor de vida gamificado) que centraliza productividad, gym y salud.
-- **Arquitectura:** Monorepo (Turborepo/NPM Workspaces).
-- **Apps:** 
-  - `apps/movil`: React Native (Expo) + React Navigation.
-  - `apps/desktop`: Electron + Vite + React.
-  - `packages/ui`: Librería de componentes compartidos (React Native Web compatible).
-  - `packages/db`: Configuración y tipos de base de datos compartidos.
-- **Backend:** Supabase (PostgreSQL + Auth + Realtime).
-- **Estética:** RPG Medieval Fantástico (Piedra, Pergamino, Oro, Oscuro).
+**ROL PARA LA IA:** Actúa como el Arquitecto Principal y Lead Developer del Proyecto OMEGA. Este documento describe el estado actual, la arquitectura y la lógica de negocio de una aplicación de "Life RPG" (Gamificación de vida).
 
-## 2. Reglas de Programación (Tech Stack)
-Cuando generes código, sigue estas reglas estrictas:
-- **Estructura de Archivos:** Respeta la separación del Monorepo. No pongas código de móvil en desktop ni viceversa, salvo que esté en `packages/ui`.
-- **UI:** NO uses componentes nativos (`Button`, `Switch`, `View` crudas para contenedores principales). Usa SIEMPRE componentes personalizados de `packages/ui`:
-  - `MedievalButton`: Para acciones principales.
-  - `ParchmentCard`: Para contenedores de información.
-  - `GameHUD`: Para elementos de estado (vida, mana, oro).
-- **Navegación Móvil:** Usa `React Navigation` (Stack/Tab), no Expo Router.
-- **Estilos:** Usa `ImageBackground` con texturas de `assets/textures`. Evita colores planos.
-- **Iconos:** `Lucide-React-Native` (Color Oro `#FFD700` o Papiro `#F5E6C6`).
-- **Nombres:** Tablas SQL en `snake_case`. Código JS/TS en `camelCase`.
+---
 
-## 3. Prompts Maestros (Copia y Pega)
+## 1. VISIÓN GENERAL
+OMEGA es un ecosistema de aplicaciones diseñado para gamificar la vida del usuario. Convierte hábitos, tareas y uso del ordenador en experiencia (XP), atributos y progreso en un juego de rol medieval/fantástico.
 
-### 🎨 Para generar Assets (Bing Image Creator / Leonardo.ai)
-Usa este estilo para mantener coherencia visual. Bing funciona mejor con descripciones descriptivas:
+## 2. ARQUITECTURA DEL SISTEMA (Monorepo)
+El proyecto está estructurado como un monorepo con dos aplicaciones principales y paquetes compartidos:
 
-> "Isometric game asset representing [NOMBRE DEL LUGAR], video game style, medieval fantasy aesthetic, hand painted texture similar to Blizzard games, lighting from top-left, dark background, high definition, 3d render"
+### A. `apps/movil` (La Torre del Mago - Interfaz Principal)
+* **Tech Stack:** React Native, Expo, TypeScript, React 19.
+* **Función:** Es el cerebro y la interfaz del usuario. Visualización de stats, mapa, inventario y misiones.
+* **Navegación:** React Navigation.
+    * **Home (Map):** Vista principal.
+    * **Castle:** Calendario y planificación.
+    * **Barracks:** Entrenamiento y hábitos físicos.
+    * **Theatre:** Consumo de contenido.
+    * **Zurron:** Inventario y Quick Add.
+* **Integración Desktop:** Contiene un hook `useDesktopSpy` que, cuando corre en entorno Electron, muestra un overlay visual (HUD) de la app activa.
 
-*Ejemplos:*
-- **Torre de Hechicería:** "Isometric wizard tower, purple glowing crystals floating around, arcane runes on the floor, mystical atmosphere, dark background"
-- **Barracones:** "Isometric medieval training grounds, wooden practice dummies, iron weights, weapon rack, stone floor, dark background"
-- **Textura Botón:** "Square stone texture for UI button, ancient grey rock, cracks, rpg game interface element, isolated"
+### B. `apps/desktop` (El Familiar - Rastreador Silencioso)
+* **Tech Stack:** Electron, Node.js, PowerShell (vía `child_process`).
+* **Función:** Worker invisible en segundo plano que monitoriza la actividad del PC y la sube a la nube.
+* **Interfaz:** Tray Icon (Bandeja del sistema). Sin ventana principal visible por defecto.
+* **Lógica de Rastreo (V5 - PID System):**
+    * **Intervalo de chequeo:** 5 segundos.
+    * **Intervalo de subida:** 60 segundos.
+    * **Ojo de Precisión (`active-win`):** Obtiene el PID de la ventana activa (Foco).
+    * **Ojo de Área (PowerShell):** Obtiene lista de todos los procesos con ventana (Background).
+    * **Algoritmo de Fusión:**
+        1. Identifica el PID de la app en Foco.
+        2. Barre todas las demás apps abiertas.
+        3. Si `PID_App !== PID_Foco` → Se cuenta como tiempo 'background'.
+        4. Si `PID_App === PID_Foco` → Se cuenta como tiempo 'focus'.
+    * **Persistencia:** Acumula segundos en memoria (`activityBuffer`) y hace un `INSERT` masivo a Supabase cada minuto.
 
-### 🧙‍♂️ Para "El Bardo" (Narrativa)
-> "Eres El Bardo. Narra la vida de Sir Usuario basándote en sus logs. Usa tono épico. Metáforas de batalla para estudio/gym. Sé motivador pero severo."
+### C. `supabase` (El Libro de los Registros - Backend)
+* **Base de Datos:** PostgreSQL.
+* **Autenticación:** Supabase Auth (Usuario único gestionado por UUID fijo en `.env` del desktop).
+* **Schema Actual (`computer_activities`):**
+    ```sql
+    create table computer_activities (
+      id bigint primary key generated always as identity,
+      user_id uuid references auth.users not null,
+      app_name text not null,        -- Ej: "Google Chrome"
+      duration_seconds int,          -- Tiempo acumulado en el intervalo
+      state text,                    -- 'focus' o 'background'
+      created_at timestamptz default now()
+    );
+    ```
 
-### 💻 Para Agentes de Código (Antigravity)
-> "Actúa como Ingeniero Senior. Crea [FUNCIONALIDAD]. Revisa `packages/ui` para componentes. Usa Supabase. Si es para PC, recuerda usar `active-win`. Si es para móvil, recuerda `expo-location`."
+---
 
-## 4. Diccionario de Datos & Ramas
-- **Estudio** = "Rama de Intelecto" (Azul).
-- **Gym** = "Rama de Vigor" (Rojo).
-- **Programación/Maker** = "Rama de Hechicería" (Morado/Arcano).
-- **Examen** = "Jefe Final" (Boss).
-- **Tarea** = "Misión" (Quest).
-- **Proyecto** = "Grimorio" (Conjunto de misiones).
+## 3. SOLUCIONES TÉCNICAS CRÍTICAS (NO TOCAR)
 
-## 5. Registro de Decisiones de Arquitectura (ADR)
-Mantén estas decisiones en futuros desarrollos:
+### 🛡️ 1. Importación de Módulos ESM en Electron
+La librería `active-win` es ESM puro y da problemas con Node.js/Electron estándar.
+**Solución implementada:** Importación dinámica y verificación recursiva de exportaciones.
+```javascript
+// Patrón obligatorio en main.js
+const imported = await import('active-win');
+// Busca activeWindow en la raíz o en .default
+let activeWinFunc = imported.activeWindow || imported.default?.activeWindow || imported.default;
 
-- **ADR-001 (Monorepo):** Usamos NPM Workspaces gestionado por Turbo.
-- **ADR-002 (Navegación):** En móvil, preferimos `React Navigation` sobre Expo Router por control explícito.
-- **ADR-003 (UI Components):** La UI debe ser **agnóstica** de plataforma cuando sea posible. Los componentes en `packages/ui` deben funcionar en Web (Desktop) y Native (Móvil).
-- **ADR-004 (Offline):** Estrategia "Offline First" simple. Cachear datos críticos en `AsyncStorage` (Móvil) o `localStorage` (Desktop) al iniciar, y sincronizar con Supabase en segundo plano.
-- **ADR-005 (Estética):** La inmersión es prioridad. No "parecer una app de productividad". Debe parecer un juego.
-- **ADR-006 (Catálogo de Ejercicios):** Los ejercicios se gestionan en Supabase (`public.exercises`). Para eficiencia offline, el móvil guarda un subconjunto de "Core Exercises" en `core_exercises.json`.
-- **ADR-007 (Nomenclatura Muscular):** La interfaz debe mostrar SIEMPRE nombres musculares simplificados (Bíceps, Pecho, Isquios, Hombros). La complejidad técnica se guarda internamente pero no se muestra al usuario.
+```
 
-## 6. Nomenclatura Muscular (UI vs DB)
-Mapeo estricto para mantener la simplicidad RPG:
-| Nombre Técnico | Nombre UI (OMEGA) |
-| :--- | :--- |
-| Pectoral Mayor | **Pecho** |
-| Bíceps braquial | **Bíceps** |
-| Tríceps braquial | **Tríceps** |
-| Isquiosurales | **Isquios** |
-| Deltoides (todos) | **Hombros** |
-| Dorsal ancho | **Espalda** |
-| Erectores espinales| **Lumbar** |
-| Trapecio | **Trapecio** |
-| Cuádriceps | **Cuádriceps** |
+### 🛡️ 2. Identificación de Procesos (PID vs Nombres)
 
-## 7. Sistema de Favoritos
-- **Tabla:** `public.user_exercise_favorites` (user_id, exercise_id).
-- **Acceso:** "Biblioteca de Combate" en el Barracón.
-- **Sync:** El script `import_exercises.js` debe sincronizar los IDs de la DB con el archivo local `core_exercises.json` para que los favoritos funcionen en modo offline/híbrido.
+Comparar nombres de procesos (`chrome` vs `Google Chrome`) o rutas de archivos causa duplicidad de datos (detecta la misma app como focus y background a la vez).
+**Solución implementada:** Usar estrictamente el **Process ID (PID)** para diferenciar si una app es la misma que la que tiene el foco.
+
+### 🛡️ 3. Versiones de React
+
+* `apps/movil` corre sobre **React 19**.
+* Es imperativo que los paquetes `react` y `react-dom` tengan **exactamente la misma versión** (actualmente `19.1.0`) en `package.json` para evitar conflictos de renderizado en Expo Web/Electron.
+
+### 🛡️ 4. Variables de Entorno Híbridas
+
+El Desktop usa un sistema híbrido para leer claves, compatible con el estándar web de Expo. El código de `main.js` busca ambas variantes:
+`process.env.SUPABASE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+---
+
+## 4. ROADMAP INMEDIATO
+
+1. **Visualización:** Crear componentes en `apps/movil` para leer `computer_activities` y mostrar gráficos de uso (Foco vs Fondo).
+2. **Gamificación (XP):** Implementar lógica en base de datos o backend para asignar XP según la categoría de la app (Productividad vs Ocio).
+3. **Deploy Desktop:** Configurar `electron-squirrel-startup` o similar para generar un `.exe` instalable que se inicie automáticamente con Windows.
+
+---
+
+## 5. INSTRUCCIONES DE USO DEL PROMPT
+
+Al iniciar una nueva sesión, la IA debe leer este contexto primero.
+
+* **Código:** Si se pide modificar `apps/desktop/main.js`, mantén SIEMPRE la lógica de comparación por PIDs y la importación robusta.
+* **Estilo:** Mantén un tono profesional pero alineado con la temática "Torre del Mago" (Fantasía/RPG) para la nomenclatura de alto nivel.
+* **Base de Datos:** Cualquier cambio de esquema debe incluir el SQL de migración correspondiente.

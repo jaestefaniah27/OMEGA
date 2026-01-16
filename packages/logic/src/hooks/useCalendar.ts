@@ -81,5 +81,6 @@ export const useCalendar = (userId: string | undefined) => {
         saveSettings,
         syncNativeEventsToDecrees,
         exportDecreeToCalendar,
+        registerBackgroundFetch: async () => { console.log("Background fetch not implemented for this platform yet"); },
     };
 };

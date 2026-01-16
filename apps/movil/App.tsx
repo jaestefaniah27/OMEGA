@@ -119,6 +119,8 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     }
   };
 
+  if (currentRoute === 'ZenFireplace') return null;
+
   return (
     <>
       <WorkoutHeader

@@ -22,3 +22,4 @@ export * from './screens/TempleScreen';
 export * from './screens/TheatreScreen';
 export * from './screens/WarTableScreen';
 export * from './screens/WizardTowerScreen';
+export * from './screens/ZenFireplaceScreen';

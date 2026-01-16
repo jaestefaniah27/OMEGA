@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { 
+import {
     HomeScreen,
     CastleScreen,
     LibraryScreen,
@@ -11,7 +11,8 @@ import {
     TheatreScreen,
     MarketScreen,
     ProfileScreen,
-    WarTableScreen
+    WarTableScreen,
+    ZenFireplaceScreen
 } from '@omega/ui';
 
 export type RootStackParamList = {
@@ -26,6 +27,7 @@ export type RootStackParamList = {
     Market: undefined;
     Profile: undefined;
     WarTable: undefined;
+    ZenFireplace: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -51,6 +53,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Market" component={MarketScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="WarTable" component={WarTableScreen} />
+            <Stack.Screen name="ZenFireplace" component={ZenFireplaceScreen} />
         </Stack.Navigator>
     );
 };

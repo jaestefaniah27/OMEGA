@@ -212,3 +212,58 @@ export interface RoyalDecree {
 export interface RoutineWithExercises extends Routine {
     exercises: (RoutineExercise & { exercise: Exercise })[];
 }
+
+// --- TEMPLE SYSTEM ---
+
+export type ThoughtType = 'POSITIVE' | 'NEGATIVE';
+
+export interface TempleThought {
+    id: string;
+    user_id: string;
+    content: string;
+    type: ThoughtType;
+    is_resolved: boolean;
+    date: string;
+    created_at: string;
+}
+
+export interface TempleSleep {
+    id: string;
+    user_id: string;
+    hours: number;
+    quality: string | null;
+    date: string;
+    created_at: string;
+}
+
+// --- TAVERN SYSTEM ---
+
+export interface TavernWater {
+    id: string;
+    user_id: string;
+    amount: number;
+    date: string;
+    created_at: string;
+}
+
+// --- MAGE TOWER SYSTEM ---
+
+export interface MageProject {
+    id: string;
+    user_id: string;
+    name: string;
+    scope: string | null;
+    theme_id: string | null;
+    mana_amount: number;
+    status: 'ACTIVE' | 'ARCHIVED';
+    created_at: string;
+}
+
+export interface MageTheme {
+    id: string;
+    user_id: string;
+    name: string;
+    symbol: string;
+    color: string;
+    created_at: string;
+}

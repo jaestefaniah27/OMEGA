@@ -17,10 +17,16 @@ import {
     MuscleFatigue,
     PersonalRecord,
     RoyalDecree,
+    RoutineWithExercises,
     DecreeType,
     DecreeStatus,
     DecreeUnit,
-    RoutineWithExercises
+    TempleThought,
+    TempleSleep,
+    ThoughtType,
+    TavernWater,
+    MageProject,
+    MageTheme
 } from '../types/supabase';
 import { useCalendar } from '../hooks/useCalendar';
 import { showGlobalToast } from './ToastContext';
@@ -116,6 +122,44 @@ interface GameContextType {
         checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => Promise<void>;
     };
 
+    // --- TEMPLE DATA ---
+    temple: {
+        thoughts: TempleThought[];
+        sleepRecords: TempleSleep[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+
+        // Mutations
+        addThought: (content: string, type: ThoughtType) => Promise<any>;
+        resolveThought: (id: string) => Promise<void>;
+        addSleep: (hours: number, quality?: string) => Promise<any>;
+    };
+
+    // --- TAVERN DATA ---
+    tavern: {
+        waterRecords: TavernWater[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+
+        // Mutations
+        addWater: (amount: number) => Promise<any>;
+    };
+
+    // --- MAGE TOWER DATA ---
+    mageTower: {
+        projects: MageProject[];
+        themes: MageTheme[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+
+        // Mutations
+        addProject: (name: string, themeId: string) => Promise<any>;
+        updateProject: (id: string, updates: Partial<MageProject>) => Promise<void>;
+        deleteProject: (id: string) => Promise<void>;
+        addTheme: (name: string, symbol: string, color: string) => Promise<any>;
+        deleteTheme: (id: string) => Promise<void>;
+    };
+
     // --- CALENDAR INTEGRATION ---
     calendar: {
         calendars: any[];
@@ -178,6 +222,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [decrees, setDecrees] = useState<RoyalDecree[]>([]);
     const [castleLoading, setCastleLoading] = useState(true);
 
+    // Temple State
+    const [thoughts, setThoughts] = useState<TempleThought[]>([]);
+    const [sleepRecords, setSleepRecords] = useState<TempleSleep[]>([]);
+    const [templeLoading, setTempleLoading] = useState(true);
+
+    // Tavern State
+    const [waterRecords, setWaterRecords] = useState<TavernWater[]>([]);
+    const [tavernLoading, setTavernLoading] = useState(true);
+
+    // Mage Tower State
+    const [mageProjects, setMageProjects] = useState<MageProject[]>([]);
+    const [mageThemes, setMageThemes] = useState<MageTheme[]>([]);
+    const [mageLoading, setMageLoading] = useState(true);
+
     // Workout State
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -227,6 +285,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     setDecrees(data.castle.decrees || []);
                     setCastleLoading(false);
                 }
+                if (data.temple) {
+                    setThoughts(data.temple.thoughts || []);
+                    setSleepRecords(data.temple.sleepRecords || []);
+                    setTempleLoading(false);
+                }
+                if (data.tavern) {
+                    setWaterRecords(data.tavern.waterRecords || []);
+                    setTavernLoading(false);
+                }
+                if (data.mageTower) {
+                    setMageProjects(data.mageTower.projects || []);
+                    setMageThemes(data.mageTower.themes || []);
+                    setMageLoading(false);
+                }
                 isHydrated.current = true;
             }
         } catch (e) {
@@ -239,6 +311,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         theatData: { activities: any[], movies: any[], series: any[], activityStats: any },
         barracksData: { routines: any[], history: any[], muscleFatigue: any, records: any },
         castleData: { decrees: RoyalDecree[] },
+        templeData: { thoughts: TempleThought[], sleepRecords: TempleSleep[] },
+        tavernData: { waterRecords: TavernWater[] },
+        mageData: { projects: MageProject[], themes: MageTheme[] },
         profData: any
     ) => {
         try {
@@ -247,6 +322,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 theat: theatData,
                 barracks: barracksData,
                 castle: castleData,
+                temple: templeData,
+                tavern: tavernData,
+                mageTower: mageData,
                 prof: profData,
                 timestamp: Date.now()
             };
@@ -274,11 +352,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setMuscleFatigue({});
             setRecords([]);
             setDecrees([]);
-            
+
             // Clear Storage
             await AsyncStorage.removeItem(GAME_STATE_STORAGE_KEY);
             await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
-            
+
             console.log('GameContext: State cleared successfully');
         } catch (e) {
             console.error('GameContext: Failed to clear state', e);
@@ -354,11 +432,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             return new Promise<boolean>((resolve) => {
                 Alert.alert("Aviso", "¿Terminar sin registrar ninguna serie?", [
                     { text: "No", style: "cancel", onPress: () => resolve(false) },
-                    { text: "Sí, abandonar", style: "destructive", onPress: async () => {
-                        await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
-                        setIsSessionActive(false);
-                        resolve(true);
-                    }}
+                    {
+                        text: "Sí, abandonar", style: "destructive", onPress: async () => {
+                            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+                            setIsSessionActive(false);
+                            resolve(true);
+                        }
+                    }
                 ]);
             });
         }
@@ -384,7 +464,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setIsSessionActive(false);
             setStartTime(null);
             setSetsLog([]);
-            
+
             // Actualizar Decretos Reales (BARRACKS)
             const durationSec = startTime ? Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) : 0;
             const durationMin = Math.round(durationSec / 60);
@@ -420,7 +500,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
-        return h > 0 
+        return h > 0
             ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
             : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
@@ -432,10 +512,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         // Filter valid decrees for this event
         const pendingDecrees = decrees.filter(d => {
-            const matchesType = d.status === 'PENDING' && 
-                               d.type === type && 
-                               (!d.required_activity_tag || d.required_activity_tag === tag);
-            
+            const matchesType = d.status === 'PENDING' &&
+                d.type === type &&
+                (!d.required_activity_tag || d.required_activity_tag === tag);
+
             if (!matchesType) return false;
 
             // If it has a due_date, it MUST match Today to be processed
@@ -453,7 +533,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         for (const decree of pendingDecrees) {
             const minTime = decree.recurrence?.min_time || 0;
             const isTimeBased = decree.unit === 'MINUTES';
-            
+
             // 1. Requirements Check
             if (minTime > 0 && durationMinutes !== undefined && durationMinutes < minTime) {
                 continue; // Too short to count
@@ -462,12 +542,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             // 2. Increment Logic
             // If unit is MINUTES, we add the duration. If SESSIONS, we add the fixed amount (usually 1).
             const increment = isTimeBased ? (durationMinutes || 0) : amount;
-            
+
             if (increment <= 0) continue;
 
             const newQuantity = (decree.current_quantity || 0) + increment;
             const isCompleted = newQuantity >= (decree.target_quantity || 1);
-            
+
             const updates: Partial<RoyalDecree> = {
                 current_quantity: newQuantity,
                 status: isCompleted ? 'COMPLETED' : 'PENDING',
@@ -487,11 +567,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
                     // Special logic for EXAM decrees: auto-complete the exam in the subject
                     if (decree.type === 'EXAM') {
-                        const subjectWithExam = subjects.find(s => 
+                        const subjectWithExam = subjects.find(s =>
                             (s.exams || []).some(ex => ex.decree_id === decree.id)
                         );
                         if (subjectWithExam) {
-                            const updatedExams = subjectWithExam.exams.map(ex => 
+                            const updatedExams = subjectWithExam.exams.map(ex =>
                                 ex.decree_id === decree.id ? { ...ex, is_completed: true } : ex
                             );
                             await updateSubject(subjectWithExam.id, { exams: updatedExams });
@@ -500,7 +580,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
         }
-        
+
         if (updated) {
             await fetchAll();
         }
@@ -548,7 +628,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 // 12: personal_records
                 supabase.rpc('get_personal_records', { user_uuid: currentUser.id }),
                 // 13: royal_decrees
-                supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+                supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 14: temple_thoughts
+                supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 15: temple_sleep
+                supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 16: tavern_water
+                supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }),
+                // 17: mage_projects
+                supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 18: mage_themes
+                supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
             ]);
 
             const subData = results[0].data || [];
@@ -565,6 +655,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const fatigueData = results[11].data || {};
             const recordData = results[12].data || [];
             const decreeData = results[13].data || [];
+            const thoughtData = results[14].data || [];
+            const sleepData = results[15].data || [];
+            const waterData = results[16].data || [];
+            const mageData = results[17].data || [];
+            const themeData = results[18].data || [];
 
             // --- PROCESS LIBRARY ---
             const bStats: Record<string, number> = {};
@@ -603,13 +698,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 setProfile(profData as Profile);
             }
 
+            // --- PROCESS TEMPLE ---
+            setThoughts(thoughtData);
+            setSleepRecords(sleepData);
+            setTempleLoading(false);
+
             // --- PROCESS BARRACKS ---
             const formattedHistory: WorkoutHistoryItem[] = rawHistory.map((session: any) => {
                 const totalTonnage = session.sets.reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
-                const duration = session.ended_at 
+                const duration = session.ended_at
                     ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
                     : 'En curso';
-                
+
                 return {
                     id: session.id,
                     date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
@@ -624,6 +724,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setMuscleFatigue(fatigueData);
             setRecords(recordData);
             setDecrees(decreeData);
+            setThoughts(thoughtData);
+            setSleepRecords(sleepData);
+            setWaterRecords(waterData);
+            setMageProjects(mageData);
+            setMageThemes(themeData);
 
             if (profData?.last_synced_at) {
                 lastProcessedSync.current = profData.last_synced_at;
@@ -635,6 +740,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 { activities: actData, movies: movData, series: seriesWithSeasons, activityStats: tStats },
                 { routines: routineData, history: formattedHistory, muscleFatigue: fatigueData, records: recordData },
                 { decrees: decreeData },
+                { thoughts: thoughtData, sleepRecords: sleepData },
+                { waterRecords: waterData },
+                { projects: mageData, themes: themeData },
                 profData
             );
 
@@ -642,9 +750,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             // If any pending decree is more than 24h past its due_date, mark it as FAILED
             const now = new Date();
             const gracePeriod = 24 * 60 * 60 * 1000;
-            const overdue = decreeData.filter(d => 
-                d.status === 'PENDING' && 
-                d.due_date && 
+            const overdue = decreeData.filter(d =>
+                d.status === 'PENDING' &&
+                d.due_date &&
                 (now.getTime() - new Date(d.due_date).getTime()) > gracePeriod
             );
 
@@ -654,7 +762,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     .from('royal_decrees')
                     .update({ status: 'FAILED' })
                     .in('id', ids);
-                
+
                 if (!failError) {
                     // Re-fetch once to get updated statuses
                     const { data: refreshedDecrees } = await supabase
@@ -662,7 +770,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         .select('*')
                         .eq('user_id', currentUser.id)
                         .order('created_at', { ascending: false });
-                    
+
                     if (refreshedDecrees) {
                         setDecrees(refreshedDecrees);
                     }
@@ -706,7 +814,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         // 6. Auth State Changes
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`GameContext: Auth Event -> ${event}`);
-            
+
             if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
                 if (session?.user) {
                     setUser(session.user);
@@ -742,18 +850,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         const setupChannel = async () => {
             console.log(`GameContext: Setting up Realtime sync for user: ${user.id}`);
-            
+
             channel = supabase.channel(`sync_${user.id}`)
-                .on('postgres_changes', 
-                    { 
+                .on('postgres_changes',
+                    {
                         event: '*', // Listen to INSERT/UPDATE to be safe
-                        schema: 'public', 
-                        table: 'profiles', 
-                        filter: `id=eq.${user.id}` 
-                    }, 
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${user.id}`
+                    },
                     (payload: any) => {
                         const newSync = payload.new?.last_synced_at || payload.new?.updated_at;
-                        
+
                         if (newSync) {
                             const newTime = new Date(newSync).getTime();
                             const lastTime = lastProcessedSync.current ? new Date(lastProcessedSync.current).getTime() : 0;
@@ -796,6 +904,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     { activities, movies, series, activityStats },
                     { routines, history, muscleFatigue, records },
                     { decrees },
+                    { thoughts, sleepRecords },
+                    { waterRecords },
+                    { projects: mageProjects, themes: mageThemes },
                     newProfile
                 );
             }
@@ -825,6 +936,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     { activities, movies, series, activityStats },
                     { routines, history, muscleFatigue, records },
                     { decrees },
+                    { thoughts, sleepRecords },
+                    { waterRecords },
+                    { projects: mageProjects, themes: mageThemes },
                     newProfile
                 );
             }
@@ -849,7 +963,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSubjects = [newSubject, ...subjects];
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('subjects').insert([{ name, color, course, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
@@ -859,7 +973,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const updateSubject = async (id: string, updates: Partial<Subject>) => {
         const newSubjects = subjects.map(s => s.id === id ? { ...s, ...updates } : s);
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('subjects').update(updates).eq('id', id);
         await fetchAll();
     };
@@ -874,7 +988,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newBooks = [newBook, ...books];
         setBooks(newBooks);
-        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('books').insert([{ title, author, total_pages, cover_color, saga, saga_index, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
@@ -884,7 +998,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const updateBook = async (id: string, updates: Partial<Book>) => {
         const newBooks = books.map(b => b.id === id ? { ...b, ...updates } : b);
         setBooks(newBooks);
-        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('books').update(updates).eq('id', id);
         await fetchAll();
     };
@@ -905,7 +1019,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newActivities = [newActivity, ...activities];
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('theatre_activities').insert([{ name, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
@@ -915,7 +1029,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const updateActivity = async (id: string, name: string) => {
         const newActivities = activities.map(a => a.id === id ? { ...a, name } : a);
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('theatre_activities').update({ name }).eq('id', id);
         await fetchAll();
     };
@@ -928,7 +1042,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newMovies = [newMovie, ...movies];
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('theatre_movies').insert([{ title, director, saga, comment, rating, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
@@ -938,7 +1052,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const updateMovie = async (id: string, updates: Partial<TheatreMovie>) => {
         const newMovies = movies.map(m => m.id === id ? { ...m, ...updates } : m);
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('theatre_movies').update(updates).eq('id', id);
         await fetchAll();
     };
@@ -951,7 +1065,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSeriesList = [newSeriesItem, ...series];
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('theatre_series').insert([{ title, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
@@ -961,7 +1075,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const updateSeries = async (id: string, title: string) => {
         const newSeriesList = series.map(s => s.id === id ? { ...s, title } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('theatre_series').update({ title }).eq('id', id);
         await fetchAll();
     };
@@ -973,7 +1087,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSeriesList = series.map(s => s.id === series_id ? { ...s, seasons: [...(s.seasons || []), newSeason] } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('theatre_seasons').insert([{ series_id, season_number, episodes_count, comment, rating }]);
         await fetchAll();
     };
@@ -983,7 +1097,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             ...s, seasons: (s.seasons || []).map(sea => sea.id === id ? { ...sea, ...updates } : sea)
         }));
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, profile);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('theatre_seasons').update(updates).eq('id', id);
         await fetchAll();
     };
@@ -1033,7 +1147,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         // 1. Create the primary/anchor decree
         const { data: mainDecree, error } = await supabase.from('royal_decrees').insert([{ ...decreeData, user_id: user.id }]).select().single();
-        
+
         if (!error && mainDecree) {
             // 2. If it's repetitive, "explode" it into individual records for the next month/instances
             const recurrence = decreeData.recurrence as any;
@@ -1042,7 +1156,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 const freq = recurrence.frequency;
                 const interval = recurrence.interval || 1;
                 const days = recurrence.days || [];
-                
+
                 let runDate = decreeData.due_date ? new Date(decreeData.due_date) : new Date();
                 runDate.setHours(12, 0, 0, 0); // Use midday to avoid TZ jumps
 
@@ -1051,20 +1165,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
                 const maxFuture = new Date(runDate);
                 maxFuture.setFullYear(maxFuture.getFullYear() + 2);
-                
+
                 const stopDate = userEndDate && userEndDate < maxFuture ? userEndDate : maxFuture;
 
                 // First instance is the start date itself (only if it matches the frequency/days)
                 // Actually, let's keep it simple: the loop generates 'next' occurrences.
                 // The 'Anchor' record (mainDecree) already occupies the Start date.
                 // So we start calculating from the anchor date to find 'next' dates.
-                
+
                 let iterationDate = new Date(runDate);
 
                 // Generate instances until stopDate
                 while (iterationDate < stopDate && instances.length < 1000) {
                     let nextDate = new Date(iterationDate);
-                    
+
                     if (freq === 'DAILY') {
                         nextDate.setDate(iterationDate.getDate() + interval);
                     } else if (freq === 'EVERY_2_DAYS') {
@@ -1094,7 +1208,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     } else if (freq === 'MONTHLY') {
                         nextDate.setMonth(iterationDate.getMonth() + 1);
                     } else {
-                        nextDate.setDate(iterationDate.getDate() + 1); 
+                        nextDate.setDate(iterationDate.getDate() + 1);
                     }
 
                     if (nextDate > stopDate) break;
@@ -1112,7 +1226,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         recurrence: { ...recurrence, is_repetitive: false },
                         required_activity_tag: mainDecree.required_activity_tag
                     });
-                    
+
                     iterationDate = nextDate;
                 }
 
@@ -1124,8 +1238,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
             if (calendar_export) {
                 await calendar.exportDecreeToCalendar(
-                    decreeData.title || 'Misión Omega', 
-                    decreeData.due_date ? new Date(decreeData.due_date) : new Date(), 
+                    decreeData.title || 'Misión Omega',
+                    decreeData.due_date ? new Date(decreeData.due_date) : new Date(),
                     decreeData.description || ''
                 );
             }
@@ -1143,6 +1257,125 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteDecree = async (id: string) => {
         await supabase.from('royal_decrees').delete().eq('id', id);
+        await fetchAll();
+    };
+
+    // --- MUTATORS (TEMPLE) ---
+    const addThought = async (content: string, type: ThoughtType) => {
+        if (!user) return;
+        const tempId = `temp_${Date.now()}`;
+        const newThought: TempleThought = {
+            id: tempId, user_id: user.id, content, type, is_resolved: false,
+            date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString()
+        };
+        const newThoughts = [newThought, ...thoughts];
+        setThoughts(newThoughts);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts: newThoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+
+        const { data, error } = await supabase.from('temple_thoughts').insert([{ content, type, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data || newThought;
+    };
+
+    const resolveThought = async (id: string) => {
+        const newThoughts = thoughts.map(t => t.id === id ? { ...t, is_resolved: true } : t);
+        setThoughts(newThoughts);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts: newThoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        await supabase.from('temple_thoughts').update({ is_resolved: true }).eq('id', id);
+        showGlobalToast('✨ Pensamiento Liberado', 'success');
+        await addXp(10);
+        await fetchAll();
+    };
+
+    const addSleep = async (hours: number, quality?: string) => {
+        if (!user) return;
+        const tempId = `temp_${Date.now()}`;
+        const newRecord: TempleSleep = {
+            id: tempId, user_id: user.id, hours, quality: quality || null,
+            date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString()
+        };
+        const newSleepRecords = [newRecord, ...sleepRecords];
+        setSleepRecords(newSleepRecords);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords: newSleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+
+        const { data, error } = await supabase.from('temple_sleep').insert([{ hours, quality, user_id: user.id }]).select().single();
+        if (!error) {
+            await addXp(20);
+            await fetchAll();
+        }
+        return data || newRecord;
+    };
+
+    // --- MUTATORS (TAVERN) ---
+    const addWater = async (amount: number) => {
+        if (!user) return;
+        const today = new Date().toISOString().split('T')[0];
+        const tempId = `temp_${Date.now()}`;
+
+        // Optimistic update: see if record for today exists to increment locally
+        const existingIdx = waterRecords.findIndex(r => r.date === today);
+        let newWaterRecords: TavernWater[];
+        if (existingIdx >= 0) {
+            newWaterRecords = [...waterRecords];
+            newWaterRecords[existingIdx] = { ...newWaterRecords[existingIdx], amount: newWaterRecords[existingIdx].amount + amount };
+        } else {
+            const newRec: TavernWater = { id: tempId, user_id: user.id, amount, date: today, created_at: new Date().toISOString() };
+            newWaterRecords = [newRec, ...waterRecords];
+        }
+
+        setWaterRecords(newWaterRecords);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords: newWaterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+
+        if (existingIdx >= 0) {
+            await supabase.from('tavern_water').update({ amount: newWaterRecords[existingIdx].amount }).eq('id', waterRecords[existingIdx].id);
+        } else {
+            await supabase.from('tavern_water').insert([{ amount, user_id: user.id }]);
+        }
+
+        await fetchAll();
+    };
+
+    // --- MUTATORS (MAGE TOWER) ---
+    const addProject = async (name: string, themeId: string) => {
+        if (!user) return;
+        const tempId = `temp_${Date.now()}`;
+        const newProj: MageProject = {
+            id: tempId, user_id: user.id, name, scope: null, theme_id: themeId, mana_amount: 0, status: 'ACTIVE', created_at: new Date().toISOString()
+        };
+        const newProjects = [newProj, ...mageProjects];
+        setMageProjects(newProjects);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+
+        const { data, error } = await supabase.from('mage_projects').insert([{ name, theme_id: themeId, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data || newProj;
+    };
+
+    const updateProject = async (id: string, updates: Partial<MageProject>) => {
+        const newProjects = mageProjects.map(p => p.id === id ? { ...p, ...updates } : p);
+        setMageProjects(newProjects);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+        await supabase.from('mage_projects').update(updates).eq('id', id);
+        await fetchAll();
+    };
+
+    const deleteProject = async (id: string) => {
+        const newProjects = mageProjects.filter(p => p.id !== id);
+        setMageProjects(newProjects);
+        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+        await supabase.from('mage_projects').delete().eq('id', id);
+        await fetchAll();
+    };
+
+    const addTheme = async (name: string, symbol: string, color: string) => {
+        if (!user) return;
+        const { data, error } = await supabase.from('mage_themes').insert([{ name, symbol, color, user_id: user.id }]).select().single();
+        if (!error) await fetchAll();
+        return data;
+    };
+
+    const deleteTheme = async (id: string) => {
+        await supabase.from('mage_themes').delete().eq('id', id);
         await fetchAll();
     };
 
@@ -1197,6 +1430,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             updateDecree,
             deleteDecree,
             checkDecreeProgress
+        },
+        temple: {
+            thoughts,
+            sleepRecords,
+            loading: templeLoading,
+            refresh: fetchAll,
+            addThought,
+            resolveThought,
+            addSleep
+        },
+        tavern: {
+            waterRecords,
+            loading: tavernLoading,
+            refresh: fetchAll,
+            addWater
+        },
+        mageTower: {
+            projects: mageProjects,
+            themes: mageThemes,
+            loading: mageLoading,
+            refresh: fetchAll,
+            addProject,
+            updateProject,
+            deleteProject,
+            addTheme,
+            deleteTheme
         },
         calendar,
         workout: {

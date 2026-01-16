@@ -41,3 +41,10 @@ CREATE POLICY "Users can manage their own sleep records"
 -- Add to realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.temple_thoughts;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.temple_sleep;
+
+-- Mastersync Triggers
+CREATE TRIGGER tr_sync_temple_thoughts AFTER INSERT OR UPDATE OR DELETE ON public.temple_thoughts
+    FOR EACH ROW EXECUTE FUNCTION public.update_user_sync_timestamp();
+
+CREATE TRIGGER tr_sync_temple_sleep AFTER INSERT OR UPDATE OR DELETE ON public.temple_sleep
+    FOR EACH ROW EXECUTE FUNCTION public.update_user_sync_timestamp();

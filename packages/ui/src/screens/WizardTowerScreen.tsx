@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,7 +9,10 @@ import {
     Modal,
     TextInput,
     Alert,
-    FlatList
+    FlatList,
+    Animated,
+    DeviceEventEmitter,
+    Platform
 } from 'react-native';
 import { MedievalButton, ParchmentCard, ManualColorPicker } from '..';
 import { useMageTower } from '@omega/logic';
@@ -38,9 +41,11 @@ export const WizardTowerScreen: React.FC = () => {
 
     // Project Modal State
     const [projectModalVisible, setProjectModalVisible] = useState(false);
+    const [actionMenuVisible, setActionMenuVisible] = useState(false);
     const [projectName, setProjectName] = useState('');
     const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
     const [editingProject, setEditingProject] = useState<any>(null);
+    const [selectedProjectForMenu, setSelectedProjectForMenu] = useState<any>(null);
 
     // Theme Editor State
     const [themeModalVisible, setThemeModalVisible] = useState(false);
@@ -49,9 +54,65 @@ export const WizardTowerScreen: React.FC = () => {
     const [newThemeColor, setNewThemeColor] = useState('#4834d4');
     const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
 
+    // Tab State
+    const [viewMode, setViewMode] = useState<'LABORATORIO' | 'REGISTROS'>('LABORATORIO');
+    const [unhandledAura, setUnhandledAura] = useState(0);
+    const horizontalScrollRef = useRef<ScrollView>(null);
+    const scrollX = useRef(new Animated.Value(0)).current;
+
+    // Zero Aura Bubble State
+    const bubbleOpacity = useRef(new Animated.Value(0)).current;
+    const [bubbleVisible, setBubbleVisible] = useState(false);
+
+    const showZeroAuraBubble = () => {
+        setBubbleVisible(true);
+        bubbleOpacity.setValue(0);
+        Animated.sequence([
+            Animated.timing(bubbleOpacity, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.delay(1200),
+            Animated.timing(bubbleOpacity, {
+                toValue: 0,
+                duration: 400,
+                useNativeDriver: true,
+            })
+        ]).start(() => setBubbleVisible(false));
+    };
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('QUICK_ADD_PRESSED', () => {
+            if (viewMode === 'LABORATORIO') {
+                setEditingProject(null);
+                setProjectName('');
+                setSelectedThemeId(null);
+                setProjectModalVisible(true);
+            } else {
+                setNewThemeName('');
+                setThemeModalVisible(true);
+            }
+        });
+        return () => sub.remove();
+    }, [viewMode]);
+
+    // Custom Alert State
+    const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+    const showCustomAlert = (title: string, message: string, buttons: any[] = [{ text: 'ENTENDIDO' }]) => {
+        setCustomAlertTitle(title);
+        setCustomAlertMessage(message);
+        setCustomAlertButtons(buttons);
+        setCustomAlertVisible(true);
+    };
+
     const handleSaveProject = async () => {
         if (!projectName || !selectedThemeId) {
-            Alert.alert("Error", "Debes nombrar tu artefacto y seleccionar un ámbito de poder.");
+            showCustomAlert("Error", "Debes nombrar tu artefacto y seleccionar un ámbito de poder.");
             return;
         }
 
@@ -68,35 +129,13 @@ export const WizardTowerScreen: React.FC = () => {
     };
 
     const handleLongPressProject = (project: any) => {
-        Alert.alert(
-            "Gestión de Artefacto",
-            `¿Qué deseas hacer con "${project.name}"?`,
-            [
-                {
-                    text: "Editar", onPress: () => {
-                        setEditingProject(project);
-                        setProjectName(project.name);
-                        setSelectedThemeId(project.theme_id);
-                        setProjectModalVisible(true);
-                    }
-                },
-                { text: "Archivar", onPress: () => archiveProject(project.id), style: 'default' },
-                {
-                    text: "Eliminar", onPress: () => {
-                        Alert.alert("Destruir Artefacto", "¿Estás seguro de destruir este artefacto para siempre?", [
-                            { text: "Cancelar", style: 'cancel' },
-                            { text: "Destruir", onPress: () => deleteProject(project.id), style: 'destructive' }
-                        ]);
-                    }, style: 'destructive'
-                },
-                { text: "Cancelar", style: 'cancel' }
-            ]
-        );
+        setSelectedProjectForMenu(project);
+        setActionMenuVisible(true);
     };
 
     const handleCreateTheme = async () => {
         if (!newThemeName) {
-            Alert.alert("Error", "El tema debe tener un nombre.");
+            showCustomAlert("Error", "El tema debe tener un nombre.");
             return;
         }
         await createTheme(newThemeName, newThemeSymbol, newThemeColor);
@@ -130,7 +169,7 @@ export const WizardTowerScreen: React.FC = () => {
                     </View>
                 </View>
                 <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: '10%', backgroundColor: color }]} />
+                    <View style={[styles.progressBarFill, { width: project.mana_amount > 0 ? `${Math.min(project.mana_amount, 100)}%` : '0%', backgroundColor: color }]} />
                 </View>
             </TouchableOpacity>
         );
@@ -139,57 +178,154 @@ export const WizardTowerScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <View style={styles.backgroundPlaceholder}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>TORRE DE HECHICERÍA</Text>
+                    <Text style={styles.headerSubtitle}>"Donde la voluntad se transmuta en realidad"</Text>
+                </View>
 
-                    <View style={styles.headerRow}>
-                        <Text style={styles.headerTitle}>🧙‍♂️ TORRE DE HECHICERÍA</Text>
-                        <TouchableOpacity
-                            style={styles.settingsBtn}
-                            onPress={() => setThemeModalVisible(true)}
-                        >
-                            <Settings size={22} color="#FFD700" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <ParchmentCard style={styles.introCard}>
-                        <Text style={styles.introText}>
-                            Aquí es donde los sueños se forjan en realidad. Canaliza el maná de tus esfuerzos diarios para crear artefactos mágicos de conocimiento y poder.
-                        </Text>
-                    </ParchmentCard>
-
-                    <ParchmentCard style={styles.projectCard}>
-                        <View style={styles.cardHeader}>
-                            <Sparkles size={20} color="#3d2b1f" />
-                            <Text style={styles.cardTitle}>GRIMORIO DE PROYECTOS</Text>
-                        </View>
-
-                        {projects.length === 0 ? (
-                            <Text style={styles.emptyText}>No hay proyectos activos en tu grimorio. Comienza una nueva investigación.</Text>
-                        ) : (
-                            projects.map(renderProject)
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={() => {
-                                setEditingProject(null);
-                                setProjectName('');
-                                setSelectedThemeId(null);
-                                setProjectModalVisible(true);
-                            }}
-                        >
-                            <Plus size={20} color="#fff" />
-                            <Text style={styles.addButtonText}>Nueva Investigación</Text>
-                        </TouchableOpacity>
-                    </ParchmentCard>
-
-                    <MedievalButton
-                        title="⚡ SINCRONIZAR CON EL DRAGÓN"
-                        onPress={() => Alert.alert("Sincronización", "El dragón (tu ordenador) está preparándose para canalizar maná a esta torre próximamente.")}
-                        style={styles.manaButton}
+                {/* Tab Selector */}
+                <View style={styles.tabSelector}>
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                transform: [{
+                                    translateX: scrollX.interpolate({
+                                        inputRange: [0, width],
+                                        outputRange: [4, ((width - 38) / 2) + 4]
+                                    })
+                                }],
+                                width: (width - 38) / 2
+                            }
+                        ]}
                     />
 
-                    <View style={{ height: 100 }} />
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                    >
+                        <FlaskConical size={18} color={viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, { color: viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513' }]}>LABORATORIO</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
+                    >
+                        <Scroll size={18} color={viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, { color: viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513' }]}>REGISTROS</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                    ref={horizontalScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        setViewMode(offsetX >= width / 2 ? 'REGISTROS' : 'LABORATORIO');
+                    }}
+                >
+                    {/* --- TAB 1: LABORATORIO D'ALQUIMIA --- */}
+                    <View style={{ width }}>
+                        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+                            <View style={[styles.sectionHeader, { marginTop: 10 }]}>
+                                <Sparkles size={18} color="#FFD700" />
+                                <Text style={styles.sectionTitle}>INVESTIGACIONES ACTIVAS</Text>
+                            </View>
+
+                            {projects.filter(p => p.status !== 'ARCHIVED').length === 0 ? (
+                                <ParchmentCard style={styles.emptyCard}>
+                                    <Text style={styles.emptyText}>No hay proyectos activos. Usa el botón (+) para iniciar una nueva investigación.</Text>
+                                </ParchmentCard>
+                            ) : (
+                                projects.filter(p => p.status !== 'ARCHIVED').map(renderProject)
+                            )}
+
+                            <View style={{ height: 200 }} />
+                        </ScrollView>
+
+                        {/* Footer Fijo de Aura */}
+                        <View style={styles.auraFixedFooter}>
+                            {bubbleVisible && (
+                                <Animated.View style={[styles.bubbleContainer, { opacity: bubbleOpacity }]}>
+                                    <View style={styles.bubbleContent}>
+                                        <Text style={styles.bubbleText}>No hay energía latente... Realiza tus ritos diarios.</Text>
+                                    </View>
+                                    <View style={styles.bubbleArrow} />
+                                </Animated.View>
+                            )}
+
+                            <View style={styles.auraInfoRow}>
+                                <View style={styles.auraLabelGroup}>
+                                    <Flame size={20} color="#FFD700" />
+                                    <Text style={styles.auraLabel}>AURA LATENTE</Text>
+                                </View>
+                                <View style={styles.auraValueGroup}>
+                                    <Text style={styles.auraValue}>{unhandledAura}</Text>
+                                    <Text style={styles.auraUnit}>Mana</Text>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.canalizeBtn, unhandledAura === 0 && styles.canalizeBtnDisabled]}
+                                onPress={() => {
+                                    if (unhandledAura > 0) {
+                                        showCustomAlert("Canalizar Aura", `Tienes ${unhandledAura} puntos de aura listos para ser transmutados en progreso para tus investigaciones.`);
+                                    } else {
+                                        showZeroAuraBubble();
+                                    }
+                                }}
+                            >
+                                <Zap size={16} color={unhandledAura === 0 ? "#7f8c8d" : "#FFD700"} />
+                                <Text style={[styles.canalizeBtnText, unhandledAura === 0 && { color: '#7f8c8d' }]}>
+                                    CANALIZAR EN ARTEFACTO
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* --- TAB 2: SALA DE REGISTROS --- */}
+                    <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
+                        <View style={[styles.sectionHeader, { marginTop: 10 }]}>
+                            <Book size={18} color="#7f8c8d" />
+                            <Text style={[styles.sectionTitle, { color: '#7f8c8d' }]}>ARCHIVOS SACROS</Text>
+                        </View>
+
+                        {projects.filter(p => p.status === 'ARCHIVED').length === 0 ? (
+                            <Text style={styles.emptyTextArchived}>Los archivos están vacíos por ahora.</Text>
+                        ) : (
+                            projects.filter(p => p.status === 'ARCHIVED').map(p => (
+                                <TouchableOpacity
+                                    key={p.id}
+                                    style={styles.archivedItem}
+                                    onLongPress={() => handleLongPressProject(p)}
+                                >
+                                    <View style={styles.archivedLeft}>
+                                        <IconRenderer name={themes.find(t => t.id === p.theme_id)?.symbol || 'Scroll'} color="#7f8c8d" size={16} />
+                                        <Text style={styles.archivedName}>{p.name}</Text>
+                                    </View>
+                                    <Text style={styles.archivedMana}>{p.mana_amount} Mana</Text>
+                                </TouchableOpacity>
+                            ))
+                        )}
+
+                        <ParchmentCard style={{ ...styles.managementCard, marginTop: 30 }}>
+                            <View style={styles.cardHeader}>
+                                <Settings size={20} color="#3d2b1f" />
+                                <Text style={styles.cardTitle}>MAESTRÍA DE ÁMBITOS</Text>
+                            </View>
+                            <Text style={styles.cardDesc}>Define los pilares de tu poder. Configura iconos y colores para tus diferentes tipos de ámbitos místicos usando el botón (+).</Text>
+                        </ParchmentCard>
+
+                        <View style={{ height: 120 }} />
+                    </ScrollView>
                 </ScrollView>
             </View>
 
@@ -346,6 +482,127 @@ export const WizardTowerScreen: React.FC = () => {
                     setNewThemeColor(color);
                 }}
             />
+
+            {/* In-App Action Menu (Immersive) */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={actionMenuVisible}
+                onRequestClose={() => setActionMenuVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setActionMenuVisible(false)}
+                >
+                    <View style={styles.actionMenuContent}>
+                        <ParchmentCard style={styles.actionCard}>
+                            <Text style={styles.actionTitle}>GESTIÓN DE ARTEFACTO</Text>
+                            <Text style={styles.actionSubtitle}>{selectedProjectForMenu?.name}</Text>
+
+                            <View style={styles.actionButtonsRow}>
+                                <TouchableOpacity
+                                    style={styles.actionItem}
+                                    onPress={() => {
+                                        setActionMenuVisible(false);
+                                        setEditingProject(selectedProjectForMenu);
+                                        setProjectName(selectedProjectForMenu.name);
+                                        setSelectedThemeId(selectedProjectForMenu.theme_id);
+                                        setProjectModalVisible(true);
+                                    }}
+                                >
+                                    <View style={[styles.actionIconCircle, { backgroundColor: '#3498db' }]}>
+                                        <PenTool size={20} color="#fff" />
+                                    </View>
+                                    <Text style={styles.actionText}>Editar</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.actionItem}
+                                    onPress={() => {
+                                        archiveProject(selectedProjectForMenu.id);
+                                        setActionMenuVisible(false);
+                                    }}
+                                >
+                                    <View style={[styles.actionIconCircle, { backgroundColor: '#95a5a6' }]}>
+                                        <Book size={20} color="#fff" />
+                                    </View>
+                                    <Text style={styles.actionText}>Archivar</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.actionItem}
+                                    onPress={() => {
+                                        showCustomAlert(
+                                            "Destruir Artefacto",
+                                            "¿Confirmas la destrucción total de este estudio?",
+                                            [
+                                                { text: "Mantener", style: 'cancel', onPress: () => setCustomAlertVisible(false) },
+                                                {
+                                                    text: "Destruir", onPress: () => {
+                                                        deleteProject(selectedProjectForMenu.id);
+                                                        setActionMenuVisible(false);
+                                                        setCustomAlertVisible(false);
+                                                    }, style: 'destructive'
+                                                }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <View style={[styles.actionIconCircle, { backgroundColor: '#e74c3c' }]}>
+                                        <X size={20} color="#fff" />
+                                    </View>
+                                    <Text style={styles.actionText}>Eliminar</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.closeActionBtn}
+                                onPress={() => setActionMenuVisible(false)}
+                            >
+                                <Text style={styles.closeActionText}>CERRAR</Text>
+                            </TouchableOpacity>
+                        </ParchmentCard>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Immersive Custom Alert */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={customAlertVisible}
+                onRequestClose={() => setCustomAlertVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <ParchmentCard style={styles.alertCard}>
+                        <Text style={styles.alertTitle}>{customAlertTitle}</Text>
+                        <Text style={styles.alertMessage}>{customAlertMessage}</Text>
+                        <View style={styles.alertButtonsCol}>
+                            {customAlertButtons.map((btn, idx) => (
+                                <MedievalButton
+                                    key={idx}
+                                    title={btn.text}
+                                    variant={btn.style === 'destructive' ? 'danger' : 'primary'}
+                                    onPress={() => {
+                                        if (btn.onPress) {
+                                            btn.onPress();
+                                        } else {
+                                            setCustomAlertVisible(false);
+                                        }
+                                    }}
+                                    style={{ marginTop: 10, width: '100%' }}
+                                />
+                            ))}
+                            {!customAlertButtons.some(b => b.style === 'cancel' || b.text === 'ENTENDIDO') && customAlertButtons.length === 1 && (
+                                <TouchableOpacity onPress={() => setCustomAlertVisible(false)} style={{ marginTop: 15 }}>
+                                    <Text style={styles.closeActionText}>CERRAR</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </ParchmentCard>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -353,83 +610,198 @@ export const WizardTowerScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#1a0f0a',
     },
     backgroundPlaceholder: {
         flex: 1,
-        backgroundColor: '#1a0d2d',
     },
-    scrollContent: {
-        padding: 20,
+    topHeader: {
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
+        backgroundColor: '#1c110b',
         alignItems: 'center',
-    },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        marginTop: 40,
-        marginBottom: 20,
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD700',
     },
     headerTitle: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#FFD700',
-        textAlign: 'center',
+        letterSpacing: 2,
         textShadowColor: 'rgba(0, 0, 0, 0.75)',
         textShadowOffset: { width: 2, height: 2 },
-        textShadowRadius: 5,
+        textShadowRadius: 3,
     },
-    settingsBtn: {
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#d4af37',
+        fontStyle: 'italic',
+        marginTop: 4,
+        opacity: 0.8,
+    },
+    tabSelector: {
+        flexDirection: 'row',
+        backgroundColor: '#2c1a12',
+        padding: 4,
+        margin: 15,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#4d2b1a',
+    },
+    tabBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    tabIndicator: {
         position: 'absolute',
-        right: 0,
-        padding: 10,
+        top: 4,
+        bottom: 4,
+        backgroundColor: '#3d2b1f',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    tabBtnText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 8,
+        letterSpacing: 1,
+    },
+    scrollContent: {
+        paddingHorizontal: 15,
+        paddingTop: 10,
     },
     introCard: {
-        width: width * 0.9,
         marginBottom: 20,
-        backgroundColor: 'rgba(156, 39, 176, 0.05)',
     },
     introText: {
         fontSize: 14,
+        color: '#3d2b1f',
         fontStyle: 'italic',
-        color: '#5d4037',
         textAlign: 'center',
         lineHeight: 20,
     },
-    projectCard: {
-        width: width * 0.9,
-        marginBottom: 30,
+    heroSection: {
+        alignItems: 'center',
+        paddingVertical: 35,
+        backgroundColor: 'rgba(255, 215, 0, 0.03)',
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 215, 0, 0.1)',
+        marginBottom: 25,
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    heroDecoration: {
+        position: 'absolute',
+        top: -15,
+        right: -15,
+        opacity: 0.2,
+    },
+    heroTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        letterSpacing: 2,
+        marginBottom: 20,
+    },
+    heroButton: {
+        width: width * 0.7,
+    },
+    manaActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    manaActionText: {
+        color: '#FFD700',
+        fontSize: 11,
+        fontWeight: 'bold',
+        marginLeft: 8,
+        letterSpacing: 1,
+    },
+    managementCard: {
+        padding: 15,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(61, 43, 31, 0.2)',
-        paddingBottom: 5,
+        marginBottom: 10,
     },
     cardTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         color: '#3d2b1f',
         marginLeft: 10,
         letterSpacing: 1,
     },
+    cardDesc: {
+        fontSize: 12,
+        color: 'rgba(61, 43, 31, 0.7)',
+        marginBottom: 15,
+        lineHeight: 18,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+        paddingLeft: 5,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        marginLeft: 10,
+        letterSpacing: 1,
+        textShadowColor: '#000',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
+    },
+    emptyCard: {
+        padding: 30,
+        alignItems: 'center',
+    },
     emptyText: {
-        textAlign: 'center',
+        fontSize: 14,
         color: '#7f8c8d',
         fontStyle: 'italic',
-        marginVertical: 20,
+        textAlign: 'center',
+    },
+    emptyTextArchived: {
+        fontSize: 12,
+        color: 'rgba(127, 140, 141, 0.5)',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginTop: 10,
     },
     projectItem: {
-        marginBottom: 20,
+        backgroundColor: 'rgba(255, 247, 230, 0.95)',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#d4af37',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
     },
     projectInfo: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 8,
+        alignItems: 'center',
+        marginBottom: 12,
     },
     projectNameSection: {
         flexDirection: 'row',
@@ -445,45 +817,58 @@ const styles = StyleSheet.create({
         color: '#3d2b1f',
     },
     projectScope: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#7f8c8d',
+        marginTop: 2,
     },
     manaSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 215, 0, 0.1)',
-        paddingHorizontal: 8,
+        backgroundColor: 'rgba(0,0,0,0.05)',
         paddingVertical: 4,
+        paddingHorizontal: 8,
         borderRadius: 12,
     },
     manaText: {
+        marginLeft: 4,
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#c0a200',
-        marginLeft: 4,
+        color: '#3d2b1f',
     },
     progressBarBg: {
         height: 6,
-        backgroundColor: 'rgba(61, 43, 31, 0.15)',
+        backgroundColor: 'rgba(0,0,0,0.1)',
         borderRadius: 3,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
+        borderRadius: 3,
     },
-    addButton: {
+    archivedItem: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#4834d4',
+        backgroundColor: 'rgba(0,0,0,0.2)',
         padding: 12,
         borderRadius: 8,
-        marginTop: 10,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(127, 140, 141, 0.2)',
     },
-    addButtonText: {
-        color: '#fff',
+    archivedLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    archivedName: {
+        marginLeft: 10,
+        fontSize: 13,
+        color: '#7f8c8d',
+    },
+    archivedMana: {
+        fontSize: 11,
+        color: 'rgba(127, 140, 141, 0.7)',
         fontWeight: 'bold',
-        marginLeft: 8,
     },
     manaButton: {
         width: width * 0.9,
@@ -647,5 +1032,203 @@ const styles = StyleSheet.create({
     closePickerText: {
         color: '#c0392b',
         fontWeight: 'bold',
+    },
+    actionMenuContent: {
+        width: width * 0.9,
+    },
+    actionCard: {
+        padding: 24,
+        alignItems: 'center',
+    },
+    actionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        letterSpacing: 2,
+    },
+    actionSubtitle: {
+        fontSize: 12,
+        color: '#7f8c8d',
+        fontStyle: 'italic',
+        marginBottom: 20,
+        marginTop: 4,
+    },
+    actionButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginVertical: 10,
+    },
+    actionItem: {
+        alignItems: 'center',
+        width: 70,
+    },
+    actionIconCircle: {
+        width: 45,
+        height: 45,
+        borderRadius: 22.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
+    actionText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        textTransform: 'uppercase',
+    },
+    closeActionBtn: {
+        marginTop: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 30,
+        borderWidth: 1,
+        borderColor: 'rgba(61, 43, 31, 0.2)',
+        borderRadius: 20,
+    },
+    closeActionText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#7f8c8d',
+        letterSpacing: 1,
+    },
+    alertCard: {
+        width: width * 0.8,
+        padding: 24,
+        alignItems: 'center',
+    },
+    alertTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#c0392b',
+        letterSpacing: 2,
+        marginBottom: 10,
+    },
+    alertMessage: {
+        fontSize: 14,
+        color: '#3d2b1f',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    alertButtonsCol: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    settingsBtn: {
+        position: 'absolute',
+        right: 0,
+        padding: 10,
+    },
+    auraFixedFooter: {
+        backgroundColor: '#1c110b',
+        borderTopWidth: 2,
+        borderTopColor: '#FFD700',
+        padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 120 : 110,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+    },
+    auraInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    auraLabelGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    auraLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        marginLeft: 10,
+        letterSpacing: 1,
+    },
+    auraValueGroup: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    auraValue: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFD700',
+        textShadowColor: 'rgba(255, 215, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
+    },
+    auraUnit: {
+        fontSize: 10,
+        color: '#d4af37',
+        marginLeft: 4,
+        fontWeight: 'bold',
+    },
+    canalizeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+        marginBottom: 12,
+    },
+    canalizeBtnDisabled: {
+        borderColor: '#4d2b1a',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+    canalizeBtnText: {
+        color: '#FFD700',
+        fontSize: 13,
+        fontWeight: 'bold',
+        marginLeft: 10,
+        letterSpacing: 1,
+    },
+    auraFooterDesc: {
+        fontSize: 11,
+        color: 'rgba(212, 175, 55, 0.6)',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    bubbleContainer: {
+        position: 'absolute',
+        top: -45,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    bubbleContent: {
+        backgroundColor: 'rgba(61, 43, 31, 0.9)',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#d4af37',
+    },
+    bubbleText: {
+        color: '#f4ede4',
+        fontSize: 11,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    bubbleArrow: {
+        width: 10,
+        height: 10,
+        backgroundColor: 'rgba(61, 43, 31, 0.9)',
+        transform: [{ rotate: '45deg' }],
+        marginTop: -5,
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#d4af37',
     }
 });

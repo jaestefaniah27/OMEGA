@@ -593,6 +593,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 setLibraryLoading(true);
                 setTheatreLoading(true);
                 setBarracksLoading(true);
+                setMageLoading(true);
             }
 
             const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -729,6 +730,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setWaterRecords(waterData);
             setMageProjects(mageData);
             setMageThemes(themeData);
+            setMageLoading(false);
+
+            if (results[17].error) console.error('MageTower: Projects fetch error', results[17].error);
+            if (results[18].error) console.error('MageTower: Themes fetch error', results[18].error);
 
             if (profData?.last_synced_at) {
                 lastProcessedSync.current = profData.last_synced_at;
@@ -784,6 +789,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setTheatreLoading(false);
             setBarracksLoading(false);
             setCastleLoading(false);
+            setMageLoading(false);
             isHydrated.current = true;
         }
     };
@@ -1347,7 +1353,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
 
         const { data, error } = await supabase.from('mage_projects').insert([{ name, theme_id: themeId, user_id: user.id }]).select().single();
-        if (!error) await fetchAll();
+        if (error) {
+            console.error('MageTower: Error creating project', error);
+            showGlobalToast('Error al crear investigación', 'error');
+        } else {
+            await fetchAll();
+        }
         return data || newProj;
     };
 
@@ -1363,14 +1374,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const newProjects = mageProjects.filter(p => p.id !== id);
         setMageProjects(newProjects);
         saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
-        await supabase.from('mage_projects').delete().eq('id', id);
+        const { error } = await supabase.from('mage_projects').delete().eq('id', id);
+        if (error) console.error('MageTower: Error deleting project', error);
         await fetchAll();
     };
 
     const addTheme = async (name: string, symbol: string, color: string) => {
         if (!user) return;
         const { data, error } = await supabase.from('mage_themes').insert([{ name, symbol, color, user_id: user.id }]).select().single();
-        if (!error) await fetchAll();
+        if (error) {
+            console.error('MageTower: Error creating theme', error);
+            showGlobalToast('Error al crear ámbito', 'error');
+        } else {
+            await fetchAll();
+        }
         return data;
     };
 

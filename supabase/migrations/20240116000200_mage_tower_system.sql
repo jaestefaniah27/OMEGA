@@ -59,5 +59,36 @@ CREATE POLICY "Users can delete their own mage projects"
     USING (auth.uid() = user_id);
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE mage_projects;
-ALTER PUBLICATION supabase_realtime ADD TABLE mage_themes;
+ALTER TABLE public.mage_themes REPLICA IDENTITY FULL;
+ALTER TABLE public.mage_projects REPLICA IDENTITY FULL;
+
+-- Add triggers for global sync (Master Sync system)
+-- This ensures that when a project or theme changes, the profile's last_synced_at 
+-- is updated, triggering other devices to reload.
+CREATE TRIGGER tr_sync_mage_themes AFTER INSERT OR UPDATE OR DELETE ON public.mage_themes 
+    FOR EACH ROW EXECUTE FUNCTION public.update_user_sync_timestamp();
+
+CREATE TRIGGER tr_sync_mage_projects AFTER INSERT OR UPDATE OR DELETE ON public.mage_projects 
+    FOR EACH ROW EXECUTE FUNCTION public.update_user_sync_timestamp();
+
+-- Securely add to publication
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'mage_projects'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.mage_projects;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'mage_themes'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.mage_themes;
+    END IF;
+END $$;

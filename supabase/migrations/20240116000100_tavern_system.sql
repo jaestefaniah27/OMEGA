@@ -24,3 +24,7 @@ CREATE POLICY "Users can update their own water intake"
 
 -- Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE tavern_water;
+
+-- Mastersync Trigger
+CREATE TRIGGER tr_sync_tavern_water AFTER INSERT OR UPDATE OR DELETE ON public.tavern_water 
+    FOR EACH ROW EXECUTE FUNCTION public.update_user_sync_timestamp();

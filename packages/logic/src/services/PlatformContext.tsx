@@ -1,12 +1,13 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { IPlatformService } from './PlatformInterfaces';
 
-const noop = () => {};
-const noopAsync = async () => {};
+const noop = () => { };
+const noopAsync = async () => { };
 
 const defaultPlatform: IPlatformService = {
   calendar: {
     requestPermissions: async () => false,
+    getPermissions: async () => false,
     getCalendars: async () => [],
     syncEvents: noopAsync,
     exportEvent: async () => null,

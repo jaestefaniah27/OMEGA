@@ -4,8 +4,8 @@ import * as Calendar from 'expo-calendar';
 import * as Haptics from 'expo-haptics';
 import * as KeepAwake from 'expo-keep-awake';
 import * as Notifications from 'expo-notifications';
-import { 
-  PlatformProvider as BasePlatformProvider, 
+import {
+  PlatformProvider as BasePlatformProvider,
   IPlatformService,
   ICalendarService,
   IHapticsService,
@@ -19,6 +19,10 @@ import {
 const MobileCalendarService: ICalendarService = {
   requestPermissions: async () => {
     const { status } = await Calendar.requestCalendarPermissionsAsync();
+    return status === 'granted';
+  },
+  getPermissions: async () => {
+    const { status } = await Calendar.getCalendarPermissionsAsync();
     return status === 'granted';
   },
   getCalendars: async () => {

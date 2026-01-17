@@ -1,5 +1,6 @@
 export interface ICalendarService {
   requestPermissions(): Promise<boolean>;
+  getPermissions(): Promise<boolean>;
   getCalendars(): Promise<any[]>;
   syncEvents(userId: string, importCalendarId: string): Promise<void>;
   exportEvent(title: string, date: Date, notes?: string, exportCalendarId?: string): Promise<string | null>;

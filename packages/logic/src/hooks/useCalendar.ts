@@ -15,7 +15,16 @@ export const useCalendar = (userId: string | undefined) => {
 
     useEffect(() => {
         loadSettings();
+        checkPermission();
     }, []);
+
+    const checkPermission = async () => {
+        const granted = await platform.calendar.getPermissions();
+        setPermissionGranted(granted);
+        if (granted) {
+            loadCalendars();
+        }
+    };
 
     const loadSettings = async () => {
         try {
@@ -73,7 +82,7 @@ export const useCalendar = (userId: string | undefined) => {
 
     return {
         calendars,
-        status: { granted: permissionGranted },
+        status: { status: permissionGranted ? 'granted' : 'denied' },
         requestPermission: loadCalendars, // Re-using loadCalendars as requestPermission for simplicity
         importCalendarId,
         exportCalendarId,

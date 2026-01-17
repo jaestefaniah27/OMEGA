@@ -4,9 +4,7 @@ import { useGame } from '../context/GameContext';
 export const useMageTower = () => {
     const { mageTower } = useGame();
 
-    const activeProjects = useMemo(() => {
-        return mageTower.projects.filter(p => p.status === 'ACTIVE');
-    }, [mageTower.projects]);
+
 
     const createProject = async (name: string, scope: string) => {
         return await mageTower.addProject(name, scope);
@@ -17,7 +15,7 @@ export const useMageTower = () => {
     };
 
     return {
-        projects: activeProjects,
+        projects: mageTower.projects,
         themes: mageTower.themes,
         createProject,
         updateProject: mageTower.updateProject,

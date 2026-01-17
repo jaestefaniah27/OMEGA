@@ -109,7 +109,7 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     }
   };
 
-  const handleZurronPress = () => {
+  const handleQuickAddPress = () => {
     DeviceEventEmitter.emit('GLOBAL_QUICK_ADD');
   };
 
@@ -130,7 +130,7 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
       <GameHUD
         onProfilePress={handleProfilePress}
         onMapPress={handleMapPress}
-        onZurronPress={handleZurronPress}
+        onQuickAddPress={handleQuickAddPress}
         onCastlePress={handleCastlePress}
         onTheatrePress={handleTheatrePress}
         castleIcon={currentRoute === 'Castle' ? Calendar : Castle}

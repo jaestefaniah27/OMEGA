@@ -18,7 +18,7 @@ El proyecto está estructurado como un monorepo con dos aplicaciones principales
     * **Castle:** Calendario y planificación.
     * **Barracks:** Entrenamiento y hábitos físicos.
     * **Theatre:** Consumo de contenido.
-    * **Zurron:** Inventario y Quick Add.
+    * **Quickadd:** Quick Add.
 * **Integración Desktop:** Contiene un hook `useDesktopSpy` que, cuando corre en entorno Electron, muestra un overlay visual (HUD) de la app activa.
 
 ### B. `apps/desktop` (El Familiar - Rastreador Silencioso)

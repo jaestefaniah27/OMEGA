@@ -6,7 +6,7 @@ const path = require('path');
 
 // CONFIGURACIÓN
 const CHECK_INTERVAL = 5000;
-const UPLOAD_INTERVAL = 10000; // Debug 10s
+const UPLOAD_INTERVAL = 60000; // Debug 10s
 const WEB_URL = 'http://localhost:8081'; // URL de Expo Web en desarrollo
 const DEBUG = true;
 

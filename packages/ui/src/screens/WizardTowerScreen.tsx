@@ -20,7 +20,7 @@ import {
     Sparkles, Code, Cpu, Book, PenTool, Plus, X, Zap,
     FlaskConical, FlaskRound, Music, Palette, Hammer,
     Sword, Shield, Scroll, Map, Flame, Droplet, Star,
-    Moon, Sun, Heart, Trophy, Target, Rocket, Settings, Monitor
+    Moon, Sun, Heart, Trophy, Target, Rocket, Settings, Monitor, Clock
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -42,6 +42,13 @@ export const WizardTowerScreen: React.FC = () => {
         archiveProject, createTheme, deleteTheme, loading,
         unhandledAuraByTheme, canalizeAura, mappings, deleteMapping, toggleChanneling
     } = useMageTower();
+
+    // Helper para formatear Aura en Cronolitos (1h = 36000 pts)
+    const formatAura = (amount: number) => {
+        const cronolitos = Math.floor(amount / 36000);
+        const rest = amount % 36000;
+        return { cronolitos, rest };
+    };
 
     // Project Modal State
     const [projectModalVisible, setProjectModalVisible] = useState(false);
@@ -91,7 +98,7 @@ export const WizardTowerScreen: React.FC = () => {
     };
 
     useEffect(() => {
-        const sub = DeviceEventEmitter.addListener('QUICK_ADD_PRESSED', () => {
+        const sub = DeviceEventEmitter.addListener('GLOBAL_QUICK_ADD', () => {
             if (viewMode === 'LABORATORIO') {
                 setEditingProject(null);
                 setProjectName('');
@@ -158,6 +165,9 @@ export const WizardTowerScreen: React.FC = () => {
         const projectAura = theme ? (unhandledAuraByTheme[theme.id] || 0) : 0;
         const isActive = theme?.active_project_id === project.id;
 
+        const { cronolitos, rest } = formatAura(project.mana_amount);
+        const progressPercent = (rest / 36000) * 100;
+
         return (
             <TouchableOpacity
                 key={project.id}
@@ -206,12 +216,17 @@ export const WizardTowerScreen: React.FC = () => {
                         )}
                     </View>
                     <View style={styles.manaSection}>
-                        <Zap size={14} color="#ffd700" />
-                        <Text style={styles.manaText}>{project.mana_amount} Mana</Text>
+                        {cronolitos > 0 && (
+                            <View style={styles.cronolitoBadge}>
+                                <Clock size={10} color="#FFD700" />
+                                <Text style={styles.cronolitoText}>{cronolitos} Cronolitos</Text>
+                            </View>
+                        )}
+                        <Text style={styles.manaText}>{rest} Aura</Text>
                     </View>
                 </View>
                 <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: project.mana_amount > 0 ? `${Math.min(project.mana_amount / 10, 100)}%` : '0%', backgroundColor: color }]} />
+                    <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: color }]} />
                 </View>
             </TouchableOpacity>
         );
@@ -332,8 +347,11 @@ export const WizardTowerScreen: React.FC = () => {
                                     <Text style={styles.auraLabel}>AURA LATENTE TOTAL</Text>
                                 </View>
                                 <View style={styles.auraValueGroup}>
-                                    <Text style={styles.auraValue}>{totalAura}</Text>
-                                    <Text style={styles.auraUnit}>Mana</Text>
+                                    {formatAura(totalAura).cronolitos > 0 && (
+                                        <Text style={[styles.auraValue, { marginRight: 10 }]}>{formatAura(totalAura).cronolitos}🧩</Text>
+                                    )}
+                                    <Text style={styles.auraValue}>{formatAura(totalAura).rest}</Text>
+                                    <Text style={styles.auraUnit}>Aura</Text>
                                 </View>
                             </View>
 
@@ -361,7 +379,12 @@ export const WizardTowerScreen: React.FC = () => {
                                         <IconRenderer name={themes.find(t => t.id === p.theme_id)?.symbol || 'Scroll'} color="#7f8c8d" size={16} />
                                         <Text style={styles.archivedName}>{p.name}</Text>
                                     </View>
-                                    <Text style={styles.archivedMana}>{p.mana_amount} Mana</Text>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        {formatAura(p.mana_amount).cronolitos > 0 && (
+                                            <Text style={[styles.archivedAura, { color: '#d4af37' }]}>{formatAura(p.mana_amount).cronolitos} Cron.</Text>
+                                        )}
+                                        <Text style={styles.archivedAura}>{formatAura(p.mana_amount).rest} Aura</Text>
+                                    </View>
                                 </TouchableOpacity>
                             ))
                         )}
@@ -423,7 +446,7 @@ export const WizardTowerScreen: React.FC = () => {
                             )}
 
                             <MedievalButton
-                                title={mappings.length > 0 ? "AÑADIR NUEVA CONEXIÓN" : "CONFIGURAR CANALIZACIÓN"}
+                                title={mappings.length > 0 ? "ESTABLECER VÍNCULO" : "CONFIGURAR CANALIZACIÓN"}
                                 onPress={() => setAuraModalVisible(true)}
                                 variant="secondary"
                                 icon={<Zap size={16} color="#FFD700" />}
@@ -1028,7 +1051,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#7f8c8d',
     },
-    archivedMana: {
+    archivedAura: {
         fontSize: 11,
         color: 'rgba(127, 140, 141, 0.7)',
         fontWeight: 'bold',
@@ -1440,7 +1463,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#3d2b1f',
     },
-    channelingProjectMana: {
+    channelingProjectAura: {
         fontSize: 12,
         color: '#7f8c8d',
     },
@@ -1457,5 +1480,23 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff',
         marginLeft: 4,
+    },
+    cronolitoBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 215, 0, 0.15)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 215, 0, 0.3)',
+    },
+    cronolitoText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#d4af37',
+        marginLeft: 4,
+        textTransform: 'uppercase',
     }
 });

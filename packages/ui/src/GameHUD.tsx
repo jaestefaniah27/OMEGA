@@ -45,54 +45,54 @@ const HUDButton: React.FC<HUDButtonProps> = ({
 export const GameHUD: React.FC<{
     onProfilePress?: () => void;
     onMapPress?: () => void;
-    onZurronPress?: () => void;
+    onQuickAddPress?: () => void;
     onCastlePress?: () => void;
     onTheatrePress?: () => void;
     castleIcon?: React.ElementType; // New prop for dynamic icon
-}> = ({ 
-    onProfilePress, 
-    onMapPress, 
-    onZurronPress, 
+}> = ({
+    onProfilePress,
+    onMapPress,
+    onQuickAddPress,
     onCastlePress,
     onTheatrePress,
     castleIcon = Castle // Default to Castle
 }) => {
-    return (
-        <View style={styles.container}>
-            <View style={styles.hudBar}>
-                <HUDButton
-                    onPress={() => onCastlePress?.()}
-                    icon={castleIcon}
-                />
-                <HUDButton
-                    onPress={() => onMapPress?.()}
-                    icon={Map}
-                />
+        return (
+            <View style={styles.container}>
+                <View style={styles.hudBar}>
+                    <HUDButton
+                        onPress={() => onCastlePress?.()}
+                        icon={castleIcon}
+                    />
+                    <HUDButton
+                        onPress={() => onMapPress?.()}
+                        icon={Map}
+                    />
 
-                {/* Helper view to make space for the floating Zurrón */}
-                <View style={styles.spacer} />
+                    {/* Helper view to make space for the floating Zurrón */}
+                    <View style={styles.spacer} />
 
-                <HUDButton
-                    onPress={() => onProfilePress?.()}
-                    icon={User}
-                />
-                <HUDButton
-                    onPress={() => onTheatrePress?.()}
-                    icon={Clapperboard}
-                />
+                    <HUDButton
+                        onPress={() => onProfilePress?.()}
+                        icon={User}
+                    />
+                    <HUDButton
+                        onPress={() => onTheatrePress?.()}
+                        icon={Clapperboard}
+                    />
+                </View>
+
+                {/* Zurrón - Central Floating Button */}
+                <View style={styles.QuickAddContainer}>
+                    <HUDButton
+                        onPress={() => onQuickAddPress?.()}
+                        icon={Plus}
+                        isLarge
+                    />
+                </View>
             </View>
-
-            {/* Zurrón - Central Floating Button */}
-            <View style={styles.zurronContainer}>
-                <HUDButton
-                    onPress={() => onZurronPress?.()}
-                    icon={Plus}
-                    isLarge
-                />
-            </View>
-        </View>
-    );
-};
+        );
+    };
 
 const styles = StyleSheet.create({
     container: {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: '#3d2b1f',
     },
-    zurronContainer: {
+    QuickAddContainer: {
         position: 'absolute',
         top: -40, // Lift it up
         alignItems: 'center',

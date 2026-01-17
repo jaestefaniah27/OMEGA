@@ -1,6 +1,6 @@
 import { useGame } from '../context/GameContext';
 
 export const useWorkout = () => {
-    const { workout } = useGame();
-    return workout;
+    const { workout, habits } = useGame();
+    return { ...workout, habits };
 };

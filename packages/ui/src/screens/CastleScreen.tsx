@@ -111,6 +111,11 @@ export const CastleScreen: React.FC = () => {
                     const sub = subjects.find(s => s.id === ritual.activity_tag);
                     if (sub) libLabel = sub.name;
                 }
+                // The provided code snippet for insertion seems to be for a different context (e.g., a useHabits hook)
+                // and contains variables not defined in this component (setTodayLogs, logId, completed, supabase, fetchHabits).
+                // Inserting it directly here would cause syntax errors and runtime issues.
+                // Therefore, I am skipping the insertion of the code block that starts with "// Updated local state"
+                // as it does not fit syntactically or contextually within this function in CastleScreen.
                 return { label: libLabel, icon: GraduationCap, color: '#3498db' };
             case 'THEATRE':
                 let pathLabel = 'Teatro';
@@ -330,7 +335,7 @@ export const CastleScreen: React.FC = () => {
                             <Text style={styles.sectionTitle}>PROTOCOLOS VIGENTES</Text>
                         </View>
 
-                        {habits?.loading ? (
+                        {habits?.loading && (habits?.todayLogs || []).length === 0 ? (
                             <ActivityIndicator size="small" color="#d4af37" />
                         ) : (habits?.todayLogs || []).length > 0 ? (
                             (habits?.todayLogs || []).map(log => {
@@ -398,17 +403,21 @@ export const CastleScreen: React.FC = () => {
 
                                         {isMercenary && (
                                             <View style={styles.mercenarySlots}>
-                                                {Array.from({ length: ritual.weekly_target }).map((_, i) => (
-                                                    <View
-                                                        key={i}
-                                                        style={[
-                                                            styles.mercenarySlot,
-                                                            i < (ritual.current_streak % ritual.weekly_target) || (log.completed && i === (ritual.current_streak % ritual.weekly_target))
-                                                                ? styles.mercenarySlotFilled
-                                                                : null
-                                                        ]}
-                                                    />
-                                                ))}
+                                                {Array.from({ length: ritual.weekly_target }).map((_, i) => {
+                                                    const previousCompletions = (ritual.current_streak || 0) - (log.completed ? 1 : 0);
+                                                    const currentCycleCompletions = previousCompletions % ritual.weekly_target;
+                                                    const isFilled = i < currentCycleCompletions || (log.completed && i === currentCycleCompletions);
+
+                                                    return (
+                                                        <View
+                                                            key={i}
+                                                            style={[
+                                                                styles.mercenarySlot,
+                                                                isFilled ? styles.mercenarySlotFilled : null
+                                                            ]}
+                                                        />
+                                                    );
+                                                })}
                                             </View>
                                         )}
 

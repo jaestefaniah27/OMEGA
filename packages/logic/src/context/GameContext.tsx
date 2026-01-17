@@ -834,6 +834,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
+            // --- HABITS ---
+            await refreshHabits(true);
+
         } catch (error) {
             console.error('GameContext: Fetch Error', error);
         } finally {

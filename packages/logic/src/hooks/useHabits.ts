@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { DailyRitual, RitualLog } from '../types/supabase';
 
@@ -7,9 +7,12 @@ export const useHabits = (userId: string | undefined) => {
     const [todayLogs, setTodayLogs] = useState<RitualLog[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchHabits = useCallback(async () => {
+    const logsRef = useRef<RitualLog[]>([]);
+
+    const fetchHabits = useCallback(async (silent = false) => {
         if (!userId) return;
-        setLoading(true);
+        // Only show full-screen loading if we don't have any data yet
+        if (!silent && logsRef.current.length === 0) setLoading(true);
 
         try {
             const today = new Date().toISOString().split('T')[0];
@@ -24,6 +27,7 @@ export const useHabits = (userId: string | undefined) => {
             if (logError) throw logError;
 
             if (existingLogs && existingLogs.length > 0) {
+                logsRef.current = existingLogs;
                 setTodayLogs(existingLogs);
                 setLoading(false);
                 return;
@@ -91,7 +95,8 @@ export const useHabits = (userId: string | undefined) => {
                     .select('*, definition:daily_rituals(*)');
 
                 if (insertError) throw insertError;
-                setTodayLogs(createdLogs || []);
+                logsRef.current = createdLogs || [];
+                setTodayLogs(logsRef.current);
             }
 
             setRituals(definitions);
@@ -117,7 +122,14 @@ export const useHabits = (userId: string | undefined) => {
             // Updated local state
             setTodayLogs(prev => prev.map(l => l.id === logId ? { ...l, completed, current_value: completed ? 1 : 0 } : l));
 
-            // Logic for racha (streak) could be handled here or in a DB trigger
+            // Logic for racha (streak) update
+            if (completed) {
+                const log = todayLogs.find(l => l.id === logId);
+                if (log?.ritual_id) {
+                    await supabase.rpc('increment_ritual_streak', { r_id: log.ritual_id });
+                    await fetchHabits(true);
+                }
+            }
         } catch (error) {
             console.error('Error toggling habit:', error);
         }

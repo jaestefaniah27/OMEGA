@@ -12,7 +12,7 @@ const SESSION_STORAGE_KEY = '@omega_active_session';
 export const useLibrary = () => {
     const platform = usePlatform();
     // --- CONSUME CONTEXT ---
-    const { library, workout, castle } = useGame();
+    const { library, workout, castle, habits } = useGame();
     const { showToast } = useToast();
     const {
         subjects,
@@ -507,5 +507,6 @@ export const useLibrary = () => {
         selectedBook, setSelectedBook,
         activeSessionType,
         startSession, stopSession, failSession,
+        habits
     };
 };

@@ -15,7 +15,7 @@ const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
     // --- CONSUME CONTEXT ---
-    const { theatre, workout, castle } = useGame();
+    const { theatre, workout, castle, habits: habitCtx } = useGame();
     const { showToast } = useToast();
     const {
         activities,
@@ -217,6 +217,7 @@ export const useTheatre = () => {
         addActivity, addMovie, addSeries, addSeason,
         updateActivity, updateMovie, updateSeries, updateSeason,
         startSession, stopSession, cancelSession, fetchData: refresh, // Alias refresh to fetchData for compat
-        setSelectedActivity
+        setSelectedActivity,
+        habits: habitCtx
     };
 };

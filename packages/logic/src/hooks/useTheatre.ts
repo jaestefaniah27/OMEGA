@@ -129,10 +129,10 @@ export const useTheatre = () => {
                 "Las sesiones de menos de un minuto no se registran. ¿Deseas salir de todos modos?",
                 [
                     { text: "Cancelar", style: "cancel" },
-                    { 
-                        text: "Salir sin guardar", 
-                        style: "destructive", 
-                        onPress: () => finalizeStop(true) 
+                    {
+                        text: "Salir sin guardar",
+                        style: "destructive",
+                        onPress: () => finalizeStop(true)
                     }
                 ]
             );
@@ -148,7 +148,7 @@ export const useTheatre = () => {
 
         try {
             const totalMinutes = Math.floor(elapsedSeconds / 60);
-            
+
             // --- OPTIMISTIC RESET ---
             setIsSessionActive(false);
             setStartTime(null);
@@ -193,7 +193,7 @@ export const useTheatre = () => {
                         })
                         .eq('id', selectedActivity.id);
 
-                    await castle.checkDecreeProgress('THEATRE', selectedActivity.id, 1, totalMinutes);
+                    await castle.checkDecreeProgress('THEATRE', selectedActivity.id, 1, totalMinutes, 'THEATRE');
                     showToast(`✨ Maestría: +${totalMinutes} min`, 'success');
                     await refresh();
                 }

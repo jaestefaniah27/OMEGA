@@ -346,10 +346,10 @@ export const useLibrary = () => {
                 "Las sesiones de menos de un minuto no se registran. ¿Deseas salir de todos modos?",
                 [
                     { text: "Cancelar", style: "cancel" },
-                    { 
-                        text: "Salir sin guardar", 
-                        style: "destructive", 
-                        onPress: () => finalizeStop(abandoned, true, endPage) 
+                    {
+                        text: "Salir sin guardar",
+                        style: "destructive",
+                        onPress: () => finalizeStop(abandoned, true, endPage)
                     }
                 ]
             );
@@ -439,10 +439,14 @@ export const useLibrary = () => {
             }
         }
 
-        // Update Royal Decrees
+        // Update Royal Decrees / Habits
         if (session.status === 'COMPLETED') {
-            const libraryTag = session.subject_id ? 'STUDY' : 'READING';
-            await castle.checkDecreeProgress('LIBRARY', libraryTag, 1, session.duration_minutes);
+            // Determine if this was primarily a reading or study session
+            // If book_id is present, we treat it as READING even if a subject is attached
+            const libraryTag = session.book_id ? 'READING' : 'STUDY';
+            const specificTag = session.book_id || session.subject_id || libraryTag;
+
+            await castle.checkDecreeProgress('LIBRARY', specificTag, 1, session.duration_minutes, libraryTag);
         }
 
         // Refresh context to pull new session data (for stats)
@@ -483,10 +487,16 @@ export const useLibrary = () => {
             const book = books.find(b => b.id === id);
             if (!book) return Promise.resolve();
             const isFinished = current_page >= book.total_pages;
+            const pagesRead = Math.max(0, current_page - book.current_page);
+
             return ctxUpdateBook(id, {
                 current_page,
                 is_finished: isFinished,
                 finished_at: isFinished ? (book.finished_at || new Date().toISOString()) : null
+            }).then(() => {
+                if (pagesRead > 0) {
+                    castle.checkDecreeProgress('LIBRARY', id, pagesRead, 0, 'PAGES');
+                }
             });
         },
         logStudySession,

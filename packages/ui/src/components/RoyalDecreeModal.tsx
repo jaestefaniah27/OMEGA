@@ -13,7 +13,7 @@ import {
     KeyboardAvoidingView
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '..';
-import { X, Sword, BookOpen, Music, Target, Calendar, Check } from 'lucide-react-native';
+import { X, Sword, BookOpen, Music, Target, Calendar, Check, Shield } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DecreeType, DecreeUnit, useGame } from '@omega/logic';
 
@@ -26,13 +26,13 @@ interface RoyalDecreeModalProps {
 }
 
 export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onClose, onSave }) => {
-    const { library, theatre } = useGame();
+    const { library, theatre, habits } = useGame();
     const { subjects, updateSubject } = library;
     const { activities } = theatre;
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [type, setType] = useState<DecreeType>('GENERAL');
+    const [type, setType] = useState<DecreeType | 'RITUAL'>('GENERAL');
     const [targetQuantity, setTargetQuantity] = useState('1');
     const [isRepetitive, setIsRepetitive] = useState(false);
     const [minTime, setMinTime] = useState('0');
@@ -46,11 +46,20 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [examTime, setExamTime] = useState('');
     const [examPlace, setExamPlace] = useState('');
     const [examWeight, setExamWeight] = useState(100);
-    const [otherExamWeights, setOtherExamWeights] = useState<{[key: string]: number}>({});
+    const [otherExamWeights, setOtherExamWeights] = useState<{ [key: string]: number }>({});
 
     // Repetitive Logic
     const [freq, setFreq] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM' | 'BIWEEKLY' | 'EVERY_2_DAYS'>('DAILY');
     const [customDays, setCustomDays] = useState<number[]>([]);
+
+    // Habit Specific
+    const [habitType, setHabitType] = useState<'daily' | 'specific_days' | 'weekly_quota'>('daily');
+    const [habitWeeklyTarget, setHabitWeeklyTarget] = useState('3');
+    const [habitActivityType, setHabitActivityType] = useState<DecreeType>('GENERAL');
+    const [habitActivityTag, setHabitActivityTag] = useState('');
+    const [habitUnit, setHabitUnit] = useState<DecreeUnit>('SESSIONS');
+    const [habitTargetValue, setHabitTargetValue] = useState('1');
+
     const [librarySubType, setLibrarySubType] = useState<'STUDY' | 'READING' | 'EXAM'>('STUDY');
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
@@ -58,7 +67,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
     const [showTimePicker, setShowTimePicker] = useState(false);
 
     const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
@@ -70,7 +79,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         let finalQuantity = parseInt(targetQuantity) || 1;
 
         const finalUnit: DecreeUnit = (type === 'LIBRARY' || type === 'THEATRE' || type === 'BARRACKS') ? 'MINUTES' : 'SESSIONS';
-        
+
         if (type === 'BARRACKS') {
             finalTitle = "Mandato de la Forja";
             finalDescription = `Entrenar un total de ${finalQuantity} minutos.`;
@@ -82,7 +91,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
             } else {
                 const isReading = librarySubType === 'READING';
                 finalTitle = isReading ? "Hábito del Lector" : "Erudición Real";
-                finalDescription = isReading 
+                finalDescription = isReading
                     ? `Leer un total de ${finalQuantity} minutos.`
                     : `Estudiar un total de ${finalQuantity} minutos.`;
             }
@@ -96,7 +105,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         try {
             const decreeId = generateUUID();
             const isExam = type === 'LIBRARY' && librarySubType === 'EXAM';
-            
+
             const decreeData = {
                 id: decreeId,
                 title: finalTitle,
@@ -109,8 +118,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     min_time: parseInt(minTime) || 0,
                     is_repetitive: isRepetitive,
                     frequency: isRepetitive ? freq : null,
-                    days: (isRepetitive && freq === 'CUSTOM') ? customDays : 
-                           (isRepetitive && freq === 'WEEKLY') ? [new Date().getDay()] : null,
+                    days: (isRepetitive && freq === 'CUSTOM') ? customDays :
+                        (isRepetitive && freq === 'WEEKLY') ? [new Date().getDay()] : null,
                     interval: freq === 'EVERY_2_DAYS' ? 2 : (freq === 'BIWEEKLY' ? 14 : 1),
                     time_based: finalUnit === 'MINUTES' && !isExam,
                     end_date: (isRepetitive && selectedEndDate) ? selectedEndDate.toISOString() : null
@@ -119,7 +128,22 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 calendar_export: calendarExport
             };
 
-            await onSave(decreeData);
+            if (type === 'RITUAL') {
+                await habits.addRitual({
+                    title,
+                    icon: 'scroll',
+                    schedule_type: habitType,
+                    active_days: habitType === 'specific_days' ? customDays : [0, 1, 2, 3, 4, 5, 6],
+                    weekly_target: habitType === 'weekly_quota' ? parseInt(habitWeeklyTarget) : 7,
+                    activity_type: habitActivityType,
+                    activity_tag: habitActivityTag,
+                    target_value: parseInt(habitTargetValue) || 1,
+                    unit: habitUnit,
+                    is_active: true
+                });
+            } else {
+                await onSave(decreeData);
+            }
 
             if (isExam && selectedSubjectId) {
                 const subject = subjects.find(s => s.id === selectedSubjectId);
@@ -135,14 +159,14 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         is_completed: false,
                         decree_id: decreeId
                     };
-                    
+
                     const updatedExams = [...(subject.exams || [])];
                     // Update other exams' weights as edited in the form
                     const finalExams = updatedExams.map(ex => ({
                         ...ex,
                         weight: otherExamWeights[ex.id] !== undefined ? otherExamWeights[ex.id] : ex.weight
                     }));
-                    
+
                     await updateSubject(selectedSubjectId, {
                         exams: [...finalExams, newExam]
                     });
@@ -203,6 +227,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
         { label: 'Forja', value: 'BARRACKS', icon: Sword },
         { label: 'Biblioteca', value: 'LIBRARY', icon: BookOpen },
         { label: 'Teatro', value: 'THEATRE', icon: Music },
+        { label: 'Protocolo', value: 'RITUAL' as any, icon: Shield },
     ];
 
     const renderFields = () => {
@@ -228,8 +253,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada (Opcional)"}</Text>
-                                <TouchableOpacity 
-                                    style={styles.dateSelector} 
+                                <TouchableOpacity
+                                    style={styles.dateSelector}
                                     onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
@@ -261,8 +286,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada"}</Text>
-                                <TouchableOpacity 
-                                    style={styles.dateSelector} 
+                                <TouchableOpacity
+                                    style={styles.dateSelector}
                                     onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
@@ -327,8 +352,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                 <View style={styles.row}>
                                     <View style={{ flex: 1, marginRight: 10 }}>
                                         <Text style={styles.label}>Fecha (Obligatorio)</Text>
-                                        <TouchableOpacity 
-                                            style={styles.dateSelector} 
+                                        <TouchableOpacity
+                                            style={styles.dateSelector}
                                             onPress={() => setDatePickerMode('START')}
                                         >
                                             <Calendar size={18} color="#8b4513" />
@@ -339,8 +364,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.label}>Hora (Opcional)</Text>
-                                        <TouchableOpacity 
-                                            style={styles.dateSelector} 
+                                        <TouchableOpacity
+                                            style={styles.dateSelector}
                                             onPress={() => setShowTimePicker(true)}
                                         >
                                             <Calendar size={18} color="#8b4513" />
@@ -369,9 +394,9 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                             onChangeText={(val) => setExamWeight(parseInt(val) || 0)}
                                             keyboardType="numeric"
                                         />
-                                        <Text style={{color: '#3d2b1f'}}>%</Text>
+                                        <Text style={{ color: '#3d2b1f' }}>%</Text>
                                     </View>
-                                    
+
                                     {selectedSubjectId && subjects.find(s => s.id === selectedSubjectId)?.exams?.map(ex => (
                                         <View key={ex.id} style={styles.weightRow}>
                                             <Text style={styles.weightItemLabel}>{ex.title}:</Text>
@@ -386,12 +411,12 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                                 }}
                                                 keyboardType="numeric"
                                             />
-                                            <Text style={{color: '#3d2b1f'}}>%</Text>
+                                            <Text style={{ color: '#3d2b1f' }}>%</Text>
                                         </View>
                                     ))}
-                                    
+
                                     <View style={styles.weightTotalRow}>
-                                        <Text style={[styles.weightTotalText, (getTotalWeight() !== 100) && {color: '#e74c3c'}]}>
+                                        <Text style={[styles.weightTotalText, (getTotalWeight() !== 100) && { color: '#e74c3c' }]}>
                                             Total: {getTotalWeight()}%
                                         </Text>
                                     </View>
@@ -440,8 +465,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.label}>{isRepetitive ? "Fecha de Inicio" : "Fecha Designada"}</Text>
-                                <TouchableOpacity 
-                                    style={styles.dateSelector} 
+                                <TouchableOpacity
+                                    style={styles.dateSelector}
                                     onPress={() => setDatePickerMode('START')}
                                 >
                                     <Calendar size={18} color="#8b4513" />
@@ -452,6 +477,179 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                             </View>
                         </View>
                         {renderRecurrenceFields()}
+                    </>
+                );
+            case 'RITUAL':
+                return (
+                    <>
+                        <Text style={styles.label}>Nombre del Protocolo</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={title}
+                            onChangeText={setTitle}
+                            placeholder="Ej: Meditación Diaria"
+                        />
+
+                        <Text style={styles.label}>Tipo de Senda</Text>
+                        <View style={styles.freqGrid}>
+                            {[
+                                { label: 'Senda del Monje (Diario)', value: 'daily' },
+                                { label: 'La Guardia (Días Fijos)', value: 'specific_days' },
+                                { label: 'El Mercenario (Cuota)', value: 'weekly_quota' },
+                            ].map((item) => (
+                                <TouchableOpacity
+                                    key={item.value}
+                                    style={[styles.freqItem, habitType === item.value && styles.freqItemActive, { width: '100%' }]}
+                                    onPress={() => setHabitType(item.value as any)}
+                                >
+                                    <Text style={[styles.freqText, habitType === item.value && styles.freqTextActive]}>
+                                        {item.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {habitType === 'specific_days' && (
+                            <View style={styles.daysRow}>
+                                {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[styles.dayCircle, customDays.includes(idx) && styles.dayCircleActive]}
+                                        onPress={() => toggleDay(idx)}
+                                    >
+                                        <Text style={[styles.dayText, customDays.includes(idx) && styles.dayTextActive]}>
+                                            {day}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        {habitType === 'weekly_quota' && (
+                            <>
+                                <Text style={styles.label}>Cuota Semanal (Nº de veces)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={habitWeeklyTarget}
+                                    onChangeText={setHabitWeeklyTarget}
+                                    keyboardType="numeric"
+                                    placeholder="Ej: 3"
+                                />
+                            </>
+                        )}
+
+                        <View style={styles.divider} />
+                        <Text style={styles.label}>Ligado a Actividad</Text>
+                        <View style={styles.typeGrid}>
+                            {(types as any[]).filter(t => t.value !== 'RITUAL').map((t) => (
+                                <TouchableOpacity
+                                    key={t.value}
+                                    style={[styles.typeItem, habitActivityType === t.value && styles.typeItemActive]}
+                                    onPress={() => {
+                                        setHabitActivityType(t.value as any);
+                                        setHabitActivityTag('');
+                                        setHabitUnit(t.value === 'GENERAL' ? 'SESSIONS' : 'MINUTES');
+                                    }}
+                                >
+                                    <t.icon size={18} color={habitActivityType === t.value ? '#fff' : '#3d2b1f'} />
+                                    <Text style={[styles.typeLabel, habitActivityType === t.value && styles.typeLabelActive]}>
+                                        {t.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {habitActivityType === 'LIBRARY' && (
+                            <View style={styles.activityGrid}>
+                                <TouchableOpacity
+                                    style={[styles.activityItem, habitActivityTag === '' && styles.activityItemActive]}
+                                    onPress={() => setHabitActivityTag('')}
+                                >
+                                    <Text style={[styles.activityText, habitActivityTag === '' && styles.activityTextActive]}>
+                                        Todo (Gral.)
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.activityItem, habitActivityTag === 'STUDY' && styles.activityItemActive]}
+                                    onPress={() => setHabitActivityTag('STUDY')}
+                                >
+                                    <Text style={[styles.activityText, habitActivityTag === 'STUDY' && styles.activityTextActive]}>
+                                        Todo Estudio
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.activityItem, habitActivityTag === 'READING' && styles.activityItemActive]}
+                                    onPress={() => setHabitActivityTag('READING')}
+                                >
+                                    <Text style={[styles.activityText, habitActivityTag === 'READING' && styles.activityTextActive]}>
+                                        Toda Lectura
+                                    </Text>
+                                </TouchableOpacity>
+                                {subjects.map(sub => (
+                                    <TouchableOpacity
+                                        key={sub.id}
+                                        style={[styles.activityItem, habitActivityTag === sub.id && styles.activityItemActive, { borderColor: sub.color }]}
+                                        onPress={() => setHabitActivityTag(sub.id)}
+                                    >
+                                        <Text style={[styles.activityText, habitActivityTag === sub.id && styles.activityTextActive]}>
+                                            {sub.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        {habitActivityType === 'THEATRE' && (
+                            <View style={styles.activityGrid}>
+                                <TouchableOpacity
+                                    style={[styles.activityItem, habitActivityTag === '' && styles.activityItemActive]}
+                                    onPress={() => setHabitActivityTag('')}
+                                >
+                                    <Text style={[styles.activityText, habitActivityTag === '' && styles.activityTextActive]}>
+                                        Cualquiera
+                                    </Text>
+                                </TouchableOpacity>
+                                {activities.map(act => (
+                                    <TouchableOpacity
+                                        key={act.id}
+                                        style={[styles.activityItem, habitActivityTag === act.id && styles.activityItemActive]}
+                                        onPress={() => setHabitActivityTag(act.id)}
+                                    >
+                                        <Text style={[styles.activityText, habitActivityTag === act.id && styles.activityTextActive]}>
+                                            {act.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        <View style={styles.row}>
+                            <View style={{ flex: 1, marginRight: 10 }}>
+                                <Text style={styles.label}>Cantidad Objetivo</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={habitTargetValue}
+                                    onChangeText={setHabitTargetValue}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Unidad</Text>
+                                <View style={styles.asiduidadTabs}>
+                                    {(['SESSIONS', 'MINUTES'] as const).map(u => (
+                                        <TouchableOpacity
+                                            key={u}
+                                            style={[styles.tab, habitUnit === u && styles.tabActive]}
+                                            onPress={() => setHabitUnit(u)}
+                                        >
+                                            <Text style={[styles.tabText, habitUnit === u && styles.tabTextActive]}>
+                                                {u === 'SESSIONS' ? 'VECES' : 'MIN'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        </View>
                     </>
                 );
             default:
@@ -487,7 +685,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 } else {
                     const newWeight = Math.floor(100 / (exams.length + 1));
                     setExamWeight(newWeight);
-                    const newOthers: {[key: string]: number} = {};
+                    const newOthers: { [key: string]: number } = {};
                     exams.forEach(ex => newOthers[ex.id] = newWeight);
                     setOtherExamWeights(newOthers);
                 }
@@ -570,8 +768,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     <View style={styles.row}>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.label}>Fin de repetición (Hasta)</Text>
-                            <TouchableOpacity 
-                                style={styles.dateSelector} 
+                            <TouchableOpacity
+                                style={styles.dateSelector}
                                 onPress={() => setDatePickerMode('END')}
                             >
                                 <Calendar size={18} color="#8b4513" />
@@ -579,7 +777,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                     {selectedEndDate ? selectedEndDate.toLocaleDateString() : 'Para siempre (2 años)'}
                                 </Text>
                                 {selectedEndDate && (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         onPress={(e) => {
                                             e.stopPropagation();
                                             setSelectedEndDate(null);
@@ -594,10 +792,10 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                     </View>
                 </>
             )}
-            
+
             <View style={{ marginTop: 15 }}>
-                <TouchableOpacity 
-                    style={[styles.row, { alignItems: 'center' }]} 
+                <TouchableOpacity
+                    style={[styles.row, { alignItems: 'center' }]}
                     onPress={() => setCalendarExport(!calendarExport)}
                 >
                     <View style={[styles.checkbox, calendarExport && styles.checkboxActive]}>
@@ -614,7 +812,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
 
         const isDate = !!datePickerMode;
         let value = new Date();
-        
+
         if (isDate) {
             value = (datePickerMode === 'START' ? selectedDate : selectedEndDate) || new Date();
         } else if (examTime) {
@@ -622,7 +820,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
             value.setHours(hours);
             value.setMinutes(minutes);
         }
-        
+
         const handleChange = isDate ? onDateChange : onTimeChange;
         const mode = isDate ? 'date' : 'time';
 
@@ -655,7 +853,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                 <View style={styles.datePickerOverlay}>
                     <View style={styles.datePickerContainer}>
                         <View style={styles.datePickerHeader}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => {
                                     if (isDate) setDatePickerMode(null);
                                     else setShowTimePicker(false);
@@ -692,8 +890,8 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                         </TouchableOpacity>
                     </View>
 
-                    <KeyboardAvoidingView 
-                        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
                         style={{ width: '100%' }}
                     >
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -722,7 +920,7 @@ export const RoyalDecreeModal: React.FC<RoyalDecreeModalProps> = ({ visible, onC
                                 onPress={handleSave}
                                 style={styles.saveButton}
                             />
-                            
+
                         </ScrollView>
                     </KeyboardAvoidingView>
                 </ParchmentCard>

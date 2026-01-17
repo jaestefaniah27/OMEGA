@@ -25,7 +25,8 @@ import {
     Sword,
     Scroll,
     GraduationCap,
-    Clock
+    Clock,
+    Music
 } from 'lucide-react-native';
 import { useGame, RoyalDecree } from '@omega/logic';
 import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
@@ -34,7 +35,9 @@ const { width } = Dimensions.get('window');
 
 export const CastleScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { castle } = useGame();
+    const { castle, habits, library, theatre } = useGame();
+    const { subjects } = library;
+    const { activities } = theatre;
     const { decrees, loading, addDecree, updateDecree, deleteDecree } = castle;
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -97,6 +100,29 @@ export const CastleScreen: React.FC = () => {
         });
         return () => sub.remove();
     }, []);
+
+    const getZoneInfo = (ritual: any) => {
+        switch (ritual.activity_type) {
+            case 'LIBRARY':
+                let libLabel = 'Biblioteca';
+                if (ritual.activity_tag === 'STUDY') libLabel = 'Estudio';
+                else if (ritual.activity_tag === 'READING') libLabel = 'Lectura';
+                else {
+                    const sub = subjects.find(s => s.id === ritual.activity_tag);
+                    if (sub) libLabel = sub.name;
+                }
+                return { label: libLabel, icon: GraduationCap, color: '#3498db' };
+            case 'THEATRE':
+                let pathLabel = 'Teatro';
+                const act = activities.find(a => a.id === ritual.activity_tag);
+                if (act) pathLabel = act.name;
+                return { label: pathLabel, icon: Music, color: '#9b59b6' };
+            case 'BARRACKS':
+                return { label: 'Entrenar', icon: Sword, color: '#e67e22' };
+            default:
+                return { label: 'General', icon: Scroll, color: '#7f8c8d' };
+        }
+    };
 
     const toggleGeneralDecree = async (decree: RoyalDecree) => {
         if (decree.type !== 'GENERAL') return;
@@ -295,8 +321,112 @@ export const CastleScreen: React.FC = () => {
                     setViewMode(offsetX >= width / 2 ? 'ARCHIVE' : 'ACTIVE');
                 }}
             >
-                {/* ACTIVE DECREES PANE */}
+                {/* HABITS (PROTOCOLOS) PANE */}
                 <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
+                    {/* Protocolos Vigentes Section */}
+                    <ParchmentCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Shield size={20} color="#3d2b1f" />
+                            <Text style={styles.sectionTitle}>PROTOCOLOS VIGENTES</Text>
+                        </View>
+
+                        {habits?.loading ? (
+                            <ActivityIndicator size="small" color="#d4af37" />
+                        ) : (habits?.todayLogs || []).length > 0 ? (
+                            (habits?.todayLogs || []).map(log => {
+                                const ritual = log.definition;
+                                if (!ritual) return null;
+
+                                const isMercenary = ritual.schedule_type === 'weekly_quota';
+
+                                return (
+                                    <View key={log.id} style={styles.decreeItem}>
+                                        <View style={styles.decreeHeader}>
+                                            <TouchableOpacity
+                                                onPress={() => !ritual.activity_type && habits.toggleHabit(log.id, !log.completed)}
+                                                disabled={!!ritual.activity_type}
+                                                style={{ opacity: ritual.activity_type ? 0.6 : 1 }}
+                                            >
+                                                {log.completed ? (
+                                                    <CheckSquare size={20} color="#27ae60" />
+                                                ) : ritual.activity_type ? (
+                                                    <Clock size={20} color="#8b4513" />
+                                                ) : (
+                                                    <Square size={20} color="#3d2b1f" />
+                                                )}
+                                            </TouchableOpacity>
+                                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                                <Text style={styles.decreeTitle}>{ritual.title}</Text>
+                                                {ritual.activity_type && (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                                                        {React.createElement(getZoneInfo(ritual).icon, { size: 10, color: getZoneInfo(ritual).color })}
+                                                        <Text style={{ fontSize: 10, color: getZoneInfo(ritual).color, marginLeft: 4, fontWeight: '600' }}>
+                                                            {getZoneInfo(ritual).label.toUpperCase()}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <View style={[styles.completedBadge, { backgroundColor: 'rgba(39, 174, 96, 0.1)' }]}>
+                                                <Text style={[styles.completedBadgeText, { color: '#27ae60' }]}>
+                                                    {ritual.schedule_type === 'daily' ? 'MONJE' : ritual.schedule_type === 'specific_days' ? 'GUARDIA' : 'MERCENARIO'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Progress Bar for Time-based or Multi-step rituals */}
+                                        {ritual.target_value > 1 && (
+                                            <View style={{ marginTop: 10 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                    <Text style={{ fontSize: 10, color: '#8b4513', fontStyle: 'italic' }}>Progreso Diario</Text>
+                                                    <Text style={{ fontSize: 10, color: '#3d2b1f', fontWeight: 'bold' }}>
+                                                        {log.current_value} / {log.target_value} {ritual.unit === 'MINUTES' ? 'min' : ritual.unit === 'PAGES' ? 'págs' : 'ses.'}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.examProgressBarBg}>
+                                                    <View
+                                                        style={[
+                                                            styles.examProgressBarFill,
+                                                            {
+                                                                width: `${Math.min(100, (log.current_value / log.target_value) * 100)}%`,
+                                                                backgroundColor: log.completed ? '#27ae60' : '#d4af37'
+                                                            }
+                                                        ]}
+                                                    />
+                                                </View>
+                                            </View>
+                                        )}
+
+                                        {isMercenary && (
+                                            <View style={styles.mercenarySlots}>
+                                                {Array.from({ length: ritual.weekly_target }).map((_, i) => (
+                                                    <View
+                                                        key={i}
+                                                        style={[
+                                                            styles.mercenarySlot,
+                                                            i < (ritual.current_streak % ritual.weekly_target) || (log.completed && i === (ritual.current_streak % ritual.weekly_target))
+                                                                ? styles.mercenarySlotFilled
+                                                                : null
+                                                        ]}
+                                                    />
+                                                ))}
+                                            </View>
+                                        )}
+
+                                        <View style={styles.streakContainer}>
+                                            <Trophy size={10} color="#d4af37" />
+                                            <Text style={styles.streakText}>Racha: {ritual.current_streak} días</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
+                                <Text style={styles.emptyText}>Sin protocolos para hoy. Dicta nuevas leyes de disciplina en el Quickadd.</Text>
+                            </View>
+                        )}
+                    </ParchmentCard>
+
                     <ParchmentCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
                             <Sword size={20} color="#3d2b1f" />
@@ -310,7 +440,7 @@ export const CastleScreen: React.FC = () => {
                         ) : (
                             <View style={styles.emptyContainer}>
                                 <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
-                                <Text style={styles.emptyText}>El reino goza de paz. Pulsa el Zurrón para dictar nuevos mandatos.</Text>
+                                <Text style={styles.emptyText}>El reino goza de paz. Pulsa el Quickadd para dictar nuevos mandatos.</Text>
                             </View>
                         )}
                     </ParchmentCard>
@@ -345,7 +475,7 @@ export const CastleScreen: React.FC = () => {
                 onClose={() => setModalVisible(false)}
                 onSave={addDecree}
             />
-        </View>
+        </View >
     );
 };
 
@@ -555,5 +685,35 @@ const styles = StyleSheet.create({
     examProgressBarFill: {
         height: '100%',
         borderRadius: 4,
+    },
+    mercenarySlots: {
+        flexDirection: 'row',
+        marginTop: 10,
+        marginBottom: 5,
+    },
+    mercenarySlot: {
+        width: 15,
+        height: 15,
+        borderRadius: 3,
+        borderWidth: 1,
+        borderColor: '#3d2b1f',
+        marginRight: 6,
+        backgroundColor: 'rgba(61, 43, 31, 0.1)',
+    },
+    mercenarySlotFilled: {
+        backgroundColor: '#d4af37',
+        borderColor: '#8b4513',
+    },
+    streakContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 5,
+    },
+    streakText: {
+        fontSize: 10,
+        color: '#d4af37',
+        marginLeft: 5,
+        fontWeight: 'bold',
+        fontStyle: 'italic',
     },
 });

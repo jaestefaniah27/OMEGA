@@ -69,7 +69,7 @@ export const GameHUD: React.FC<{
                         icon={Map}
                     />
 
-                    {/* Helper view to make space for the floating Zurrón */}
+                    {/* Helper view to make space for the floating Quickadd */}
                     <View style={styles.spacer} />
 
                     <HUDButton
@@ -82,7 +82,7 @@ export const GameHUD: React.FC<{
                     />
                 </View>
 
-                {/* Zurrón - Central Floating Button */}
+                {/* Quickadd - Central Floating Button */}
                 <View style={styles.QuickAddContainer}>
                     <HUDButton
                         onPress={() => onQuickAddPress?.()}

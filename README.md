@@ -33,7 +33,7 @@ Omega no es una simple lista de tareas. Es un **Sistema Operativo Vital Gamifica
 - [ ] **El HUD (Interfaz Siempre Visible):** Programar la capa flotante que persiste sobre el mapa para acceso rápido:
     - [ ] *El Pergamino:* Lista rápida de tareas overlay (Checklist diario).
     - [ ] *El Cuervo:* Centro de notificaciones (Badge rojo para avisos).
-    - [ ] *El Zurrón:* Botón de acción rápida (Quick Add: Nota, Gasto, Idea).
+    - [ ] *El Quickadd:* Botón de acción rápida (Quick Add: Nota, Gasto, Idea).
     - [ ] *El Medallón:* Acceso directo al perfil y estadísticas vitales.
 
 ### 🌲 Fase 2: Módulo de Enfoque y Proyectos (Biblioteca y Torre)
@@ -122,7 +122,7 @@ Accesible desde la Biblioteca o el Castillo. Es el santuario de los **Creadores*
 Es la interfaz que **siempre** ves, estés donde estés (salvo en bloqueo estricto).
 * **📜 El Pergamino:** Toca para desplegar tus tareas del día sobre la pantalla actual. Marca cosas como hechas sin salir del gimnasio.
 * **🐦 El Cuervo:** Tu bandeja de entrada. Avisa de: Jefes cercanos, Historias del Bardo, recordatorios de salud.
-* **🎒 El Zurrón:** El botón mágico central. Al pulsarlo, permite captura rápida de: Pensamiento, Gasto, Tarea o Nota.
+* **🎒 El Quickadd:** El botón mágico central. Al pulsarlo, permite captura rápida de: Pensamiento, Gasto, Tarea o Nota.
 
 ### 3. Las Ubicaciones del Mapa
 

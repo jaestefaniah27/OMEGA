@@ -27,9 +27,12 @@ import {
     TavernWater,
     MageProject,
     MageTheme,
-    MageAppMapping
+    MageAppMapping,
+    DailyRitual,
+    RitualLog
 } from '../types/supabase';
 import { useCalendar } from '../hooks/useCalendar';
+import { useHabits } from '../hooks/useHabits';
 import { showGlobalToast } from './ToastContext';
 
 export interface WorkoutHistoryItem {
@@ -120,7 +123,7 @@ interface GameContextType {
         addDecree: (decree: Partial<RoyalDecree> & { calendar_export?: boolean }) => Promise<any>;
         updateDecree: (id: string, updates: Partial<RoyalDecree>) => Promise<void>;
         deleteDecree: (id: string) => Promise<void>;
-        checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => Promise<void>;
+        checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<void>;
     };
 
     // --- TEMPLE DATA ---
@@ -176,6 +179,17 @@ interface GameContextType {
         saveSettings: (importId: string | null, exportId: string | null) => Promise<void>;
         syncNativeEventsToDecrees: () => Promise<void>;
         registerBackgroundFetch: () => Promise<void>;
+    };
+
+    // --- HABITS (RITUALS) ---
+    habits: {
+        rituals: DailyRitual[];
+        todayLogs: RitualLog[];
+        loading: boolean;
+        refresh: () => Promise<void>;
+        toggleHabit: (logId: number, completed: boolean) => Promise<void>;
+        addRitual: (ritual: Partial<DailyRitual>) => Promise<any>;
+        checkHabitProgress: (type: string, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<{ totalXp: number; totalGold: number }>;
     };
 
     // --- GLOBAL ---
@@ -254,6 +268,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // Initial Load Flag to prevent double-fetch issues or hydration flicker
     const isHydrated = useRef(false);
     const lastProcessedSync = useRef<string | null>(null);
+
+    const {
+        rituals: habitRituals,
+        todayLogs: habitLogs,
+        loading: habitsLoading,
+        refresh: refreshHabits,
+        toggleHabit,
+        addRitual,
+        checkHabitProgress: checkHabitProgressInternal
+    } = useHabits(user?.id);
 
     // --- PERSISTENCE HELPERS ---
     const loadFromLocal = async () => {
@@ -511,7 +535,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number) => {
+    const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
+        // Also check habit progress
+        const habitRewards = await checkHabitProgressInternal(type, tag, amount, durationMinutes, genericTag);
+        if (habitRewards?.totalXp > 0) await addXp(habitRewards.totalXp);
+        if (habitRewards?.totalGold > 0) await addGold(habitRewards.totalGold);
+
         if (!user || !decrees) return;
 
         const todayStr = new Date().toISOString().split('T')[0];
@@ -520,7 +549,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const pendingDecrees = decrees.filter(d => {
             const matchesType = d.status === 'PENDING' &&
                 d.type === type &&
-                (!d.required_activity_tag || d.required_activity_tag === tag);
+                (!d.required_activity_tag || d.required_activity_tag === tag || (genericTag && d.required_activity_tag === genericTag));
 
             if (!matchesType) return false;
 
@@ -1604,6 +1633,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             addSet,
             updateSet,
             removeSet
+        },
+        habits: {
+            rituals: habitRituals,
+            todayLogs: habitLogs,
+            loading: habitsLoading,
+            refresh: refreshHabits,
+            toggleHabit,
+            addRitual,
+            checkHabitProgress: checkHabitProgressInternal
         },
         user,
         profile,

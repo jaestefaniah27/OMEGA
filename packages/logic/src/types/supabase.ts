@@ -280,10 +280,42 @@ export interface WorkerCommand {
     created_at: string;
 }
 
-export interface AppAuraMapping {
+export interface MageAppMapping {
     id: string;
     user_id: string;
     process_name: string;
     theme_id: string;
     created_at: string;
+}
+
+// --- DISCIPLINE PROTOCOLS (HABITS) ---
+
+export type ScheduleType = 'daily' | 'specific_days' | 'weekly_quota';
+
+export interface DailyRitual {
+    id: number;
+    user_id: string;
+    title: string;
+    icon: string;
+    schedule_type: ScheduleType;
+    active_days: number[];
+    weekly_target: number;
+    activity_type: string | null;
+    activity_tag: string | null;
+    target_value: number;
+    unit: 'MINUTES' | 'PAGES' | 'SESSIONS';
+    current_streak: number;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface RitualLog {
+    id: number;
+    ritual_id: number;
+    user_id: string;
+    date: string;
+    current_value: number;
+    target_value: number;
+    completed: boolean;
+    definition?: DailyRitual;
 }

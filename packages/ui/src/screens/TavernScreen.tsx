@@ -65,7 +65,7 @@ export const TavernScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.waterTracker}>
-                            <Text style={styles.waterLabel}>Jarras de Agua:</Text>
+                            <Text style={styles.waterLabel}>Vasos de agua:</Text>
                             <Text style={styles.waterValue}>{todayWater} / {recommendedWater}</Text>
                         </View>
 

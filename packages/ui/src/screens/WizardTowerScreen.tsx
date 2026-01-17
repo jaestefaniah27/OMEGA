@@ -347,11 +347,17 @@ export const WizardTowerScreen: React.FC = () => {
                                     <Text style={styles.auraLabel}>AURA LATENTE TOTAL</Text>
                                 </View>
                                 <View style={styles.auraValueGroup}>
-                                    {formatAura(totalAura).cronolitos > 0 && (
-                                        <Text style={[styles.auraValue, { marginRight: 10 }]}>{formatAura(totalAura).cronolitos}🧩</Text>
-                                    )}
-                                    <Text style={styles.auraValue}>{formatAura(totalAura).rest}</Text>
-                                    <Text style={styles.auraUnit}>Aura</Text>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        {formatAura(totalAura).cronolitos > 0 && (
+                                            <Text style={[styles.auraValue, { fontSize: 18, marginBottom: 2 }]}>
+                                                {formatAura(totalAura).cronolitos}🧩 Cronolitos
+                                            </Text>
+                                        )}
+                                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                            <Text style={styles.auraValue}>{formatAura(totalAura).rest}</Text>
+                                            <Text style={styles.auraUnit}>Aura</Text>
+                                        </View>
+                                    </View>
                                 </View>
                             </View>
 
@@ -525,6 +531,20 @@ export const WizardTowerScreen: React.FC = () => {
                             variant="primary"
                             style={{ marginTop: 20 }}
                         />
+
+                        {editingProject && (
+                            <MedievalButton
+                                title={editingProject.status === 'ARCHIVED' ? "VOLVER A LA VIDA (ACTIVAR)" : "ARCHIVAR INVESTIGACIÓN"}
+                                onPress={() => {
+                                    const newStatus = editingProject.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED';
+                                    updateProject(editingProject.id, { status: newStatus });
+                                    setProjectModalVisible(false);
+                                }}
+                                variant="secondary"
+                                style={{ marginTop: 10 }}
+                                icon={<Book size={16} color="#3d2b1f" />}
+                            />
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -650,14 +670,15 @@ export const WizardTowerScreen: React.FC = () => {
                                 <TouchableOpacity
                                     style={styles.actionItem}
                                     onPress={() => {
-                                        archiveProject(selectedProjectForMenu.id);
+                                        const isArchived = selectedProjectForMenu.status === 'ARCHIVED';
+                                        updateProject(selectedProjectForMenu.id, { status: isArchived ? 'ACTIVE' : 'ARCHIVED' });
                                         setActionMenuVisible(false);
                                     }}
                                 >
-                                    <View style={[styles.actionIconCircle, { backgroundColor: '#95a5a6' }]}>
+                                    <View style={[styles.actionIconCircle, { backgroundColor: selectedProjectForMenu?.status === 'ARCHIVED' ? '#2ecc71' : '#95a5a6' }]}>
                                         <Book size={20} color="#fff" />
                                     </View>
-                                    <Text style={styles.actionText}>Archivar</Text>
+                                    <Text style={styles.actionText}>{selectedProjectForMenu?.status === 'ARCHIVED' ? 'Activar' : 'Archivar'}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -1008,18 +1029,18 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     manaSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
         backgroundColor: 'rgba(0,0,0,0.05)',
-        paddingVertical: 4,
+        paddingVertical: 6,
         paddingHorizontal: 8,
         borderRadius: 12,
     },
     manaText: {
-        marginLeft: 4,
         fontSize: 12,
         fontWeight: 'bold',
         color: '#3d2b1f',
+        marginTop: 2,
     },
     progressBarBg: {
         height: 6,
@@ -1488,7 +1509,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 6,
-        marginRight: 8,
         borderWidth: 1,
         borderColor: 'rgba(255, 215, 0, 0.3)',
     },

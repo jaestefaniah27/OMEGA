@@ -235,7 +235,10 @@ async function uploadActivities() {
     const userId = process.env.USER_ID;
     if (!userId) return;
 
-    // 1. Upload Legacy Activities (History)
+    // 1. Refrescar reglas de mapeo (Usuario solicitó revisión cada minuto)
+    await loadMappings();
+
+    // 2. Upload Legacy Activities (History)
     const appNames = Object.keys(activityBuffer);
     if (appNames.length > 0) {
         console.log(`📤 Subiendo historial de ${appNames.length} apps...`);

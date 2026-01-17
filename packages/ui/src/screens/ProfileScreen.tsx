@@ -13,124 +13,39 @@ import {
 import { MedievalButton, ParchmentCard } from '..';
 import { supabase, useUserStats, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
-import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins } from 'lucide-react-native';
-import { MuscleHeatMap } from '../components/MuscleHeatMap';
-import { Calendar as CalendarIcon, RefreshCw, CheckCircle, Smartphone } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins, Zap, BookOpen, Dumbbell, Scroll } from 'lucide-react-native';
+import { Calendar as CalendarIcon, RefreshCw, CheckCircle, Smartphone, Boxes } from 'lucide-react-native';
 
-const CalendarSettings = () => {
-    const { calendar } = useGame();
-    const [showImportList, setShowImportList] = useState(false);
-    const [showExportList, setShowExportList] = useState(false);
-
-    if (!calendar) return null;
-
-    const { 
-        status, 
-        requestPermission, 
-        calendars, 
-        saveSettings, 
-        importCalendarId, 
-        exportCalendarId,
-        syncNativeEventsToDecrees,
-        isSyncing
-    } = calendar;
-
-    const handleGrant = async () => {
-        await requestPermission();
-    };
-
-    if (status?.status !== 'granted') {
-        return (
-            <ParchmentCard style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                    <CalendarIcon size={20} color="#8b4513" />
-                    <Text style={styles.sectionTitle}>Sincronización de Calendario</Text>
-                </View>
-                <Text style={styles.sectionText}>
-                    Concede permisos para sincronizar tus exámenes y entrenamientos con el calendario de tu móvil.
-                </Text>
-                <MedievalButton title="Conceder Permisos" onPress={handleGrant} variant="primary" style={{ marginTop: 10 }} />
-            </ParchmentCard>
-        );
-    }
-
-    const importCalName = calendars.find(c => c.id === importCalendarId)?.title || 'Seleccionar...';
-    const exportCalName = calendars.find(c => c.id === exportCalendarId)?.title || 'Seleccionar...';
-
-    return (
-        <ParchmentCard style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <CalendarIcon size={20} color="#8b4513" />
-                    <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>Sincronización</Text>
-                </View>
-                {isSyncing && <ActivityIndicator color="#8b4513" size="small" />}
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Importar desde:</Text>
-                <TouchableOpacity onPress={() => setShowImportList(!showImportList)} style={styles.calSelector}>
-                    <Text style={styles.calSelectorText}>{importCalName}</Text>
-                </TouchableOpacity>
-            </View>
-            {showImportList && (
-                <View style={styles.calList}>
-                    {calendars.map(cal => (
-                        <TouchableOpacity 
-                            key={cal.id} 
-                            style={[styles.calOption, cal.id === importCalendarId && styles.calOptionSelected]}
-                            onPress={() => {
-                                saveSettings(cal.id, exportCalendarId);
-                                setShowImportList(false);
-                            }}
-                        >
-                            <View style={[styles.colorDot, { backgroundColor: cal.color }]} />
-                            <Text style={styles.calOptionText}>{cal.title}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Exportar a:</Text>
-                <TouchableOpacity onPress={() => setShowExportList(!showExportList)} style={styles.calSelector}>
-                    <Text style={styles.calSelectorText}>{exportCalName}</Text>
-                </TouchableOpacity>
-            </View>
-            {showExportList && (
-                <View style={styles.calList}>
-                    {calendars.map(cal => (
-                        <TouchableOpacity 
-                            key={cal.id} 
-                            style={[styles.calOption, cal.id === exportCalendarId && styles.calOptionSelected]}
-                            onPress={() => {
-                                saveSettings(importCalendarId, cal.id);
-                                setShowExportList(false);
-                            }}
-                        >
-                             <View style={[styles.colorDot, { backgroundColor: cal.color }]} />
-                             <Text style={styles.calOptionText}>{cal.title}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            <MedievalButton 
-                title={isSyncing ? "Sincronizando..." : "Sincronizar Ahora"} 
-                onPress={syncNativeEventsToDecrees} 
-                variant="primary" 
-                style={{ marginTop: 15 }}
-                disabled={isSyncing}
-            />
-        </ParchmentCard>
-    );
-};
 
 const { width } = Dimensions.get('window');
 
+const AttributeProgressBar = ({ label, level, xp, icon, color }: { label: string, level: number, xp: number, icon: any, color: string }) => {
+    const nextLevelXp = Math.pow(level, 2) * 100;
+    const prevLevelXp = Math.pow(level - 1, 2) * 100;
+    const progress = ((xp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100;
+
+    return (
+        <View style={styles.attributeContainer}>
+            <View style={styles.attributeHeader}>
+                <View style={styles.attributeLabelGroup}>
+                    {icon}
+                    <Text style={styles.attributeLabel}>{label}</Text>
+                </View>
+                <View style={styles.attributeLevelGroup}>
+                    <Text style={styles.attributeLevelText}>Nivel {level}</Text>
+                    <Text style={styles.attributeXpText}>{xp.toLocaleString()} XP</Text>
+                </View>
+            </View>
+            <View style={styles.attributeBarBg}>
+                <View style={[styles.attributeBarFill, { width: `${Math.min(100, Math.max(0, progress))}%`, backgroundColor: color }]} />
+            </View>
+        </View>
+    );
+};
+
 export const ProfileScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { profile, loading: statsLoading, muscleFatigue } = useUserStats();
+    const { profile, heroStats, loading: statsLoading } = useUserStats();
     const [loading, setLoading] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [isLogin, setIsLogin] = useState(true);
@@ -139,7 +54,6 @@ export const ProfileScreen: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
-    const [isEditingUsername, setIsEditingUsername] = useState(false);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -178,42 +92,6 @@ export const ProfileScreen: React.FC = () => {
             }
         } catch (error: any) {
             Alert.alert('Error en la misión', error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSignOut = async () => {
-        Alert.alert(
-            "Cerrar Sesión",
-            "¿Estás seguro de que deseas abandonar el reino por ahora?",
-            [
-                { text: "No, me quedo", style: "cancel" },
-                {
-                    text: "Sí, salir",
-                    style: "destructive",
-                    onPress: async () => {
-                        const { error } = await supabase.auth.signOut();
-                        if (error) Alert.alert('Error', error.message);
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleUpdateProfile = async () => {
-        setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ username })
-                .eq('id', session?.user?.id);
-
-            if (error) throw error;
-            setIsEditingUsername(false);
-            Alert.alert('¡Actualizado!', 'Tus pergaminos han sido actualizados.');
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
         } finally {
             setLoading(false);
         }
@@ -306,11 +184,11 @@ export const ProfileScreen: React.FC = () => {
                             </View>
                             <Shield size={20} color="#d4af37" style={styles.shieldIcon} />
                         </View>
-                        
+
                         <View style={styles.rankInfo}>
                             <Text style={styles.usernameText}>{profile?.username || 'Guerrero Sin Nombre'}</Text>
                             <View style={styles.levelBadge}>
-                                <Text style={styles.levelText}>Nivel {profile?.level ?? 1}</Text>
+                                <Text style={styles.levelText}>Nivel Global {heroStats?.global_level ?? 1}</Text>
                                 <Text style={styles.classText}>{profile?.class ?? 'Aprendiz'}</Text>
                             </View>
                         </View>
@@ -345,55 +223,60 @@ export const ProfileScreen: React.FC = () => {
                     </View>
 
                     {/* GOLD COUNTER */}
-                    <View style={styles.goldCounter}>
-                        <Coins size={20} color="#d4af37" />
-                        <Text style={styles.goldText}>{profile?.gold ?? 0} Monedas de Oro</Text>
+                    <View style={styles.headerStatsRow}>
+                        <View style={styles.headerStatItem}>
+                            <Coins size={18} color="#d4af37" />
+                            <Text style={styles.headerStatText}>{profile?.gold ?? 0} Oro</Text>
+                        </View>
+                        <View style={styles.headerStatItem}>
+                            <Boxes size={18} color="#d4af37" />
+                            <Text style={styles.headerStatText}>{heroStats?.cronolitos_balance ?? 0} Cronolitos</Text>
+                        </View>
                     </View>
                 </ParchmentCard>
 
+                {/* HERO ATTRIBUTES CARD */}
+                <ParchmentCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Shield size={20} color="#8b4513" />
+                        <Text style={styles.sectionTitle}>ATRIBUTOS DEL HÉROE</Text>
+                    </View>
+
+                    <AttributeProgressBar
+                        label="MAESTRÍA (TORRE)"
+                        level={heroStats?.mastery_level ?? 1}
+                        xp={heroStats?.mastery_xp ?? 0}
+                        icon={<Zap size={14} color="#8e44ad" />}
+                        color="#8e44ad"
+                    />
+
+                    <AttributeProgressBar
+                        label="SABIDURÍA (BIBLIOTECA)"
+                        level={heroStats?.wisdom_level ?? 1}
+                        xp={heroStats?.wisdom_xp ?? 0}
+                        icon={<BookOpen size={14} color="#2980b9" />}
+                        color="#2980b9"
+                    />
+
+                    <AttributeProgressBar
+                        label="VIGOR (BARRACONES)"
+                        level={heroStats?.vigor_level ?? 1}
+                        xp={heroStats?.vigor_xp ?? 0}
+                        icon={<Dumbbell size={14} color="#c0392b" />}
+                        color="#c0392b"
+                    />
+
+                    <AttributeProgressBar
+                        label="DISCIPLINA (CASTILLO)"
+                        level={heroStats?.discipline_level ?? 1}
+                        xp={heroStats?.discipline_xp ?? 0}
+                        icon={<Scroll size={14} color="#27ae60" />}
+                        color="#27ae60"
+                    />
+                </ParchmentCard>
+
                 <ParchmentCard style={styles.profileCard}>
-
-                    <View style={styles.infoGroup}>
-                        <Text style={styles.infoLabel}>Correo Electrónico:</Text>
-                        <Text style={styles.infoValue}>{session.user.email}</Text>
-                    </View>
-
-                    <View style={styles.editGroup}>
-                        <Text style={styles.infoLabel}>Nombre de Guerrero:</Text>
-                        {isEditingUsername ? (
-                            <View style={styles.editInputWrapper}>
-                                <TextInput
-                                    style={styles.profileInput}
-                                    value={username}
-                                    onChangeText={setUsername}
-                                    placeholder="Tu nombre aquí..."
-                                    autoFocus
-                                />
-                                <TouchableOpacity
-                                    style={styles.saveIconButton}
-                                    onPress={handleUpdateProfile}
-                                >
-                                    <Save size={20} color="#27ae60" />
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.usernameDisplay}>
-                                <Text style={styles.infoValue}>
-                                    {profile?.username || "Sin nombre"}
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => setIsEditingUsername(true)}
-                                    style={styles.editIconButton}
-                                >
-                                    <Edit2 size={16} color="#8b4513" />
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
-
                     {/* Stats de Estudio */}
-                    <View style={styles.statsSeparator} />
-
                     <View style={styles.statsRow}>
                         <View style={styles.statBox}>
                             <Clock size={20} color="#8b4513" />
@@ -411,19 +294,7 @@ export const ProfileScreen: React.FC = () => {
                             </Text>
                         </View>
                     </View>
-                    <View style={styles.statsSeparator} />
-                    <MuscleHeatMap fatigue={muscleFatigue} />
                 </ParchmentCard>
-                <CalendarSettings />
-
-                <MedievalButton
-                    title="CERRAR SESIÓN"
-                    variant="danger"
-                    onPress={handleSignOut}
-                    style={styles.logoutButton}
-                />
-
-
                 <View style={{ height: 100 }} />
             </ScrollView>
             {isLoading && (
@@ -574,6 +445,71 @@ const styles = StyleSheet.create({
     progressBarFill: {
         height: '100%',
         borderRadius: 5,
+    },
+    headerStatsRow: {
+        flexDirection: 'row',
+        width: '100%',
+        justifyContent: 'center',
+        gap: 20,
+        marginTop: 5,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(61, 43, 31, 0.1)',
+    },
+    headerStatItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerStatText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#d4af37',
+        marginLeft: 8,
+    },
+    attributeContainer: {
+        marginBottom: 15,
+        width: '100%',
+    },
+    attributeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        marginBottom: 6,
+    },
+    attributeLabelGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    attributeLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginLeft: 6,
+        letterSpacing: 0.5,
+    },
+    attributeLevelGroup: {
+        alignItems: 'flex-end',
+    },
+    attributeLevelText: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#3d2b1f',
+    },
+    attributeXpText: {
+        fontSize: 9,
+        color: '#8b4513',
+        fontWeight: '600',
+        opacity: 0.7,
+    },
+    attributeBarBg: {
+        height: 8,
+        backgroundColor: 'rgba(61, 43, 31, 0.1)',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    attributeBarFill: {
+        height: '100%',
+        borderRadius: 4,
     },
     goldCounter: {
         flexDirection: 'row',

@@ -29,7 +29,8 @@ import {
     MageTheme,
     MageAppMapping,
     DailyRitual,
-    RitualLog
+    RitualLog,
+    HeroStats
 } from '../types/supabase';
 import { useCalendar } from '../hooks/useCalendar';
 import { useHabits } from '../hooks/useHabits';
@@ -195,6 +196,7 @@ interface GameContextType {
     // --- GLOBAL ---
     user: any | null;
     profile: Profile | null;
+    heroStats: HeroStats | null;
 
     // --- RPCs ---
     addGold: (amount: number) => Promise<void>;
@@ -255,6 +257,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [mageAppMappings, setMageAppMappings] = useState<MageAppMapping[]>([]);
     const [unhandledAuraByTheme, setUnhandledAuraByTheme] = useState<Record<string, number>>({});
     const [mageLoading, setMageLoading] = useState(true);
+
+    const [heroStats, setHeroStats] = useState<HeroStats | null>(null);
 
     // Workout State
     const [isSessionActive, setIsSessionActive] = useState(false);
@@ -676,7 +680,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 // 18: mage_themes
                 supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
                 // 19: mage_app_mappings
-                supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id)
+                supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id),
+                // 20: user_stats
+                supabase.from('user_stats').select('*').eq('id', currentUser.id).single()
             ]);
 
             const subData = results[0].data || [];
@@ -699,6 +705,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const mageData = results[17].data || [];
             const themeData = results[18].data || [];
             const mappingData = results[19].data || [];
+            const statsData = results[20].data;
 
             // --- CALCULATE PENDING AURA ---
             // Now reading directly from mage_themes as the worker updates it there directly
@@ -751,6 +758,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 setProfile(profData as Profile);
             }
 
+            if (statsData) {
+                setHeroStats(statsData as HeroStats);
+            }
+
             // --- PROCESS TEMPLE ---
             setThoughts(thoughtData);
             setSleepRecords(sleepData);
@@ -777,8 +788,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setMuscleFatigue(fatigueData);
             setRecords(recordData);
             setDecrees(decreeData);
-            setThoughts(thoughtData);
-            setSleepRecords(sleepData);
             setWaterRecords(waterData);
             setMageProjects(mageData);
             setMageThemes(themeData);
@@ -946,6 +955,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     (payload) => {
                         console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
                         fetchAll();
+                    }
+                )
+                // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
+                .on('postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'user_stats',
+                        filter: `id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        console.log('GameContext: Hero Stats updated via Realtime', payload.new);
+                        setHeroStats(payload.new as HeroStats);
                     }
                 )
                 .subscribe((status) => {
@@ -1648,6 +1670,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         },
         user,
         profile,
+        heroStats,
         addGold,
         addXp
     };

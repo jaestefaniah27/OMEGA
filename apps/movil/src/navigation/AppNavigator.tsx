@@ -9,6 +9,7 @@ import {
     TavernScreen,
     TempleScreen,
     TheatreScreen,
+    SettingsScreen,
     MarketScreen,
     ProfileScreen,
     WarTableScreen,
@@ -24,6 +25,7 @@ export type RootStackParamList = {
     Tavern: undefined;
     Temple: undefined;
     Theatre: undefined;
+    Settings: undefined;
     Market: undefined;
     Profile: undefined;
     WarTable: undefined;
@@ -50,6 +52,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Tavern" component={TavernScreen} />
             <Stack.Screen name="Temple" component={TempleScreen} />
             <Stack.Screen name="Theatre" component={TheatreScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="Market" component={MarketScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="WarTable" component={WarTableScreen} />

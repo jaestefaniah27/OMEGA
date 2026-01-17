@@ -21,6 +21,7 @@ export * from './screens/ProfileScreen';
 export * from './screens/TavernScreen';
 export * from './screens/TempleScreen';
 export * from './screens/TheatreScreen';
+export * from './screens/SettingsScreen';
 export * from './screens/WarTableScreen';
 export * from './screens/WizardTowerScreen';
 export * from './screens/ZenFireplaceScreen';

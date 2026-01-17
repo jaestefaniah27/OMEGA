@@ -319,3 +319,20 @@ export interface RitualLog {
     completed: boolean;
     definition?: DailyRitual;
 }
+
+// --- HERO SOUL SYSTEM ---
+
+export interface HeroStats {
+    id: string;
+    mastery_xp: number;
+    mastery_level: number;
+    wisdom_xp: number;
+    wisdom_level: number;
+    vigor_xp: number;
+    vigor_level: number;
+    discipline_xp: number;
+    discipline_level: number;
+    cronolitos_balance: number;
+    global_level: number;
+    updated_at: string;
+}

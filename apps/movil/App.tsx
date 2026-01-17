@@ -103,9 +103,9 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
     }
   };
 
-  const handleTheatrePress = () => {
+  const handleSettingsPress = () => {
     if (navigationRef.isReady()) {
-      navigationRef.navigate('Theatre' as any);
+      navigationRef.navigate('Settings' as any);
     }
   };
 
@@ -132,7 +132,7 @@ function AppContent({ currentRoute }: { currentRoute: string | undefined }) {
         onMapPress={handleMapPress}
         onQuickAddPress={handleQuickAddPress}
         onCastlePress={handleCastlePress}
-        onTheatrePress={handleTheatrePress}
+        onSettingsPress={handleSettingsPress}
         castleIcon={currentRoute === 'Castle' ? Calendar : Castle}
       />
     </>

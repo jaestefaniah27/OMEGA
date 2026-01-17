@@ -1,16 +1,17 @@
 import { useGame } from '../context/GameContext';
 
 export const useUserStats = () => {
-    const { profile, user, barracks } = useGame();
-    const { 
-        muscleFatigue, 
-        records, 
+    const { profile, user, barracks, heroStats } = useGame();
+    const {
+        muscleFatigue,
+        records,
         loading: barracksLoading,
-        refresh 
+        refresh
     } = barracks;
 
     return {
         profile,
+        heroStats,
         muscleFatigue,
         records,
         loading: (!profile && !!user) || barracksLoading,

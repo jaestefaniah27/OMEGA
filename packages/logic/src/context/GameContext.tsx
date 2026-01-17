@@ -26,7 +26,8 @@ import {
     ThoughtType,
     TavernWater,
     MageProject,
-    MageTheme
+    MageTheme,
+    MageAppMapping
 } from '../types/supabase';
 import { useCalendar } from '../hooks/useCalendar';
 import { showGlobalToast } from './ToastContext';
@@ -145,7 +146,6 @@ interface GameContextType {
         addWater: (amount: number) => Promise<any>;
     };
 
-    // --- MAGE TOWER DATA ---
     mageTower: {
         projects: MageProject[];
         themes: MageTheme[];
@@ -158,6 +158,9 @@ interface GameContextType {
         deleteProject: (id: string) => Promise<void>;
         addTheme: (name: string, symbol: string, color: string) => Promise<any>;
         deleteTheme: (id: string) => Promise<void>;
+        mappings: MageAppMapping[];
+        unhandledAuraByTheme: Record<string, number>;
+        canalizeAura: (projectId: string, themeId: string) => Promise<void>;
     };
 
     // --- CALENDAR INTEGRATION ---
@@ -231,9 +234,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [waterRecords, setWaterRecords] = useState<TavernWater[]>([]);
     const [tavernLoading, setTavernLoading] = useState(true);
 
-    // Mage Tower State
     const [mageProjects, setMageProjects] = useState<MageProject[]>([]);
     const [mageThemes, setMageThemes] = useState<MageTheme[]>([]);
+    const [mageAppMappings, setMageAppMappings] = useState<MageAppMapping[]>([]);
+    const [unhandledAuraByTheme, setUnhandledAuraByTheme] = useState<Record<string, number>>({});
     const [mageLoading, setMageLoading] = useState(true);
 
     // Workout State
@@ -639,7 +643,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 // 17: mage_projects
                 supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
                 // 18: mage_themes
-                supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+                supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                // 19: mage_app_mappings
+                supabase.from('mage_app_mappings').select('*').eq('user_id', currentUser.id)
             ]);
 
             const subData = results[0].data || [];
@@ -661,6 +667,34 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const waterData = results[16].data || [];
             const mageData = results[17].data || [];
             const themeData = results[18].data || [];
+            const mappingData = results[19].data || [];
+
+            // --- CALCULATE PENDING AURA ---
+            const auraByTheme: Record<string, number> = {};
+            if (profData?.last_aura_processing_at) {
+                const { data: activitySums } = await supabase
+                    .from('computer_activities')
+                    .select('app_name, duration_seconds')
+                    .eq('user_id', currentUser.id)
+                    .gt('created_at', profData.last_aura_processing_at);
+
+                if (activitySums) {
+                    activitySums.forEach(row => {
+                        const mapping = mappingData.find(m => m.app_name === row.app_name);
+                        if (mapping) {
+                            auraByTheme[mapping.theme_id] = (auraByTheme[mapping.theme_id] || 0) + (row.duration_seconds || 0);
+                        }
+                    });
+                }
+            }
+
+            // Convert seconds to "Mana units" (60s = 1 Mara)
+            Object.keys(auraByTheme).forEach(tid => {
+                auraByTheme[tid] = Math.floor(auraByTheme[tid] / 60);
+            });
+
+            setUnhandledAuraByTheme(auraByTheme);
+            setMageAppMappings(mappingData);
 
             // --- PROCESS LIBRARY ---
             const bStats: Record<string, number> = {};
@@ -1472,7 +1506,36 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             updateProject,
             deleteProject,
             addTheme,
-            deleteTheme
+            deleteTheme,
+            mappings: mageAppMappings,
+            unhandledAuraByTheme,
+            canalizeAura: async (projectId: string, themeId: string) => {
+                if (!profile) return;
+                const aura = unhandledAuraByTheme[themeId] || 0;
+                if (aura <= 0) return;
+
+                const project = mageProjects.find(p => p.id === projectId);
+                if (!project) return;
+
+                // 1. Update project mana
+                const { error: pError } = await supabase
+                    .from('mage_projects')
+                    .update({ mana_amount: project.mana_amount + aura })
+                    .eq('id', projectId);
+
+                if (pError) throw pError;
+
+                // 2. Update last_aura_processing_at to NOW
+                const { error: profError } = await supabase
+                    .from('profiles')
+                    .update({ last_aura_processing_at: new Date().toISOString() })
+                    .eq('id', profile.id);
+
+                if (profError) throw profError;
+
+                await fetchAll();
+                showGlobalToast(`¡${aura} de Aura canalizada con éxito!`, 'success');
+            }
         },
         calendar,
         workout: {

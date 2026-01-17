@@ -26,6 +26,9 @@ export const useMageTower = () => {
         createTheme: mageTower.addTheme,
         deleteTheme: mageTower.deleteTheme,
         loading: mageTower.loading,
-        refresh: mageTower.refresh
+        refresh: mageTower.refresh,
+        mappings: mageTower.mappings,
+        unhandledAuraByTheme: mageTower.unhandledAuraByTheme,
+        canalizeAura: mageTower.canalizeAura
     };
 };

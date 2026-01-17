@@ -37,7 +37,11 @@ const IconRenderer = ({ name, size = 18, color = "#4834d4" }: { name: string, si
 };
 
 export const WizardTowerScreen: React.FC = () => {
-    const { projects, themes, createProject, updateProject, deleteProject, archiveProject, createTheme, deleteTheme, loading } = useMageTower();
+    const {
+        projects, themes, createProject, updateProject, deleteProject,
+        archiveProject, createTheme, deleteTheme, loading,
+        unhandledAuraByTheme, canalizeAura
+    } = useMageTower();
 
     // Project Modal State
     const [projectModalVisible, setProjectModalVisible] = useState(false);
@@ -56,7 +60,10 @@ export const WizardTowerScreen: React.FC = () => {
 
     // Tab State
     const [viewMode, setViewMode] = useState<'LABORATORIO' | 'REGISTROS'>('LABORATORIO');
-    const [unhandledAura, setUnhandledAura] = useState(0);
+
+    // Calculate total aura from all themes
+    const totalAura = Object.values(unhandledAuraByTheme || {}).reduce((acc, val) => acc + val, 0);
+
     const horizontalScrollRef = useRef<ScrollView>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -147,6 +154,7 @@ export const WizardTowerScreen: React.FC = () => {
         const theme = themes.find(t => t.id === project.theme_id);
         const iconName = theme?.symbol || 'Sparkles';
         const color = theme?.color || '#4834d4';
+        const projectAura = theme ? (unhandledAuraByTheme[theme.id] || 0) : 0;
 
         return (
             <TouchableOpacity
@@ -162,6 +170,15 @@ export const WizardTowerScreen: React.FC = () => {
                             <Text style={styles.projectName}>{project.name}</Text>
                             <Text style={styles.projectScope}>{theme?.name || 'Ámbito Desconocido'}</Text>
                         </View>
+                        {projectAura > 0 && (
+                            <TouchableOpacity
+                                style={styles.projectAuraBadge}
+                                onPress={() => canalizeAura(project.id, theme!.id)}
+                            >
+                                <Zap size={14} color="#FFD700" />
+                                <Text style={styles.projectAuraText}>+{projectAura}</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                     <View style={styles.manaSection}>
                         <Zap size={14} color="#ffd700" />
@@ -265,27 +282,27 @@ export const WizardTowerScreen: React.FC = () => {
                             <View style={styles.auraInfoRow}>
                                 <View style={styles.auraLabelGroup}>
                                     <Flame size={20} color="#FFD700" />
-                                    <Text style={styles.auraLabel}>AURA LATENTE</Text>
+                                    <Text style={styles.auraLabel}>AURA LATENTE TOTAL</Text>
                                 </View>
                                 <View style={styles.auraValueGroup}>
-                                    <Text style={styles.auraValue}>{unhandledAura}</Text>
+                                    <Text style={styles.auraValue}>{totalAura}</Text>
                                     <Text style={styles.auraUnit}>Mana</Text>
                                 </View>
                             </View>
 
                             <TouchableOpacity
-                                style={[styles.canalizeBtn, unhandledAura === 0 && styles.canalizeBtnDisabled]}
+                                style={[styles.canalizeBtn, totalAura === 0 && styles.canalizeBtnDisabled]}
                                 onPress={() => {
-                                    if (unhandledAura > 0) {
-                                        showCustomAlert("Canalizar Aura", `Tienes ${unhandledAura} puntos de aura listos para ser transmutados en progreso para tus investigaciones.`);
+                                    if (totalAura > 0) {
+                                        showCustomAlert("Canalizar Energía", "Elige una investigación vinculada para transmutar su aura específica.");
                                     } else {
                                         showZeroAuraBubble();
                                     }
                                 }}
                             >
-                                <Zap size={16} color={unhandledAura === 0 ? "#7f8c8d" : "#FFD700"} />
-                                <Text style={[styles.canalizeBtnText, unhandledAura === 0 && { color: '#7f8c8d' }]}>
-                                    CANALIZAR EN ARTEFACTO
+                                <Zap size={16} color={totalAura === 0 ? "#7f8c8d" : "#FFD700"} />
+                                <Text style={[styles.canalizeBtnText, totalAura === 0 && { color: '#7f8c8d' }]}>
+                                    CANALIZAR ARTEFACTOS
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -1230,5 +1247,21 @@ const styles = StyleSheet.create({
         borderRightWidth: 1,
         borderBottomWidth: 1,
         borderColor: '#d4af37',
+    },
+    projectAuraBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    projectAuraText: {
+        color: '#FFD700',
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 4,
     }
 });

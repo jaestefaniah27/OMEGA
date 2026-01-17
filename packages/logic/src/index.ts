@@ -1,4 +1,5 @@
 export * from './context/GameContext';
+export * from './context/WorkoutTimerContext';
 export * from './context/ToastContext';
 export * from './hooks/useActiveWorkout';
 export * from './hooks/useCalendar';

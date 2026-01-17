@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '..';
 import { Timer, X, Plus, Save, Trash2, History, ChevronRight } from 'lucide-react-native';
-import { useActiveWorkout, useExercises, Exercise } from '@omega/logic';
+import { useActiveWorkout, useExercises, Exercise, useWorkoutTimer } from '@omega/logic';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,13 +25,13 @@ interface ActiveWorkoutModalProps {
 export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible, onClose }) => {
     const {
         isSessionActive,
-        elapsedSeconds,
         currentSets,
         addSet,
         finishSession,
         isResting,
         setIsResting
     } = useActiveWorkout();
+    const { elapsedSeconds, formatTime } = useWorkoutTimer();
 
     const [showExercisePicker, setShowExercisePicker] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -41,12 +41,6 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
     const [reps, setReps] = useState('');
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
-    const formatTime = (seconds: number) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hrs > 0 ? hrs + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
 
     const handleAddSet = () => {
         if (!selectedExercise || !weight || !reps) return;
@@ -68,14 +62,14 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
 
     return (
         <Modal visible={visible} animationType="slide" transparent={false}>
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.container}
             >
                 <View style={styles.header}>
                     <View style={styles.timerContainer}>
                         <Timer size={20} color="#FFD700" />
-                        <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
+                        <Text style={styles.timerText}>{formatTime}</Text>
                     </View>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <X size={24} color="#fff" />
@@ -109,8 +103,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                     )}
 
                     {!selectedExercise && (
-                        <MedievalButton 
-                            title="Añadir Técnica" 
+                        <MedievalButton
+                            title="Añadir Técnica"
                             onPress={() => setShowExercisePicker(true)}
                             variant="primary"
                             style={{ marginTop: 20 }}
@@ -128,7 +122,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                             <View style={styles.inputRow}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>PESO (KG)</Text>
-                                    <TextInput 
+                                    <TextInput
                                         style={styles.input}
                                         value={weight}
                                         onChangeText={setWeight}
@@ -138,7 +132,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>REPS</Text>
-                                    <TextInput 
+                                    <TextInput
                                         style={styles.input}
                                         value={reps}
                                         onChangeText={setReps}
@@ -146,7 +140,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                                         placeholder="0"
                                     />
                                 </View>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={styles.addButton}
                                     onPress={handleAddSet}
                                 >
@@ -158,8 +152,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                 </ScrollView>
 
                 <View style={styles.footer}>
-                    <MedievalButton 
-                        title="FINALIZAR MISIÓN" 
+                    <MedievalButton
+                        title="FINALIZAR MISIÓN"
                         onPress={handleFinish}
                         style={{ width: '100%' }}
                     />
@@ -170,7 +164,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                     <View style={styles.pickerOverlay}>
                         <View style={styles.pickerContainer}>
                             <View style={styles.pickerHeader}>
-                                <TextInput 
+                                <TextInput
                                     style={styles.pickerSearch}
                                     placeholder="Buscar ejercicio..."
                                     placeholderTextColor="rgba(255,255,255,0.5)"
@@ -183,8 +177,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({ visible,
                             </View>
                             <ScrollView style={styles.pickerList}>
                                 {exercises.map(ex => (
-                                    <TouchableOpacity 
-                                        key={ex.id} 
+                                    <TouchableOpacity
+                                        key={ex.id}
                                         style={styles.pickerItem}
                                         onPress={() => {
                                             setSelectedExercise(ex);

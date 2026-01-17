@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GameHUD } from '@omega/ui';
-import { GameProvider, useGame, ToastProvider } from '@omega/logic';
+import { GameProvider, useGame, ToastProvider, WorkoutTimerProvider, useWorkoutTimer } from '@omega/logic';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Timer, Castle, Calendar } from 'lucide-react-native';
@@ -12,7 +12,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RootStackParamList } from './src/navigation/AppNavigator';
 import { MobilePlatformProvider } from './src/services/MobilePlatformProvider';
-// Importamos el hook del espía
 import { useDesktopSpy } from './src/hooks/useDesktopSpy';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -22,6 +21,22 @@ export default function App() {
 
   // 👁️ Activamos el espía
   const { activeApp, windowTitle } = useDesktopSpy();
+
+  // 🧪 Performance: Long Task Detector
+  React.useEffect(() => {
+    let lastTime = performance.now();
+    const check = () => {
+      const now = performance.now();
+      const diff = now - lastTime;
+      if (diff > 100) { // If a frame takes > 100ms, the UI is freezing
+        console.warn(`[Performance] 💀 UNRESPONSIVE THREAD: ${diff.toFixed(0)} ms!`);
+      }
+      lastTime = now;
+      requestAnimationFrame(check);
+    };
+    const frame = requestAnimationFrame(check);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   return (
     // IMPORTANTE: Todo debe estar dentro de este GestureHandlerRootView
@@ -36,9 +51,11 @@ export default function App() {
           >
             <ToastProvider>
               <GameProvider>
-                <AppNavigator />
-                <StatusBar style="light" />
-                <AppContent currentRoute={currentRoute} />
+                <WorkoutTimerProvider>
+                  <AppNavigator />
+                  <StatusBar style="light" />
+                  <AppContent currentRoute={currentRoute} />
+                </WorkoutTimerProvider>
               </GameProvider>
             </ToastProvider>
           </NavigationContainer>
@@ -60,6 +77,7 @@ export default function App() {
 
 const WorkoutHeader: React.FC<{ onWorkoutPress: () => void; currentRoute: string | undefined }> = ({ onWorkoutPress, currentRoute }) => {
   const { workout } = useGame();
+  const { formatTime } = useWorkoutTimer();
   const EPIC_QUOTES = ["FORJANDO LEYENDA", "ACERO Y SANGRE", "VOLUNTAD DE HIERRO", "CAMINO AL VALHALLA", "LATIDO GUERRERO", "FORJANDO AL TITÁN", "NÉMESIS DEL LÍMITE", "SUDOR Y GLORIA"];
   const [quote] = React.useState(() => EPIC_QUOTES[Math.floor(Math.random() * EPIC_QUOTES.length)]);
 
@@ -69,7 +87,7 @@ const WorkoutHeader: React.FC<{ onWorkoutPress: () => void; currentRoute: string
     <TouchableOpacity style={styles.workoutHeader} onPress={onWorkoutPress} activeOpacity={0.9}>
       <View style={styles.timerContainer}>
         <Timer size={14} color="#FFD700" />
-        <Text style={styles.timerText}>{workout.formatTime}</Text>
+        <Text style={styles.timerText}>{formatTime}</Text>
       </View>
       <Text style={styles.epicQuote}>{quote}</Text>
     </TouchableOpacity>

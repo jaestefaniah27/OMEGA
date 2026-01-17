@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo } from 'react';
 import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -104,8 +104,7 @@ interface GameContextType {
     // --- WORKOUT DATA ---
     workout: {
         isSessionActive: boolean;
-        elapsedSeconds: number;
-        formatTime: string;
+        startTime: string | null;
         setsLog: any[];
         startSession: (routineId: string | null, exercises: any[]) => Promise<void>;
         finishSession: () => Promise<boolean>;
@@ -262,16 +261,41 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // Workout State
     const [isSessionActive, setIsSessionActive] = useState(false);
-    const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [startTime, setStartTime] = useState<string | null>(null);
     const [workoutRoutineId, setWorkoutRoutineId] = useState<string | null>(null);
     const [setsLog, setSetsLog] = useState<any[]>([]);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
     const WORKOUT_STORAGE_KEY = '@omega_active_workout_v2';
 
     // Initial Load Flag to prevent double-fetch issues or hydration flicker
     const isHydrated = useRef(false);
     const lastProcessedSync = useRef<string | null>(null);
+    const lastFullSyncRef = useRef<number>(0);
+    const isFetching = useRef(false);
+    const renderCount = useRef(0);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const renderBurstRef = useRef({ count: 0, lastReset: Date.now() });
+
+    // --- DEBUGGING HELPERS ---
+    const traceFetch = (source: string, isStart: boolean, startTime?: number) => {
+        if (isStart) {
+            console.log(`[GameSync] 🚀 START fetchAll | Source: ${source} | Time: ${new Date().toLocaleTimeString()}`);
+            return performance.now();
+        } else {
+            const duration = (performance.now() - (startTime || 0)).toFixed(2);
+            console.log(`[GameSync] ✅ END   fetchAll | Source: ${source} | Duration: ${duration}ms`);
+        }
+    };
+
+    // Helper to time individual queries
+    const timeQuery = async (name: string, query: any): Promise<any> => {
+        const start = performance.now();
+        const res = await query;
+        const duration = performance.now() - start;
+        if (duration > 300) { // Log if query takes > 300ms
+            console.log(`[Slow Query] 🐢 ${name}: ${duration.toFixed(0)}ms`);
+        }
+        return res;
+    };
 
     const {
         rituals: habitRituals,
@@ -340,7 +364,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const saveToLocal = async (
+    const saveToLocal = (
         libData: { subjects: any[], books: any[], customColors: any[], bookStats: any },
         theatData: { activities: any[], movies: any[], series: any[], activityStats: any },
         barracksData: { routines: any[], history: any[], muscleFatigue: any, records: any },
@@ -350,22 +374,37 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         mageData: { projects: MageProject[], themes: MageTheme[] },
         profData: any
     ) => {
-        try {
-            const dump = {
-                lib: libData,
-                theat: theatData,
-                barracks: barracksData,
-                castle: castleData,
-                temple: templeData,
-                tavern: tavernData,
-                mageTower: mageData,
-                prof: profData,
-                timestamp: Date.now()
-            };
-            await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(dump));
-        } catch (e) {
-            console.error('Offline Mode: Failed to save local data', e);
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
         }
+
+        saveTimeoutRef.current = setTimeout(async () => {
+            try {
+                const serializationStart = performance.now();
+                const dump = {
+                    lib: libData,
+                    theat: theatData,
+                    barracks: barracksData,
+                    castle: castleData,
+                    temple: templeData,
+                    tavern: tavernData,
+                    mageTower: mageData,
+                    prof: profData,
+                    timestamp: Date.now()
+                };
+                const payload = JSON.stringify(dump);
+                const serializationTime = (performance.now() - serializationStart).toFixed(2);
+
+                const sizeInKB = (payload.length / 1024).toFixed(2);
+                console.log(`[Storage] 💾 Saving to Local (Debounced) | Size: ${sizeInKB} KB | Serialization: ${serializationTime}ms`);
+
+                await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, payload);
+            } catch (e) {
+                console.error('Offline Mode: Failed to save local data', e);
+            } finally {
+                saveTimeoutRef.current = null;
+            }
+        }, 2000); // 2 second debounce
     };
 
     const clearState = async () => {
@@ -399,45 +438,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // --- WORKOUT LOGIC ---
     useEffect(() => {
-        const loadWorkout = async () => {
+        const recoverWorkout = async () => {
             const saved = await AsyncStorage.getItem(WORKOUT_STORAGE_KEY);
             if (saved) {
                 const data = JSON.parse(saved);
+                setIsSessionActive(true);
                 setStartTime(data.startTime);
                 setWorkoutRoutineId(data.routineId);
-                setSetsLog(data.sets);
-                setIsSessionActive(true);
-                const start = new Date(data.startTime).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+                setSetsLog(data.setsLog || []);
             }
         };
-        loadWorkout();
+        recoverWorkout();
     }, []);
-
-    useEffect(() => {
-        if (isSessionActive && startTime) {
-            timerRef.current = setInterval(() => {
-                const start = new Date(startTime).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
-            }, 1000);
-        } else {
-            if (timerRef.current) clearInterval(timerRef.current);
-        }
-        return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [isSessionActive, startTime]);
-
-    useEffect(() => {
-        if (isSessionActive && startTime) {
-            const state = { startTime, routineId: workoutRoutineId, sets: setsLog };
-            AsyncStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(state));
-        }
-    }, [isSessionActive, startTime, workoutRoutineId, setsLog]);
 
     const startSession = async (routineId: string | null = null, initialExercises: any[] = []) => {
         const now = new Date().toISOString();
         setStartTime(now);
         setWorkoutRoutineId(routineId);
-        setElapsedSeconds(0);
         setIsSessionActive(true);
 
         const initialSets: any[] = [];
@@ -516,8 +533,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const addSet = (exerciseId: string, exerciseName: string) => {
         const newSet = {
             id: Math.random().toString(36).substr(2, 9),
-            exercise_id: exerciseId, exercise_name: exerciseName,
-            weight: 0, reps: 0, type: 'normal', completed: false
+            exercise_id: exerciseId,
+            exercise_name: exerciseName,
+            weight: 0,
+            reps: 0,
+            type: 'normal',
+            completed: false
         };
         setSetsLog(prev => [...prev, newSet]);
     };
@@ -528,15 +549,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const removeSet = (id: string) => {
         setSetsLog(prev => prev.filter(s => s.id !== id));
-    };
-
-    const formatTime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = seconds % 60;
-        return h > 0
-            ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-            : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
     const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
@@ -626,63 +638,103 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // --- FETCH ---
-    const fetchAll = async () => {
+    const fetchHeroStats = async () => {
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        if (!currentUser) return;
+
+        try {
+            const [profRes, statsRes] = await Promise.all([
+                timeQuery('profiles', supabase.from('profiles').select('*').eq('id', currentUser.id).single()),
+                timeQuery('user_stats', supabase.from('user_stats').select('*').eq('id', currentUser.id).single())
+            ]);
+
+            if (profRes.data) setProfile(profRes.data as Profile);
+            if (statsRes.data) setHeroStats(statsRes.data as HeroStats);
+
+            console.log('[GameSync] ⚡ Hero Stats Refreshed (Lightweight)');
+        } catch (e) {
+            console.error('fetchHeroStats Error', e);
+        }
+    };
+
+    const fetchAll = async (source = 'Unknown') => {
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        if (!currentUser) return;
+
+        // Stabilize User State: Only update if the ID has actually changed
+        // This prevents the Realtime useEffect from tearing down connection on every fetch
+        if (currentUser.id !== user?.id) {
+            setUser(currentUser);
+        }
+
+        if (isFetching.current) {
+            console.log(`[GameSync] ⚠️  Ignored concurrent fetch request from: ${source}`);
+            return;
+        }
+
+        const now = Date.now();
+        const throttleLimit = 60000; // 1 minute
+        if (source === 'Realtime Profile Sync' && (now - lastFullSyncRef.current) < throttleLimit) {
+            console.log(`[GameSync] 🛡️ Throttled full fetchAll from: ${source}. Using lightweight refresh.`);
+            fetchHeroStats();
+            return;
+        }
+        lastFullSyncRef.current = now;
+
+        const startTime = traceFetch(source, true);
+        isFetching.current = true;
+
         try {
             if (!isHydrated.current) {
-                setLibraryLoading(true);
-                setTheatreLoading(true);
-                setBarracksLoading(true);
                 setMageLoading(true);
             }
 
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            setUser(currentUser);
-            if (!currentUser) return;
+            // setUser(currentUser); // REMOVED: Handled above with stability check
 
             // PARALLEL FETCH
             const results = await Promise.all([
                 // 0: subjects
-                supabase.from('subjects').select('*').order('created_at', { ascending: false }),
+                timeQuery('subjects', supabase.from('subjects').select('*').order('created_at', { ascending: false })),
                 // 1: books
-                supabase.from('books').select('*').order('created_at', { ascending: false }),
+                timeQuery('books', supabase.from('books').select('*').order('created_at', { ascending: false })),
                 // 2: custom_colors
-                supabase.from('custom_colors').select('*').order('created_at', { ascending: false }),
+                timeQuery('custom_colors', supabase.from('custom_colors').select('*').order('created_at', { ascending: false })),
                 // 3: study_sessions
-                supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null),
+                timeQuery('study_sessions', supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null)),
                 // 4: theatre_activities
-                supabase.from('theatre_activities').select('*').order('created_at', { ascending: false }),
+                timeQuery('theatre_activities', supabase.from('theatre_activities').select('*').order('created_at', { ascending: false })),
                 // 5: theatre_movies
-                supabase.from('theatre_movies').select('*').order('created_at', { ascending: false }),
+                timeQuery('theatre_movies', supabase.from('theatre_movies').select('*').order('created_at', { ascending: false })),
                 // 6: theatre_series
-                supabase.from('theatre_series').select('*').order('created_at', { ascending: false }),
+                timeQuery('theatre_series', supabase.from('theatre_series').select('*').order('created_at', { ascending: false })),
                 // 7: theatre_seasons
-                supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true }),
+                timeQuery('theatre_seasons', supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true })),
                 // 8: profiles
-                supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
+                timeQuery('profiles', supabase.from('profiles').select('*').eq('id', currentUser.id).single()),
                 // 9: routines
-                supabase.from('routines').select(`*, exercises:routine_exercises(*, exercise:exercises(*))`).eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('routines', supabase.from('routines').select(`*, exercises:routine_exercises(*, exercise:exercises(*))`).eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 10: workout_history
-                supabase.from('workout_sessions').select(`*, routine:routines(name), sets:workout_sets(weight_kg, reps)`).eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(5),
+                timeQuery('workout_history', supabase.from('workout_sessions').select(`*, routine:routines(name), sets:workout_sets(weight_kg, reps)`).eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(5)),
                 // 11: muscle_fatigue
-                supabase.rpc('get_muscle_heat_map', { user_uuid: currentUser.id }),
+                timeQuery('muscle_fatigue', supabase.rpc('get_muscle_heat_map', { user_uuid: currentUser.id })),
                 // 12: personal_records
-                supabase.rpc('get_personal_records', { user_uuid: currentUser.id }),
+                timeQuery('personal_records', supabase.rpc('get_personal_records', { user_uuid: currentUser.id })),
                 // 13: royal_decrees
-                supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('royal_decrees', supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 14: temple_thoughts
-                supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('temple_thoughts', supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 15: temple_sleep
-                supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('temple_sleep', supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 16: tavern_water
-                supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }),
+                timeQuery('tavern_water', supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false })),
                 // 17: mage_projects
-                supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('mage_projects', supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 18: mage_themes
-                supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                timeQuery('mage_themes', supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
                 // 19: mage_app_mappings
-                supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id),
+                timeQuery('app_aura_mappings', supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id)),
                 // 20: user_stats
-                supabase.from('user_stats').select('*').eq('id', currentUser.id).single()
+                timeQuery('user_stats', supabase.from('user_stats').select('*').eq('id', currentUser.id).single())
             ]);
 
             const subData = results[0].data || [];
@@ -734,10 +786,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setCustomColors(colData);
             setBookStats(bStats);
 
-            // --- PROCESS THEATRE ---
+            // --- PROCESS THEATRE (Optimized O(N)) ---
+            const seasonsMap: Record<string, any[]> = {};
+            seasData.forEach((season: any) => {
+                const sId = season.series_id;
+                if (!seasonsMap[sId]) seasonsMap[sId] = [];
+                seasonsMap[sId].push(season);
+            });
+
             const seriesWithSeasons = serData.map((s: any) => ({
                 ...s,
-                seasons: seasData.filter((season: any) => season.series_id === s.id)
+                seasons: seasonsMap[s.id] || []
             }));
 
             const tStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
@@ -855,6 +914,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setCastleLoading(false);
             setMageLoading(false);
             isHydrated.current = true;
+            isFetching.current = false;
+            traceFetch(source, false, startTime);
         }
     };
 
@@ -876,8 +937,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         const intervalId = setInterval(() => {
             if (AppState.currentState === 'active') {
-                console.log('GameContext: Periodic Poll...');
-                fetchAll();
+                fetchAll('Periodic Poll');
             }
         }, 120000); // 2 minutes
 
@@ -890,7 +950,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     setUser(session.user);
                     // Force refresh on initial load or sign in
                     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                        fetchAll();
+                        fetchAll('Auth Event');
                     }
                 }
             } else if (event === 'SIGNED_OUT') {
@@ -911,12 +971,37 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []);
 
+    // Track Renders
+    renderCount.current++;
+    if (renderCount.current % 10 === 0) {
+        console.log(`[Performance] GameProvider has rendered ${renderCount.current} times`);
+    }
+
+    // --- RENDER LOOP DETECTION ---
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const elapsed = now - renderBurstRef.current.lastReset;
+            const currentTotal = renderCount.current;
+            const burst = currentTotal - renderBurstRef.current.count;
+
+            if (burst > 30) { // More than 30 renders in 5 seconds
+                console.warn(`[Performance] 🛑 RENDER BURST DETECTED! ${burst} renders in ${Math.round(elapsed / 1000)}s. Potential loop!`);
+            }
+
+            renderBurstRef.current = { count: currentTotal, lastReset: now };
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, []);
+
     // 5. Realtime Subscription (Optimized Master Sync)
     // This effect re-runs when 'user' changes, ensuring we are subscribed to the correct profile.
     useEffect(() => {
         if (!user) return;
 
         let channel: any;
+        let auraThrottleTimeout: any;
 
         const setupChannel = async () => {
             console.log(`GameContext: Setting up Realtime sync for user: ${user.id}`);
@@ -938,8 +1023,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
                             // Only fetch if the new timestamp is physically different/newer
                             if (newTime !== lastTime) {
-                                console.log(`GameContext: Sync triggered (${newTime} vs ${lastTime})`);
-                                fetchAll();
+                                fetchHeroStats();
                             }
                         }
                     }
@@ -953,8 +1037,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         filter: `user_id=eq.${user.id}`
                     },
                     (payload) => {
-                        console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
-                        fetchAll();
+                        if (auraThrottleTimeout) return;
+
+                        console.log('GameContext: Mage Theme updated, throttling refresh...');
+                        auraThrottleTimeout = setTimeout(() => {
+                            fetchAll('Realtime Aura Sync (Throttled)');
+                            auraThrottleTimeout = null;
+                        }, 30000); // 30 seconds throttle for aura increases
                     }
                 )
                 // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
@@ -966,7 +1055,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         filter: `id=eq.${user.id}`
                     },
                     (payload) => {
-                        console.log('GameContext: Hero Stats updated via Realtime', payload.new);
+                        console.log('GameContext: Hero Stats updated via Realtime');
                         setHeroStats(payload.new as HeroStats);
                     }
                 )
@@ -983,7 +1072,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 supabase.removeChannel(channel);
             }
         };
-    }, [user]);
+    }, [user?.id]); // DEPENDENCY CHANGE: Only reconnect if ID changes, not object ref
 
     // --- RPC HELPERS ---
     const addGold = async (amount: number) => {
@@ -1498,7 +1587,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         await fetchAll();
     };
 
-    const value: GameContextType = {
+    const value: GameContextType = useMemo(() => ({
         library: {
             subjects,
             books,
@@ -1650,8 +1739,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         calendar,
         workout: {
             isSessionActive,
-            elapsedSeconds,
-            formatTime: formatTime(elapsedSeconds),
+            startTime,
             setsLog,
             startSession,
             finishSession,
@@ -1673,7 +1761,29 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         heroStats,
         addGold,
         addXp
-    };
+    }), [
+        subjects, books, customColors, bookStats, libraryLoading,
+        activities, movies, series, activityStats, theatreLoading,
+        routines, history, muscleFatigue, records, barracksLoading,
+        decrees, castleLoading,
+        thoughts, sleepRecords, templeLoading,
+        waterRecords, tavernLoading,
+        mageProjects, mageThemes, mageLoading, mageAppMappings, unhandledAuraByTheme,
+        profile, calendar,
+        isSessionActive, setsLog,
+        habitRituals, habitLogs, habitsLoading,
+        // Functions usually don't change but included for completeness if they close over state props
+        addSubject, updateSubject, addBook, updateBook, saveCustomColor,
+        addActivity, updateActivity, addMovie, updateMovie, addSeries, updateSeries, addSeason, updateSeason,
+        createRoutine, deleteRoutine, addExerciseToRoutine, removeExerciseFromRoutine, updateRoutineExercise,
+        addDecree, updateDecree, deleteDecree, checkDecreeProgress,
+        addThought, resolveThought, addSleep,
+        addWater,
+        addProject, updateProject, deleteProject, addTheme, deleteTheme, deleteMapping,
+        startSession, finishSession, addSet, updateSet, removeSet,
+        refreshHabits, toggleHabit, addRitual,
+        checkHabitProgressInternal, user, heroStats, addGold, addXp
+    ]);
 
     return (
         <GameContext.Provider value={value}>

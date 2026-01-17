@@ -265,5 +265,24 @@ export interface MageTheme {
     name: string;
     symbol: string;
     color: string;
+    pending_aura: number;
+    created_at: string;
+}
+
+export interface WorkerCommand {
+    id: string;
+    user_id: string;
+    command_type: string;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED';
+    payload: any;
+    response: any;
+    created_at: string;
+}
+
+export interface AppAuraMapping {
+    id: string;
+    user_id: string;
+    process_name: string;
+    theme_id: string;
     created_at: string;
 }

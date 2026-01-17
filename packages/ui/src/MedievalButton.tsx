@@ -12,9 +12,10 @@ import {
 interface MedievalButtonProps {
     onPress: () => void;
     title: string;
-    variant?: 'primary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'danger';
     style?: ViewStyle;
     disabled?: boolean;
+    icon?: React.ReactNode;
 }
 
 /**
@@ -27,19 +28,22 @@ export const MedievalButton: React.FC<MedievalButtonProps> = ({
     title,
     variant = 'primary',
     style,
-    disabled
+    disabled,
+    icon
 }) => {
     const isPrimary = variant === 'primary';
-
+    const isSecondary = variant === 'secondary';
     const containerStyle = [
         styles.button,
-        isPrimary ? styles.primary : styles.danger,
+        styles.button,
+        isPrimary ? styles.primary : (isSecondary ? styles.secondary : styles.danger),
         disabled && styles.disabled,
         style
     ];
 
     const content = (
         <View style={styles.innerContainer}>
+            {icon && <View style={styles.iconContainer}>{icon}</View>}
             <Text style={[styles.text, disabled && styles.disabledText]}>{title.toUpperCase()}</Text>
         </View>
     );
@@ -85,11 +89,19 @@ const styles = StyleSheet.create({
     danger: {
         backgroundColor: '#8b4513', // Wood placeholder
     },
+    secondary: {
+        backgroundColor: '#2c3e50', // Dark Blue placeholder
+        borderColor: '#C0C0C0', // Silver border
+    },
     innerContainer: {
+        flexDirection: 'row',
         paddingVertical: 12,
         paddingHorizontal: 10,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    iconContainer: {
+        marginRight: 8,
     },
     text: {
         color: '#F5E6C6', // Papyrus color

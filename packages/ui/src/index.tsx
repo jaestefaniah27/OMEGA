@@ -9,6 +9,7 @@ export * from './ManualColorPicker';
 export * from './components/RoyalDecreeModal';
 export * from './components/ActiveWorkoutModal';
 export * from './components/MuscleHeatMap';
+export * from './components/AuraChannelingModal';
 
 // Screens
 export * from './screens/BarracksScreen';

@@ -161,6 +161,7 @@ interface GameContextType {
         mappings: MageAppMapping[];
         unhandledAuraByTheme: Record<string, number>;
         canalizeAura: (projectId: string, themeId: string) => Promise<void>;
+        deleteMapping: (id: string) => Promise<void>;
     };
 
     // --- CALENDAR INTEGRATION ---
@@ -645,7 +646,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 // 18: mage_themes
                 supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
                 // 19: mage_app_mappings
-                supabase.from('mage_app_mappings').select('*').eq('user_id', currentUser.id)
+                supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id)
             ]);
 
             const subData = results[0].data || [];
@@ -1413,6 +1414,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         await fetchAll();
     };
 
+    const deleteMapping = async (id: string) => {
+        try {
+            const { error } = await supabase.from('app_aura_mappings').delete().eq('id', id);
+            if (error) throw error;
+            await fetchAll();
+            showGlobalToast('Canalización eliminada', 'success');
+        } catch (e: any) {
+            console.error(e);
+            showGlobalToast('Error al eliminar canalización', 'error');
+        }
+    };
+
     const addTheme = async (name: string, symbol: string, color: string) => {
         if (!user) return;
         const { data, error } = await supabase.from('mage_themes').insert([{ name, symbol, color, user_id: user.id }]).select().single();
@@ -1509,6 +1522,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             deleteTheme,
             mappings: mageAppMappings,
             unhandledAuraByTheme,
+            deleteMapping,
             canalizeAura: async (projectId: string, themeId: string) => {
                 if (!profile) return;
                 const aura = unhandledAuraByTheme[themeId] || 0;

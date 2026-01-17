@@ -14,13 +14,13 @@ import {
     DeviceEventEmitter,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard, ManualColorPicker } from '..';
+import { MedievalButton, ParchmentCard, ManualColorPicker, AuraChannelingModal } from '..';
 import { useMageTower } from '@omega/logic';
 import {
     Sparkles, Code, Cpu, Book, PenTool, Plus, X, Zap,
     FlaskConical, FlaskRound, Music, Palette, Hammer,
     Sword, Shield, Scroll, Map, Flame, Droplet, Star,
-    Moon, Sun, Heart, Trophy, Target, Rocket, Settings
+    Moon, Sun, Heart, Trophy, Target, Rocket, Settings, Monitor
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -40,7 +40,7 @@ export const WizardTowerScreen: React.FC = () => {
     const {
         projects, themes, createProject, updateProject, deleteProject,
         archiveProject, createTheme, deleteTheme, loading,
-        unhandledAuraByTheme, canalizeAura
+        unhandledAuraByTheme, canalizeAura, mappings, deleteMapping
     } = useMageTower();
 
     // Project Modal State
@@ -57,6 +57,7 @@ export const WizardTowerScreen: React.FC = () => {
     const [newThemeSymbol, setNewThemeSymbol] = useState('Sparkles');
     const [newThemeColor, setNewThemeColor] = useState('#4834d4');
     const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
+    const [auraModalVisible, setAuraModalVisible] = useState(false);
 
     // Tab State
     const [viewMode, setViewMode] = useState<'LABORATORIO' | 'REGISTROS'>('LABORATORIO');
@@ -338,7 +339,64 @@ export const WizardTowerScreen: React.FC = () => {
                                 <Settings size={20} color="#3d2b1f" />
                                 <Text style={styles.cardTitle}>MAESTRÍA DE ÁMBITOS</Text>
                             </View>
-                            <Text style={styles.cardDesc}>Define los pilares de tu poder. Configura iconos y colores para tus diferentes tipos de ámbitos místicos usando el botón (+).</Text>
+                            <Text style={styles.cardDesc}>Define los pilares de tu poder y canaliza energía de tus herramientas.</Text>
+
+                            {/* --- MAPPINGS LIST --- */}
+                            {mappings && mappings.length > 0 && (
+                                <View style={styles.mappingsList}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                                        <Text style={styles.subHeader}>CANALIZACIONES ACTIVAS</Text>
+                                        <View style={{ backgroundColor: '#4CAF50', width: 8, height: 8, borderRadius: 4, marginLeft: 6 }} />
+                                    </View>
+
+                                    {mappings.map(m => {
+                                        const theme = themes.find(t => t.id === m.theme_id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={m.id}
+                                                style={[styles.mappingItem, { borderLeftColor: theme?.color || '#ccc' }]}
+                                                onLongPress={() => {
+                                                    showCustomAlert(
+                                                        "Gestionar Canalización",
+                                                        `¿Qué deseas hacer con la conexión de "${m.process_name}"?`,
+                                                        [
+                                                            { text: "Cancelar", style: "cancel", onPress: () => setCustomAlertVisible(false) },
+                                                            {
+                                                                text: "Romper Vínculo",
+                                                                style: "destructive",
+                                                                onPress: () => {
+                                                                    deleteMapping(m.id!);
+                                                                    setCustomAlertVisible(false);
+                                                                }
+                                                            }
+                                                        ]
+                                                    )
+                                                }}
+                                            >
+                                                <View style={styles.mappingLeft}>
+                                                    <Monitor size={14} color="#3d2b1f" />
+                                                    <Text style={styles.mappingApp}>{m.process_name}</Text>
+                                                </View>
+                                                <View style={styles.mappingArrow}>
+                                                    <Zap size={10} color="rgba(61,43,31,0.3)" />
+                                                </View>
+                                                <View style={styles.mappingRight}>
+                                                    <IconRenderer name={theme?.symbol || 'Sparkles'} color={theme?.color} size={14} />
+                                                    <Text style={[styles.mappingTheme, { color: theme?.color }]}>{theme?.name}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        )
+                                    })}
+                                </View>
+                            )}
+
+                            <MedievalButton
+                                title={mappings.length > 0 ? "AÑADIR NUEVA CONEXIÓN" : "CONFIGURAR CANALIZACIÓN"}
+                                onPress={() => setAuraModalVisible(true)}
+                                variant="secondary"
+                                icon={<Zap size={16} color="#FFD700" />}
+                                style={{ marginTop: 15, alignSelf: 'flex-start' }}
+                            />
                         </ParchmentCard>
 
                         <View style={{ height: 120 }} />
@@ -620,7 +678,13 @@ export const WizardTowerScreen: React.FC = () => {
                     </ParchmentCard>
                 </View>
             </Modal>
-        </View>
+
+
+            <AuraChannelingModal
+                visible={auraModalVisible}
+                onClose={() => setAuraModalVisible(false)}
+            />
+        </View >
     );
 };
 
@@ -783,6 +847,54 @@ const styles = StyleSheet.create({
         textShadowColor: '#000',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
+    },
+    mappingsList: {
+        marginTop: 15,
+        marginBottom: 10
+    },
+    subHeader: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: 'rgba(61,43,31,0.5)',
+        letterSpacing: 1,
+        textTransform: 'uppercase'
+    },
+    mappingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        backgroundColor: 'rgba(61,43,31,0.03)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(61,43,31,0.05)',
+        borderLeftWidth: 3,
+        marginBottom: 8,
+        borderRadius: 4
+    },
+    mappingLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1
+    },
+    mappingApp: {
+        fontSize: 13,
+        color: '#3d2b1f',
+        marginLeft: 8,
+        fontWeight: '600'
+    },
+    mappingArrow: {
+        paddingHorizontal: 10
+    },
+    mappingRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'flex-end'
+    },
+    mappingTheme: {
+        fontSize: 12,
+        marginLeft: 6,
+        fontWeight: 'bold'
     },
     emptyCard: {
         padding: 30,

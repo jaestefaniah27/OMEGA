@@ -11,6 +11,7 @@ export * from './hooks/useTavern';
 export * from './hooks/useTheatre';
 export * from './hooks/useUserStats';
 export * from './hooks/useWorkout';
+export * from './hooks/useWorker';
 export * from './types/supabase';
 export * from './utils/formatTime';
 export { supabase } from './lib/supabase';

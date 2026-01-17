@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { app, Tray, Menu } = require('electron');
+const { app, Tray, Menu, BrowserWindow, shell } = require('electron');
 const { createClient } = require('@supabase/supabase-js');
 const { exec } = require('child_process');
 const path = require('path');
@@ -7,50 +7,39 @@ const path = require('path');
 // CONFIGURACIÓN
 const CHECK_INTERVAL = 5000;
 const UPLOAD_INTERVAL = 60000;
+const WEB_URL = 'http://localhost:8081'; // URL de Expo Web en desarrollo
 
 let supabase;
 let tray = null;
+let mainWindow = null;
+let forceQuit = false;
 let activityBuffer = {};
 
+// AURA SYSTEM STATE
+let mappings = [];
+let pendingAuraByTheme = {}; // { theme_id: number }
+
+// DETECTION STATE
+let knownApps = new Set(); // Apps we have already seen this session (or fetched from DB)
+
 // --- 1. CONEXIÓN ---
-try {
-    console.log("🔵 Iniciando...");
-    const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    const userId = process.env.USER_ID;
+// La conexión se inicializa en app.whenReady()
 
-    if (!url || !key || !userId) {
-        console.error("🔴 Faltan credenciales en .env");
-    } else {
-        supabase = createClient(url, key);
-        console.log("🟢 Supabase listo.");
-    }
-} catch (e) {
-    console.error("🔴 Error config:", e);
-}
-
-// --- 2. HERRAMIENTAS DE VISIÓN (CORREGIDAS) ---
+// --- 2. HERRAMIENTAS DE VISIÓN ---
 
 async function getActiveAppInfo() {
     try {
-        // CAMBIO CRÍTICO: Importamos TODO el módulo, no solo 'default'
         const imported = await import('active-win');
-
-        // Buscamos la función donde sea que esté
         let activeWinFunc = imported.activeWindow;
-
-        // Si no está directa, probamos en default (por si acaso cambia en el futuro)
         if (!activeWinFunc && imported.default) {
             activeWinFunc = imported.default.activeWindow || imported.default;
         }
 
         if (typeof activeWinFunc !== 'function') {
-            console.error("🔴 Error: activeWindow no encontrada en:", Object.keys(imported));
             return null;
         }
 
         const win = await activeWinFunc();
-
         if (win && win.owner) {
             return {
                 name: win.owner.name,
@@ -59,7 +48,6 @@ async function getActiveAppInfo() {
         }
         return null;
     } catch (err) {
-        console.error("🔴 ERROR CRÍTICO ACTIVE-WIN:", err);
         return null;
     }
 }
@@ -80,33 +68,150 @@ function getAllOpenAppsInfo() {
     });
 }
 
-// --- 3. BUCLE PRINCIPAL ---
+// --- 3. HELPER LOGIC ---
+
+async function loadKnownApps() {
+    if (!supabase || !process.env.USER_ID) return;
+    try {
+        // Use RPC to bypass RLS for reading
+        const { data, error } = await supabase.rpc('get_detected_apps', { target_user_id: process.env.USER_ID });
+
+        if (error) {
+            console.error("Error loading known apps (RPC):", error.message);
+            return;
+        }
+
+        if (data) {
+            data.forEach(d => knownApps.add(d.process_name));
+            console.log(`🧠 Memoria: ${knownApps.size} apps conocidas.`);
+        }
+    } catch (e) {
+        console.error("Error loading known apps:", e);
+    }
+}
+
+async function loadMappings() {
+    if (!supabase || !process.env.USER_ID) return;
+    try {
+        const { data, error } = await supabase.rpc('get_app_mappings', { target_user_id: process.env.USER_ID });
+
+        if (error) {
+            console.error("Error loading mappings (RPC):", error.message);
+            return;
+        }
+
+        if (data) {
+            mappings = data;
+            console.log(`📚 Mapeos de Aura actualizados: ${mappings.length} reglas.`);
+        }
+    } catch (e) {
+        console.error("Error loading mappings:", e);
+    }
+}
+
+function setupRealtime() {
+    if (!supabase) return;
+    console.log("📡 Conectando a Supabase Realtime...");
+
+    supabase
+        .channel('aura_mappings_changes')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'app_aura_mappings' },
+            (payload) => {
+                console.log('🔄 Cambio detectado en mapeos, recargando...');
+                loadMappings();
+            }
+        )
+        .subscribe();
+}
+
+async function uploadNewApp(appName) {
+    if (!process.env.USER_ID) return;
+
+    try {
+        const payload = [{
+            user_id: process.env.USER_ID,
+            process_name: appName,
+            last_seen: new Date().toISOString()
+        }];
+
+        // Immediate upload via RPC
+        const { error } = await supabase.rpc('upsert_detected_apps', { payload });
+
+        if (error) {
+            console.error(`❌ Error registrando app ${appName}:`, error.message);
+        } else {
+            console.log(`✅ Nueva app registrada: ${appName}`);
+            knownApps.add(appName);
+        }
+    } catch (e) {
+        console.error("Error in uploadNewApp:", e);
+    }
+}
+
+// --- 4. MAIN LOOP ---
 
 async function checkActivity() {
     try {
         const focused = await getActiveAppInfo();
         const allOpen = await getAllOpenAppsInfo();
 
-        if (!focused) {
-            console.log("⚠️ Sin foco (Escritorio/Bloqueado)");
-            return;
+        if (!focused) return;
+
+        // A. IMMEDIATE DETECTION
+        // Check focused app
+        if (focused.name && !knownApps.has(focused.name)) {
+            await uploadNewApp(focused.name);
         }
 
-        console.log(`FOCUS: "${focused.name}" (PID: ${focused.pid})`);
+        // Check all open apps (batch check locally to avoid spam calls)
+        for (const app of allOpen) {
+            if (app.name && !knownApps.has(app.name)) {
+                await uploadNewApp(app.name);
+            }
+        }
 
-        // FONDO: Todas las que tengan PID diferente al foco
-        let bgCount = 0;
+        // B. LEGACY BUFFER (Activity History)
+        if (!activityBuffer[focused.name]) activityBuffer[focused.name] = { focus: 0, background: 0 };
+        activityBuffer[focused.name].focus += (CHECK_INTERVAL / 1000);
+
         allOpen.forEach(app => {
             if (app.pid !== focused.pid) {
-                addBuffer(app.name, 'background');
-                console.log(`Fondo: ${app.name}`);
-                bgCount++;
+                if (!activityBuffer[app.name]) activityBuffer[app.name] = { focus: 0, background: 0 };
+                activityBuffer[app.name].background += (CHECK_INTERVAL / 1000);
             }
         });
 
-        // FOCO
-        addBuffer(focused.name, 'focus');
+        // C. AURA SYSTEM CALCULATION (Case Insensitive)
+        if (mappings.length > 0) {
+            const focusedNameLower = focused.name.toLowerCase();
 
+            // Focus Checks (10 pts/sec)
+            // Find mapping where process_name matches focused app name (case insensitive)
+            const focusMap = mappings.find(m => m.process_name.toLowerCase() === focusedNameLower);
+
+            if (focusMap) {
+                const points = 10 * (CHECK_INTERVAL / 1000);
+                pendingAuraByTheme[focusMap.theme_id] = (pendingAuraByTheme[focusMap.theme_id] || 0) + points;
+                console.log(`✨ AURA FOCUS: +${points} pts para tema ${focusMap.theme_id.substr(0, 4)}... (App: ${focused.name})`);
+            }
+
+            // Background Checks (1 pt/sec)
+            allOpen.forEach(app => {
+                const appNameLower = app.name.toLowerCase();
+                // Avoid double counting focused app as background
+                if (appNameLower === focusedNameLower) return;
+
+                const bgMap = mappings.find(m => m.process_name.toLowerCase() === appNameLower);
+                if (bgMap) {
+                    const points = 1 * (CHECK_INTERVAL / 1000);
+                    pendingAuraByTheme[bgMap.theme_id] = (pendingAuraByTheme[bgMap.theme_id] || 0) + points;
+                }
+            });
+        }
+
+        // D. Tray Update
         if (tray) {
             try { tray.setToolTip(`Omega: ${focused.name}`); } catch (e) { }
         }
@@ -116,38 +221,132 @@ async function checkActivity() {
     }
 }
 
-function addBuffer(appName, state) {
-    if (!activityBuffer[appName]) activityBuffer[appName] = { focus: 0, background: 0 };
-    activityBuffer[appName][state] += (CHECK_INTERVAL / 1000);
-}
-
 async function uploadActivities() {
-    const appNames = Object.keys(activityBuffer);
-    if (appNames.length === 0) return;
-
-    console.log(`📤 Subiendo datos de ${appNames.length} apps...`);
-    const updates = [];
     const userId = process.env.USER_ID;
+    if (!userId) return;
 
-    appNames.forEach(name => {
-        const data = activityBuffer[name];
-        if (data.focus > 0) updates.push({ user_id: userId, app_name: name, duration_seconds: data.focus, state: 'focus' });
-        if (data.background > 0) updates.push({ user_id: userId, app_name: name, duration_seconds: data.background, state: 'background' });
-    });
+    // 1. Upload Legacy Activities (History)
+    const appNames = Object.keys(activityBuffer);
+    if (appNames.length > 0) {
+        console.log(`📤 Subiendo historial de ${appNames.length} apps...`);
+        const updates = [];
+        appNames.forEach(name => {
+            const data = activityBuffer[name];
+            if (data.focus > 0) updates.push({ user_id: userId, app_name: name, duration_seconds: data.focus, state: 'focus' });
+            if (data.background > 0) updates.push({ user_id: userId, app_name: name, duration_seconds: data.background, state: 'background' });
+        });
 
-    const { error } = await supabase.from('computer_activities').insert(updates);
-    if (error) console.error("🔴 Error Supabase:", error.message);
-    else {
-        console.log("✅ Guardado OK.");
+        if (updates.length > 0) {
+            await supabase.from('computer_activities').insert(updates);
+        }
         activityBuffer = {};
+    }
+
+    // 2. Flush Aura to Domains
+    const themeIds = Object.keys(pendingAuraByTheme);
+    if (themeIds.length > 0) {
+        console.log("🌊 Volcando Aura acumulada a la Torre...");
+        for (const themeId of themeIds) {
+            const amount = Math.floor(pendingAuraByTheme[themeId]);
+            if (amount > 0) {
+                const { data: theme } = await supabase.from('mage_themes').select('pending_aura').eq('id', themeId).single();
+                if (theme) {
+                    const newTotal = (theme.pending_aura || 0) + amount;
+                    await supabase.from('mage_themes').update({ pending_aura: newTotal }).eq('id', themeId);
+                    console.log(`   > Tema ${themeId.substr(0, 4)}... : +${amount} (Total: ${newTotal})`);
+                }
+            }
+        }
+        pendingAuraByTheme = {};
+    } else {
+        console.log("💤 Sin aura acumulada para volcar.");
     }
 }
 
-app.whenReady().then(() => {
+function createMainWindow() {
+    if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+        return;
+    }
+
+    mainWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        icon: path.join(__dirname, 'icon.png'),
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+        },
+        autoHideMenuBar: true
+    });
+
+    mainWindow.loadURL(WEB_URL);
+
+    mainWindow.on('close', (e) => {
+        if (!forceQuit) {
+            e.preventDefault();
+            mainWindow.hide();
+        }
+    });
+
+    // Abrir enlaces externos en el navegador por defecto
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url);
+        return { action: 'deny' };
+    });
+}
+
+app.whenReady().then(async () => {
     console.log("🦇 OMEGA VIGILANTE ACTIVO");
-    try { tray = new Tray(path.join(__dirname, 'icon.png')); } catch (e) { }
+    try {
+        console.log("🔵 Iniciando...");
+        const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const key = process.env.SUPABASE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        const userId = process.env.USER_ID;
+
+        if (!url || !key || !userId) {
+            console.error("🔴 Faltan credenciales en .env");
+        } else {
+            supabase = createClient(url, key);
+            console.log("🟢 Supabase conectado.");
+
+            // Cargar datos ANTES de iniciar los intervalos
+            await loadMappings();
+            await loadKnownApps();
+            setupRealtime();
+        }
+
+        tray = new Tray(path.join(__dirname, 'icon.png'));
+
+        const contextMenu = Menu.buildFromTemplate([
+            { label: 'Abrir OMEGA', click: createMainWindow },
+            { type: 'separator' },
+            { label: 'Salir', click: () => { forceQuit = true; app.quit(); } }
+        ]);
+
+        tray.setToolTip('OMEGA Vigilante');
+        tray.setContextMenu(contextMenu);
+
+        // Al hacer clic en el icono, abrimos la app
+        tray.on('click', createMainWindow);
+
+    } catch (e) {
+        console.error("Error inicializando:", e);
+    }
+
     setInterval(checkActivity, CHECK_INTERVAL);
     setInterval(uploadActivities, UPLOAD_INTERVAL);
 });
 
-app.on('window-all-closed', e => e.preventDefault());
+app.on('window-all-closed', (e) => {
+    // No salimos de la app cuando se cierran las ventanas, 
+    // se queda en el tray.
+    e.preventDefault();
+});
+
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+    }
+});

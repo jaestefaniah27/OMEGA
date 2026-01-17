@@ -13,14 +13,14 @@ import {
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '..';
 import { useNavigation } from '@react-navigation/native';
-import { 
-    Trophy, 
-    CheckSquare, 
-    Square, 
-    PlusCircle, 
-    Scroll as ScrollIcon, 
-    Crown, 
-    Shield, 
+import {
+    Trophy,
+    CheckSquare,
+    Square,
+    PlusCircle,
+    Scroll as ScrollIcon,
+    Crown,
+    Shield,
     History,
     Sword,
     Scroll,
@@ -59,7 +59,7 @@ export const CastleScreen: React.FC = () => {
     // 3. Hide future repetitive instances to avoid clutter
     const activeDecrees = decrees.filter(d => {
         if (d.status !== 'PENDING') return false;
-        
+
         const isRepetitiveInstance = !!(d as any).parent_id;
         const isMasterWithInstances = parentIds.has(d.id);
 
@@ -112,7 +112,7 @@ export const CastleScreen: React.FC = () => {
     const renderDecree = (decree: RoyalDecree, isArchive = false) => {
         const progress = (decree.current_quantity / (decree.target_quantity || 1)) * 100;
         const isGeneral = decree.type === 'GENERAL';
-        
+
         const isInstance = !!(decree as any).parent_id;
         const examDate = decree.due_date ? new Date(decree.due_date) : null;
         const now = new Date();
@@ -121,11 +121,11 @@ export const CastleScreen: React.FC = () => {
 
         const renderExamCountdown = () => {
             if (!examDate || isArchive || decree.status === 'COMPLETED') return null;
-            
+
             const maxCountdownHours = 100;
             const currentHours = Math.max(0, hoursLeft!);
             const percentage = Math.min(100, (currentHours / maxCountdownHours) * 100);
-            
+
             // Color interpolation (Green -> Yellow -> Red)
             let barColor = '#27ae60'; // Green
             if (percentage < 30) {
@@ -149,11 +149,11 @@ export const CastleScreen: React.FC = () => {
                             <Text style={styles.countdownValue}>{Math.floor(currentHours)}h</Text>
                         )}
                     </View>
-                    
+
                     {currentHours > 0 && (
                         <View style={styles.examProgressBarBg}>
                             <View style={[
-                                styles.examProgressBarFill, 
+                                styles.examProgressBarFill,
                                 { width: `${percentage}%`, backgroundColor: barColor }
                             ]} />
                         </View>
@@ -161,7 +161,7 @@ export const CastleScreen: React.FC = () => {
                 </View>
             );
         };
-        
+
         return (
             <View key={decree.id} style={styles.decreeItem}>
                 <View style={styles.decreeHeader}>
@@ -182,16 +182,16 @@ export const CastleScreen: React.FC = () => {
                         </View>
                     )}
                 </View>
-                
+
                 <Text style={styles.decreeDesc}>{decree.description}</Text>
-                
+
                 {decree.type === 'EXAM' ? renderExamCountdown() : (
                     (!isGeneral || decree.target_quantity > 1) && (
                         <View style={styles.progressContainer}>
                             <View style={styles.progressHeader}>
                                 <Text style={styles.progressLabel}>
-                                    {decree.unit === 'MINUTES' 
-                                        ? `${decree.current_quantity}m / ${decree.target_quantity}m` 
+                                    {decree.unit === 'MINUTES'
+                                        ? `${decree.current_quantity}m / ${decree.target_quantity}m`
                                         : `${decree.current_quantity} / ${decree.target_quantity} ${decree.unit === 'SESSIONS' ? 'Sesiones' : 'Páginas'}`
                                     }
                                 </Text>
@@ -199,7 +199,7 @@ export const CastleScreen: React.FC = () => {
                             </View>
                             <View style={styles.progressBarBg}>
                                 <View style={[
-                                    styles.progressBarFill, 
+                                    styles.progressBarFill,
                                     { width: `${Math.min(progress, 100)}%` },
                                     isArchive && { backgroundColor: '#27ae60' }
                                 ]} />
@@ -209,10 +209,10 @@ export const CastleScreen: React.FC = () => {
                 )}
 
                 {!isGeneral && !isArchive && decree.type === 'EXAM' && isTodayOrPast && (
-                     <MedievalButton
+                    <MedievalButton
                         title="CONCLUIR EXAMEN"
                         onPress={async () => {
-                             await updateDecree(decree.id, {
+                            await updateDecree(decree.id, {
                                 status: 'COMPLETED',
                                 current_quantity: decree.target_quantity,
                                 completed_at: new Date().toISOString()
@@ -316,13 +316,6 @@ export const CastleScreen: React.FC = () => {
                     </ParchmentCard>
 
                     {/* Quick Access Buttons */}
-                    <View style={styles.actionSection}>
-                        <MedievalButton
-                            title="ARCHIVOS REALES"
-                            onPress={() => console.log('Biblioteca')}
-                            style={styles.actionButton}
-                        />
-                    </View>
                     <View style={{ height: 100 }} />
                 </ScrollView>
 
@@ -532,14 +525,6 @@ const styles = StyleSheet.create({
         marginTop: 15,
         fontSize: 13,
         paddingHorizontal: 20,
-    },
-    actionSection: {
-        width: '100%',
-        paddingHorizontal: 5,
-    },
-    actionButton: {
-        width: '100%',
-        marginBottom: 12,
     },
     examCountdownWrapper: {
         marginTop: 10,

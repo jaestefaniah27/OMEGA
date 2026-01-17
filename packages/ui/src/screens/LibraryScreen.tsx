@@ -15,7 +15,7 @@ import {
     DeviceEventEmitter
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '..';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     BookOpen,
     Timer as TimerIcon,
@@ -78,11 +78,11 @@ const ExamPieChart = ({ exams, size = 100 }: { exams: Exam[], size?: number }) =
         const rad1 = (startAngle * Math.PI) / 180;
         const x1 = (radius - 5) * Math.cos(rad1);
         const y1 = (radius - 5) * Math.sin(rad1);
-        
+
         const rad2 = ((startAngle + sweepAngle) * Math.PI) / 180;
         const x2 = (radius - 5) * Math.cos(rad2);
         const y2 = (radius - 5) * Math.sin(rad2);
-        
+
         const largeArc = sweepAngle > 180 ? 1 : 0;
         const d = `M 0 0 L ${x1} ${y1} A ${radius - 5} ${radius - 5} 0 ${largeArc} 1 ${x2} ${y2} Z`;
 
@@ -95,17 +95,17 @@ const ExamPieChart = ({ exams, size = 100 }: { exams: Exam[], size?: number }) =
                 {exams.map((ex, idx) => {
                     const weightPct = ex.weight / (totalWeight || 100);
                     const sliceAngle = weightPct * 360;
-                    
+
                     const baseColors = ['#d4af37', '#8b4513', '#c0392b', '#2980b9', '#27ae60', '#8e44ad'];
                     const baseColor = baseColors[idx % baseColors.length];
-                    
+
                     const elements = [];
 
                     if (ex.is_completed && ex.grade !== null) {
                         // Grade is 0-10.
                         const validGrade = Math.max(0, Math.min(10, ex.grade));
                         const gradeRatio = validGrade / 10;
-                        
+
                         const achievedAngle = sliceAngle * gradeRatio;
                         const missedAngle = sliceAngle - achievedAngle;
 
@@ -113,19 +113,19 @@ const ExamPieChart = ({ exams, size = 100 }: { exams: Exam[], size?: number }) =
                         if (achievedAngle > 0.5) {
                             elements.push(renderSlice(currentAngle, achievedAngle, '#27ae60', `${ex.id}-achieved`));
                         }
-                        
+
                         // Missed part (Darkened Base or Dark Grey) - "active" logic usually uses base color, but user wants to show missed potential.
                         // User said: "si has sacado un 5 se quede medio quesito mas oscuro para indicar que es nota que no conseguiste"
                         // So I will use the base color but darker/opaque, or a specific "missed" color.
                         // Let's use a dark grey or semi-transparent version of the base to indicate "void".
                         if (missedAngle > 0.5) {
-                            elements.push(renderSlice(currentAngle + achievedAngle, missedAngle, '#555', `${ex.id}-missed`, 1)); 
+                            elements.push(renderSlice(currentAngle + achievedAngle, missedAngle, '#555', `${ex.id}-missed`, 1));
                         }
                     } else {
                         // Not completed or no grade
                         elements.push(renderSlice(currentAngle, sliceAngle, baseColor, ex.id, ex.is_completed ? 1 : 0.7));
                     }
-                    
+
                     currentAngle += sliceAngle;
                     return elements;
                 })}
@@ -166,8 +166,8 @@ const WeightInput = ({ weight, onChange }: { weight: number, onChange: (val: num
     };
 
     return (
-        <TouchableOpacity 
-            style={styles.examItemWeight} 
+        <TouchableOpacity
+            style={styles.examItemWeight}
             onLongPress={() => setIsEditing(true)}
             activeOpacity={0.8}
         >
@@ -204,8 +204,8 @@ const GradeInput = ({ grade, onChange }: { grade: number | null, onChange: (val:
     return (
         <View style={styles.gradeEditor}>
             <Text style={styles.gradeLabel}>Calificación:</Text>
-            <TouchableOpacity 
-                style={styles.gradeInputRow} 
+            <TouchableOpacity
+                style={styles.gradeInputRow}
                 onLongPress={() => setIsEditing(true)}
                 activeOpacity={0.8}
             >
@@ -221,18 +221,18 @@ const GradeInput = ({ grade, onChange }: { grade: number | null, onChange: (val:
                     />
                 ) : (
                     <View style={styles.gradeBarBg}>
-                        <View 
+                        <View
                             style={[
-                                styles.gradeBarFill, 
-                                { 
+                                styles.gradeBarFill,
+                                {
                                     width: `${Math.min((parseFloat(localValue.replace(',', '.') || '0')) * 10, 100)}%`,
                                     backgroundColor: (parseFloat(localValue.replace(',', '.') || '0')) >= 5 ? '#27ae60' : '#c0392b'
                                 }
-                            ]} 
+                            ]}
                         />
                     </View>
                 )}
-                
+
                 <Text style={[styles.gradePercentText, { fontSize: 14 }]}>
                     {localValue ? Math.round((parseFloat(localValue.replace(',', '.') || '0')) * 10) : 0}%
                 </Text>
@@ -243,6 +243,7 @@ const GradeInput = ({ grade, onChange }: { grade: number | null, onChange: (val:
 
 export const LibraryScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute<any>();
     const {
         subjects,
         activeSubjects,
@@ -290,9 +291,41 @@ export const LibraryScreen: React.FC = () => {
     const [selectedColor, setSelectedColor] = useState(SUBJECT_COLORS[0]);
 
     // NEW: Dual Mode States
-    const [viewMode, setViewMode] = useState<'STUDY' | 'READING'>('STUDY');
+    const [viewMode, setViewMode] = useState<'STUDY' | 'READING'>(route.params?.mode || 'STUDY');
     const horizontalScrollRef = useRef<ScrollView>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (route.params?.mode) {
+            const newMode = route.params.mode;
+            setViewMode(newMode);
+            // Scroll to corrected position after a small delay to ensure ref is ready
+            setTimeout(() => {
+                horizontalScrollRef.current?.scrollTo({
+                    x: newMode === 'STUDY' ? 0 : width,
+                    animated: true
+                });
+            }, 100);
+        }
+    }, [route.params?.mode]);
+
+    useEffect(() => {
+        if (route.params?.subjectId && activeSubjects.length > 0) {
+            const sub = activeSubjects.find(s => s.id === route.params.subjectId);
+            if (sub) {
+                setSelectedSubject(sub);
+            }
+        }
+    }, [route.params?.subjectId, activeSubjects]);
+
+    useEffect(() => {
+        if (route.params?.bookId && activeBooks.length > 0) {
+            const book = activeBooks.find(b => b.id === route.params.bookId);
+            if (book) {
+                setSelectedBook(book);
+            }
+        }
+    }, [route.params?.bookId, activeBooks]);
 
     const [isAddBookVisible, setIsAddBookVisible] = useState(false);
     const [isBookPickerVisible, setIsBookPickerVisible] = useState(false);
@@ -493,7 +526,7 @@ export const LibraryScreen: React.FC = () => {
 
         return (
             <ParchmentCard style={styles.subjectCard}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.cardMainArea}
                     onPress={() => setExpandedSubjectId(isExpanded ? null : item.id)}
                     activeOpacity={0.7}
@@ -538,7 +571,7 @@ export const LibraryScreen: React.FC = () => {
                                 <View style={styles.examSummary}>
                                     <Text style={styles.examSummaryTitle}>EXÁMENES RELEVANTES</Text>
                                     <Text style={styles.examSummarySubtitle}>{completedExams.length} de {exams.length} concluidos</Text>
-                                    
+
                                     {item.final_grade !== null && (
                                         <View style={styles.finalGradeResult}>
                                             <Text style={styles.finalGradeLabel}>NOTA FINAL:</Text>
@@ -559,15 +592,15 @@ export const LibraryScreen: React.FC = () => {
                                                     {ex.place ? ` @ ${ex.place}` : ''}
                                                 </Text>
                                             </View>
-                                            <WeightInput 
-                                                weight={ex.weight} 
-                                                onChange={(val) => handleUpdateExamWeight(ex.id, val)} 
+                                            <WeightInput
+                                                weight={ex.weight}
+                                                onChange={(val) => handleUpdateExamWeight(ex.id, val)}
                                             />
                                         </View>
 
                                         {ex.is_completed ? (
-                                            <GradeInput 
-                                                grade={ex.grade} 
+                                            <GradeInput
+                                                grade={ex.grade}
                                                 onChange={(val) => handleUpdateExamGrade(ex.id, val)}
                                             />
                                         ) : (
@@ -576,9 +609,9 @@ export const LibraryScreen: React.FC = () => {
                                                     <Clock size={14} color="#f39c12" />
                                                     <Text style={styles.pendingText}>Pendiente de realización</Text>
                                                 </View>
-                                                {new Date().setHours(0,0,0,0) >= new Date(ex.date).setHours(0,0,0,0) && (
-                                                    <MedievalButton 
-                                                        title="COMPLETAR" 
+                                                {new Date().setHours(0, 0, 0, 0) >= new Date(ex.date).setHours(0, 0, 0, 0) && (
+                                                    <MedievalButton
+                                                        title="COMPLETAR"
                                                         onPress={async () => {
                                                             const updatedExams = exams.map(e => e.id === ex.id ? { ...e, is_completed: true, grade: 0 } : e);
                                                             await updateSubject(item.id, { exams: updatedExams });

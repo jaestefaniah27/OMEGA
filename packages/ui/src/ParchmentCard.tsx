@@ -9,28 +9,13 @@ import {
 interface ParchmentCardProps {
     children: React.ReactNode;
     style?: ViewStyle;
+    contentStyle?: ViewStyle;
 }
 
-/**
- * ParchmentCard: A container component that simulates the look of a parchment scroll.
- * Uses #F5E6C6 (Papyrus/Parchment) background by default.
- */
-export const ParchmentCard: React.FC<ParchmentCardProps> = ({ children, style }) => {
+export const ParchmentCard: React.FC<ParchmentCardProps> = ({ children, style, contentStyle }) => {
     return (
         <View style={[styles.card, style]}>
-            {/* 
-        TODO: Once assets are available, use ImageBackground for irregular parchment edges:
-        <ImageBackground 
-          source={require('../assets/textures/parchment_bg.png')}
-          style={styles.background}
-          imageStyle={styles.imageStyle}
-        >
-          <View style={styles.innerContent}>
-            {children}
-          </View>
-        </ImageBackground>
-      */}
-            <View style={styles.innerContent}>
+            <View style={[styles.innerContent, contentStyle]}>
                 {children}
             </View>
         </View>

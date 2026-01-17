@@ -17,39 +17,29 @@ export const useHabits = (userId: string | undefined) => {
         try {
             const today = new Date().toISOString().split('T')[0];
 
-            // 1. Check if logs exist for today
-            const { data: existingLogs, error: logError } = await supabase
-                .from('ritual_logs')
-                .select('*, definition:daily_rituals(*)')
-                .eq('user_id', userId)
-                .eq('date', today);
+            // 1. Fetch all active definitions and today's logs in parallel
+            const [defResult, logResult] = await Promise.all([
+                supabase.from('daily_rituals').select('*').eq('user_id', userId).eq('is_active', true),
+                supabase.from('ritual_logs').select('*, definition:daily_rituals(*)').eq('user_id', userId).eq('date', today)
+            ]);
 
-            if (logError) throw logError;
+            if (defResult.error) throw defResult.error;
+            if (logResult.error) throw logResult.error;
 
-            if (existingLogs && existingLogs.length > 0) {
-                logsRef.current = existingLogs;
-                setTodayLogs(existingLogs);
-                setLoading(false);
-                return;
-            }
+            const definitions = defResult.data || [];
+            const existingLogs = logResult.data || [];
 
-            // 2. If no logs, run Lazy Creation
-            const { data: definitions, error: defError } = await supabase
-                .from('daily_rituals')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('is_active', true);
+            setRituals(definitions);
 
-            if (defError) throw defError;
-            if (!definitions || definitions.length === 0) {
-                setLoading(false);
-                return;
-            }
-
+            // 2. Determine which rituals should have a log today but don't
             const currentDay = new Date().getDay(); // 0=Sunday
             const newLogs = [];
 
             for (const ritual of definitions) {
+                // Check if log already exists
+                const hasLog = existingLogs.some(l => l.ritual_id === ritual.id);
+                if (hasLog) continue;
+
                 let shouldCreate = false;
 
                 if (ritual.schedule_type === 'daily') {
@@ -57,8 +47,7 @@ export const useHabits = (userId: string | undefined) => {
                 } else if (ritual.schedule_type === 'specific_days') {
                     shouldCreate = ritual.active_days.includes(currentDay);
                 } else if (ritual.schedule_type === 'weekly_quota') {
-                    // Check weekly progress
-                    // We assume week starts on Monday (1)
+                    // Check weekly progress (Monday to Sunday)
                     const now = new Date();
                     const day = now.getDay();
                     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -88,6 +77,7 @@ export const useHabits = (userId: string | undefined) => {
                 }
             }
 
+            // 3. Insert new logs if any and update state
             if (newLogs.length > 0) {
                 const { data: createdLogs, error: insertError } = await supabase
                     .from('ritual_logs')
@@ -95,11 +85,13 @@ export const useHabits = (userId: string | undefined) => {
                     .select('*, definition:daily_rituals(*)');
 
                 if (insertError) throw insertError;
-                logsRef.current = createdLogs || [];
-                setTodayLogs(logsRef.current);
+                const finalLogs = [...existingLogs, ...(createdLogs || [])];
+                logsRef.current = finalLogs;
+                setTodayLogs(finalLogs);
+            } else {
+                logsRef.current = existingLogs;
+                setTodayLogs(existingLogs);
             }
-
-            setRituals(definitions);
         } catch (error) {
             console.error('Error fetching habits:', error);
         } finally {

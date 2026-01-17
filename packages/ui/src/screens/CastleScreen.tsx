@@ -101,7 +101,7 @@ export const CastleScreen: React.FC = () => {
         return () => sub.remove();
     }, []);
 
-    const getZoneInfo = (ritual: any) => {
+    const getZoneInfo = (ritual: any): { label: string; icon: any; color: string } => {
         switch (ritual.activity_type) {
             case 'LIBRARY':
                 let libLabel = 'Biblioteca';
@@ -111,21 +111,58 @@ export const CastleScreen: React.FC = () => {
                     const sub = subjects.find(s => s.id === ritual.activity_tag);
                     if (sub) libLabel = sub.name;
                 }
-                // The provided code snippet for insertion seems to be for a different context (e.g., a useHabits hook)
-                // and contains variables not defined in this component (setTodayLogs, logId, completed, supabase, fetchHabits).
-                // Inserting it directly here would cause syntax errors and runtime issues.
-                // Therefore, I am skipping the insertion of the code block that starts with "// Updated local state"
-                // as it does not fit syntactically or contextually within this function in CastleScreen.
-                return { label: libLabel, icon: GraduationCap, color: '#3498db' };
+                return { label: libLabel, icon: GraduationCap as any, color: '#3498db' };
             case 'THEATRE':
                 let pathLabel = 'Teatro';
                 const act = activities.find(a => a.id === ritual.activity_tag);
                 if (act) pathLabel = act.name;
-                return { label: pathLabel, icon: Music, color: '#9b59b6' };
+                return { label: pathLabel, icon: Music as any, color: '#9b59b6' };
             case 'BARRACKS':
-                return { label: 'Entrenar', icon: Sword, color: '#e67e22' };
+                return { label: 'Entrenar', icon: Sword as any, color: '#e67e22' };
             default:
-                return { label: 'General', icon: Scroll, color: '#7f8c8d' };
+                return { label: 'General', icon: Scroll as any, color: '#7f8c8d' };
+        }
+    };
+
+    const handleRitualPress = (ritual: any) => {
+        if (!ritual.activity_type) return;
+
+        switch (ritual.activity_type) {
+            case 'LIBRARY':
+                // Check if it's reading or study based on the tag
+                let mode = 'STUDY';
+                let subjectId: string | undefined;
+                let bookId: string | undefined;
+
+                if (ritual.activity_tag === 'READING') {
+                    mode = 'READING';
+                } else if (ritual.activity_tag === 'STUDY') {
+                    mode = 'STUDY';
+                } else {
+                    // Check if tag is a subject or book ID
+                    const isSubject = library.subjects.some(s => s.id === ritual.activity_tag);
+                    const isBook = library.books.some(b => b.id === ritual.activity_tag);
+
+                    if (isBook) {
+                        mode = 'READING';
+                        bookId = ritual.activity_tag;
+                    } else if (isSubject) {
+                        mode = 'STUDY';
+                        subjectId = ritual.activity_tag;
+                    }
+                }
+
+                (navigation as any).navigate('Library', { mode, subjectId, bookId });
+                break;
+            case 'BARRACKS':
+                const routineId = ritual.activity_tag !== 'GENERAL' ? ritual.activity_tag : undefined;
+                (navigation as any).navigate('Barracks', { routineId });
+                break;
+            case 'THEATRE':
+                (navigation as any).navigate('Theatre', { activityId: ritual.activity_tag });
+                break;
+            default:
+                break;
         }
     };
 
@@ -329,7 +366,7 @@ export const CastleScreen: React.FC = () => {
                 {/* HABITS (PROTOCOLOS) PANE */}
                 <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
                     {/* Protocolos Vigentes Section */}
-                    <ParchmentCard style={styles.sectionCard}>
+                    <ParchmentCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
                         <View style={styles.sectionHeader}>
                             <Shield size={20} color="#3d2b1f" />
                             <Text style={styles.sectionTitle}>PROTOCOLOS VIGENTES</Text>
@@ -345,34 +382,40 @@ export const CastleScreen: React.FC = () => {
                                 const isMercenary = ritual.schedule_type === 'weekly_quota';
 
                                 return (
-                                    <View key={log.id} style={styles.decreeItem}>
+                                    <TouchableOpacity
+                                        key={log.id}
+                                        style={styles.decreeItem}
+                                        onPress={() => handleRitualPress(ritual)}
+                                        activeOpacity={0.7}
+                                    >
                                         <View style={styles.decreeHeader}>
                                             <TouchableOpacity
                                                 onPress={() => !ritual.activity_type && habits.toggleHabit(log.id, !log.completed)}
                                                 disabled={!!ritual.activity_type}
-                                                style={{ opacity: ritual.activity_type ? 0.6 : 1 }}
+                                                style={{ opacity: ritual.activity_type ? 0.6 : 1, marginTop: 12 }}
                                             >
                                                 {log.completed ? (
-                                                    <CheckSquare size={20} color="#27ae60" />
+                                                    <CheckSquare size={24} color="#27ae60" />
                                                 ) : ritual.activity_type ? (
-                                                    <Clock size={20} color="#8b4513" />
+                                                    <Clock size={24} color="#8b4513" />
                                                 ) : (
-                                                    <Square size={20} color="#3d2b1f" />
+                                                    <Square size={24} color="#3d2b1f" />
                                                 )}
                                             </TouchableOpacity>
-                                            <View style={{ flex: 1, marginLeft: 10 }}>
+
+                                            <View style={{ flex: 1, marginLeft: 15 }}>
                                                 <Text style={styles.decreeTitle}>{ritual.title}</Text>
+
                                                 {ritual.activity_type && (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                                                        {React.createElement(getZoneInfo(ritual).icon, { size: 10, color: getZoneInfo(ritual).color })}
-                                                        <Text style={{ fontSize: 10, color: getZoneInfo(ritual).color, marginLeft: 4, fontWeight: '600' }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                        {React.createElement(getZoneInfo(ritual).icon, { size: 18, color: getZoneInfo(ritual).color })}
+                                                        <Text style={{ fontSize: 18, color: getZoneInfo(ritual).color, marginLeft: 8, fontWeight: '900', letterSpacing: 0.5 }}>
                                                             {getZoneInfo(ritual).label.toUpperCase()}
                                                         </Text>
                                                     </View>
                                                 )}
-                                            </View>
-                                            <View style={[styles.completedBadge, { backgroundColor: 'rgba(39, 174, 96, 0.1)' }]}>
-                                                <Text style={[styles.completedBadgeText, { color: '#27ae60' }]}>
+
+                                                <Text style={{ fontSize: 11, color: '#8b4513', fontWeight: 'bold', opacity: 0.6, marginTop: 4 }}>
                                                     {ritual.schedule_type === 'daily' ? 'MONJE' : ritual.schedule_type === 'specific_days' ? 'GUARDIA' : 'MERCENARIO'}
                                                 </Text>
                                             </View>
@@ -425,7 +468,7 @@ export const CastleScreen: React.FC = () => {
                                             <Trophy size={10} color="#d4af37" />
                                             <Text style={styles.streakText}>Racha: {ritual.current_streak} días</Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 );
                             })
                         ) : (
@@ -557,15 +600,18 @@ const styles = StyleSheet.create({
     sectionCard: {
         width: width * 0.92,
         marginBottom: 20,
-        minHeight: 200,
+        minHeight: 150,
+    },
+    sectionCardContent: {
+        padding: 12, // More compact
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
+        marginBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(61, 43, 31, 0.2)',
-        paddingBottom: 8,
+        paddingBottom: 6,
     },
     sectionTitle: {
         fontSize: 16,
@@ -575,21 +621,18 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     decreeItem: {
-        marginBottom: 20,
-        paddingBottom: 15,
+        paddingVertical: 8,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(61, 43, 31, 0.1)',
     },
     decreeHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
+        alignItems: 'flex-start',
     },
     decreeTitle: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#3d2b1f',
-        marginLeft: 10,
         flex: 1,
     },
     decreeDesc: {
@@ -607,7 +650,7 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     completedBadgeText: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 'bold',
         color: '#27ae60',
         marginLeft: 3,
@@ -621,12 +664,12 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     progressLabel: {
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: 'bold',
         color: '#3d2b1f',
     },
     progressValue: {
-        fontSize: 10,
+        fontSize: 12,
         color: '#3d2b1f',
     },
     progressBarBg: {

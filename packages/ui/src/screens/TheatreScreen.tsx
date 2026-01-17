@@ -14,7 +14,7 @@ import {
     Animated
 } from 'react-native';
 import { MedievalButton, ParchmentCard } from '..';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     Drama,
     Music,
@@ -39,6 +39,7 @@ const AnimatedTicket = Animated.createAnimatedComponent(Ticket);
 
 export const TheatreScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute<any>();
     const {
         activities,
         movies,
@@ -49,6 +50,7 @@ export const TheatreScreen: React.FC = () => {
         isSessionActive,
         elapsedSeconds,
         selectedActivity,
+        setSelectedActivity,
         addActivity,
         addMovie,
         addSeries,
@@ -105,6 +107,17 @@ export const TheatreScreen: React.FC = () => {
             return next;
         });
     };
+
+    useEffect(() => {
+        if (route.params?.activityId && activities.length > 0) {
+            const act = activities.find(a => a.id === route.params.activityId);
+            if (act) {
+                setSelectedActivity(act);
+                // Also ensure we are in CAMERINOS view
+                horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+            }
+        }
+    }, [route.params?.activityId, activities]);
 
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('GLOBAL_QUICK_ADD', () => {
@@ -914,7 +927,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     cardTitle: {
-        fontSize: 17,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#3d2b1f',
     },
@@ -945,7 +958,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.02)',
     },
     registerBtn: {
-        height: 40,
+        height: 50,
     },
     commentText: {
         fontSize: 14,

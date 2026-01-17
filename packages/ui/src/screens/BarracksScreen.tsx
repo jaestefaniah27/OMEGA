@@ -14,18 +14,19 @@ import {
     DeviceEventEmitter,
     Alert
 } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { MedievalButton, ParchmentCard } from '..';
-import { 
-    Swords, 
-    Shield, 
-    Scroll, 
-    Timer, 
-    Dumbbell, 
-    Plus, 
-    X, 
-    CheckCircle2, 
-    ChevronRight, 
-    History, 
+import {
+    Swords,
+    Shield,
+    Scroll,
+    Timer,
+    Dumbbell,
+    Plus,
+    X,
+    CheckCircle2,
+    ChevronRight,
+    History,
     Trophy,
     Settings,
     Flame,
@@ -72,13 +73,13 @@ const MedievalNumericInput: React.FC<MedievalNumericInputProps> = ({ value, onCh
 
     return (
         <View style={numericStyles.container}>
-            <TouchableOpacity 
-                style={numericStyles.btn} 
+            <TouchableOpacity
+                style={numericStyles.btn}
                 onPress={() => onChange(Math.max(min, value - step))}
             >
                 <ChevronDown size={20} color="#8b4513" />
             </TouchableOpacity>
-            
+
             <TextInput
                 style={numericStyles.input}
                 value={inputValue}
@@ -87,8 +88,8 @@ const MedievalNumericInput: React.FC<MedievalNumericInputProps> = ({ value, onCh
                 onBlur={handleBlur}
             />
 
-            <TouchableOpacity 
-                style={numericStyles.btn} 
+            <TouchableOpacity
+                style={numericStyles.btn}
                 onPress={() => onChange(value + step)}
             >
                 <ChevronUp size={20} color="#8b4513" />
@@ -128,6 +129,8 @@ const numericStyles = StyleSheet.create({
 // --- MAIN SCREEN ---
 
 export const BarracksScreen: React.FC = () => {
+    const navigation = useNavigation();
+    const route = useRoute<any>();
     const [viewMode, setViewMode] = useState<'PATIO' | 'ESTRATEGIA'>('PATIO');
     const [modalVisible, setModalVisible] = useState(false);
     const horizontalScrollRef = useRef<ScrollView>(null);
@@ -170,6 +173,17 @@ export const BarracksScreen: React.FC = () => {
             setEpicBattleStatus('');
         }
     }, [isSessionActive]);
+
+    useEffect(() => {
+        if (route.params?.routineId && routines.length > 0) {
+            const routine = routines.find(r => r.id === route.params.routineId);
+            if (routine) {
+                setSelectedRoutineId(routine.id);
+                // Ensure we are in PATIO view to see the start button
+                horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+            }
+        }
+    }, [route.params?.routineId, routines]);
 
     // HUD QuickAdd Listener
     useEffect(() => {
@@ -240,7 +254,7 @@ export const BarracksScreen: React.FC = () => {
     };
 
     const getTypeColor = (type: string) => {
-        switch(type) {
+        switch (type) {
             case 'warmup': return '#3498db'; // Blue
             case 'normal': return '#e67e22'; // Orange
             case 'failure': return '#c0392b'; // Red
@@ -249,7 +263,7 @@ export const BarracksScreen: React.FC = () => {
     };
 
     const getTypeText = (type: string) => {
-        switch(type) {
+        switch (type) {
             case 'warmup': return 'C';
             case 'normal': return 'E';
             case 'failure': return 'F';
@@ -326,17 +340,17 @@ export const BarracksScreen: React.FC = () => {
                             <Swords size={60} color="rgba(255,215,0,0.1)" />
                         </View>
                         <Text style={styles.heroTitle}>CAMPO DE ENTRENAMIENTO</Text>
-                        
+
                         <View style={styles.routineSelector}>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routineSelectorContent}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.routineChip, selectedRoutineId === null && styles.activeRoutineChip]}
                                     onPress={() => setSelectedRoutineId(null)}
                                 >
                                     <Text style={[styles.routineChipText, selectedRoutineId === null && styles.activeRoutineChipText]}>MISIÓN LIBRE</Text>
                                 </TouchableOpacity>
                                 {routines.map(r => (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         key={r.id}
                                         style={[styles.routineChip, selectedRoutineId === r.id && styles.activeRoutineChip]}
                                         onPress={() => setSelectedRoutineId(r.id)}
@@ -347,7 +361,7 @@ export const BarracksScreen: React.FC = () => {
                             </ScrollView>
                         </View>
 
-                        <MedievalButton 
+                        <MedievalButton
                             title={selectedRoutineId ? "INICIAR RUTINA" : "INICIAR COMBATE"}
                             onPress={handleStartPress}
                             style={styles.heroButton}
@@ -415,8 +429,8 @@ export const BarracksScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>PLANES DE ATAQUE</Text>
                     </View>
                     {routines.map(r => (
-                        <TouchableOpacity 
-                            key={r.id} 
+                        <TouchableOpacity
+                            key={r.id}
                             style={styles.routineCard}
                             onPress={() => setDetailRoutineId(r.id)}
                         >
@@ -437,115 +451,115 @@ export const BarracksScreen: React.FC = () => {
             {modalVisible && (
                 <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a', zIndex: 1500 }]}>
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                    <View style={styles.modalHeader}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.epicStatusText}>{epicBattleStatus}</Text>
+                        <View style={styles.modalHeader}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.epicStatusText}>{epicBattleStatus}</Text>
+                            </View>
+                            <View style={styles.modalTimer}><Timer size={18} color="#FFD700" /><Text style={styles.timerDigits}>{formatTime}</Text></View>
+                            <View style={{ flex: 1 }} />
                         </View>
-                        <View style={styles.modalTimer}><Timer size={18} color="#FFD700" /><Text style={styles.timerDigits}>{formatTime}</Text></View>
-                        <View style={{ flex: 1 }} />
-                    </View>
-                    <ScrollView style={styles.modalBody}>
-                        <Text style={styles.modalTitle}>FORJA TÁCTICA</Text>
-                        
-                        {(() => {
-                            const exercises: { id: string, name: string, sets: any[] }[] = [];
-                            setsLog.forEach(s => {
-                                let ex = exercises.find(e => e.id === s.exercise_id);
-                                if (!ex) {
-                                    ex = { id: s.exercise_id, name: s.exercise_name, sets: [] };
-                                    exercises.push(ex);
-                                }
-                                ex.sets.push(s);
-                            });
+                        <ScrollView style={styles.modalBody}>
+                            <Text style={styles.modalTitle}>FORJA TÁCTICA</Text>
 
-                            return exercises.map(ex => (
-                                <ParchmentCard key={ex.id} style={styles.exerciseCard}>
-                                    <View style={styles.exerciseHeader}>
-                                        <Text style={styles.exerciseTitle}>{ex.name}</Text>
-                                        <TouchableOpacity onPress={() => {
-                                            // Optional exercise settings
-                                        }}>
-                                            <Settings size={18} color="#3d2b1f" />
-                                        </TouchableOpacity>
-                                    </View>
-                                    
-                                    <View style={styles.setContainer}>
-                                        <View style={styles.setLabelRow}>
-                                            <Text style={styles.compShortLabel}>SET</Text>
-                                            <Text style={[styles.compShortLabel, { flex: 2 }]}>REPS</Text>
-                                            <Text style={[styles.compShortLabel, { flex: 2 }]}>KG</Text>
-                                            <Text style={styles.compShortLabel}>TIPO</Text>
-                                            <Text style={styles.compShortLabel}>OK</Text>
+                            {(() => {
+                                const exercises: { id: string, name: string, sets: any[] }[] = [];
+                                setsLog.forEach(s => {
+                                    let ex = exercises.find(e => e.id === s.exercise_id);
+                                    if (!ex) {
+                                        ex = { id: s.exercise_id, name: s.exercise_name, sets: [] };
+                                        exercises.push(ex);
+                                    }
+                                    ex.sets.push(s);
+                                });
+
+                                return exercises.map(ex => (
+                                    <ParchmentCard key={ex.id} style={styles.exerciseCard}>
+                                        <View style={styles.exerciseHeader}>
+                                            <Text style={styles.exerciseTitle}>{ex.name}</Text>
+                                            <TouchableOpacity onPress={() => {
+                                                // Optional exercise settings
+                                            }}>
+                                                <Settings size={18} color="#3d2b1f" />
+                                            </TouchableOpacity>
                                         </View>
-                                        
-                                        {ex.sets.map((s, sIdx) => (
-                                            <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
-                                                <Text style={styles.setNumberCompact}>{sIdx + 1}</Text>
-                                                
-                                                <View style={{ flex: 2, alignItems: 'center' }}>
-                                                    <MedievalNumericInput 
-                                                        value={s.reps} 
-                                                        onChange={(v) => updateSet(s.id, { reps: v })}
-                                                        step={1}
-                                                    />
-                                                </View>
 
-                                                <View style={{ flex: 2, alignItems: 'center' }}>
-                                                    <MedievalNumericInput 
-                                                        value={s.weight} 
-                                                        onChange={(v) => updateSet(s.id, { weight: v })}
-                                                        step={2.5}
-                                                    />
-                                                </View>
-                                                
-                                                <TouchableOpacity 
-                                                    style={[styles.typeToggleCompact, { backgroundColor: getTypeColor(s.type) }]} 
-                                                    onPress={() => {
-                                                        const types = ['warmup', 'normal', 'failure'];
-                                                        const next = types[(types.indexOf(s.type) + 1) % 3] as any;
-                                                        updateSet(s.id, { type: next });
-                                                    }}
-                                                >
-                                                    <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity onPress={() => updateSet(s.id, { completed: !s.completed })}>
-                                                    <CheckCircle2 size={24} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
-                                                </TouchableOpacity>
+                                        <View style={styles.setContainer}>
+                                            <View style={styles.setLabelRow}>
+                                                <Text style={styles.compShortLabel}>SET</Text>
+                                                <Text style={[styles.compShortLabel, { flex: 2 }]}>REPS</Text>
+                                                <Text style={[styles.compShortLabel, { flex: 2 }]}>KG</Text>
+                                                <Text style={styles.compShortLabel}>TIPO</Text>
+                                                <Text style={styles.compShortLabel}>OK</Text>
                                             </View>
-                                        ))}
 
-                                        <TouchableOpacity 
-                                            style={styles.addSetButton} 
-                                            onPress={() => addSet(ex.id, ex.name)}
-                                        >
-                                            <Plus size={14} color="#8b4513" />
-                                            <Text style={styles.addSetText}>AÑADIR SERIE</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </ParchmentCard>
-                            ));
-                        })()}
+                                            {ex.sets.map((s, sIdx) => (
+                                                <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
+                                                    <Text style={styles.setNumberCompact}>{sIdx + 1}</Text>
 
-                        <MedievalButton title="FINALIZAR BATALLA" onPress={handleFinishBattle} style={{ marginTop: 30 }} />
-                        <View style={{ height: 50 }} />
-                    </ScrollView>
-                </KeyboardAvoidingView>
-            </View>
+                                                    <View style={{ flex: 2, alignItems: 'center' }}>
+                                                        <MedievalNumericInput
+                                                            value={s.reps}
+                                                            onChange={(v) => updateSet(s.id, { reps: v })}
+                                                            step={1}
+                                                        />
+                                                    </View>
+
+                                                    <View style={{ flex: 2, alignItems: 'center' }}>
+                                                        <MedievalNumericInput
+                                                            value={s.weight}
+                                                            onChange={(v) => updateSet(s.id, { weight: v })}
+                                                            step={2.5}
+                                                        />
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={[styles.typeToggleCompact, { backgroundColor: getTypeColor(s.type) }]}
+                                                        onPress={() => {
+                                                            const types = ['warmup', 'normal', 'failure'];
+                                                            const next = types[(types.indexOf(s.type) + 1) % 3] as any;
+                                                            updateSet(s.id, { type: next });
+                                                        }}
+                                                    >
+                                                        <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity onPress={() => updateSet(s.id, { completed: !s.completed })}>
+                                                        <CheckCircle2 size={24} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+
+                                            <TouchableOpacity
+                                                style={styles.addSetButton}
+                                                onPress={() => addSet(ex.id, ex.name)}
+                                            >
+                                                <Plus size={14} color="#8b4513" />
+                                                <Text style={styles.addSetText}>AÑADIR SERIE</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </ParchmentCard>
+                                ));
+                            })()}
+
+                            <MedievalButton title="FINALIZAR BATALLA" onPress={handleFinishBattle} style={{ marginTop: 30 }} />
+                            <View style={{ height: 50 }} />
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                </View>
             )}
 
             {/* Exercise Selector View */}
             {exerciseSearchVisible && (
                 <View style={[styles.absoluteOverlay, { zIndex: 2000 }]}>
-                    <TouchableOpacity 
-                        style={styles.overlayDismiss} 
-                        activeOpacity={1} 
-                        onPress={() => setExerciseSearchVisible(false)} 
+                    <TouchableOpacity
+                        style={styles.overlayDismiss}
+                        activeOpacity={1}
+                        onPress={() => setExerciseSearchVisible(false)}
                     />
                     <ParchmentCard style={styles.searchContainer}>
                         <View style={styles.searchHeader}>
                             <Search size={20} color="#3d2b1f" />
-                            <TextInput 
+                            <TextInput
                                 style={styles.searchInput}
                                 placeholder="Buscar ejercicio..."
                                 placeholderTextColor="rgba(61,43,31,0.4)"
@@ -559,8 +573,8 @@ export const BarracksScreen: React.FC = () => {
                         </View>
                         <ScrollView style={styles.resultsList}>
                             {searchResults.map(ex => (
-                                <TouchableOpacity 
-                                    key={ex.id} 
+                                <TouchableOpacity
+                                    key={ex.id}
                                     style={styles.resultItem}
                                     onPress={() => handleSelectExercise(ex)}
                                 >
@@ -579,16 +593,16 @@ export const BarracksScreen: React.FC = () => {
             {/* Routine Creation View */}
             {createRoutineVisible && (
                 <View style={styles.absoluteOverlay}>
-                    <TouchableOpacity 
-                        style={styles.overlayDismiss} 
-                        activeOpacity={1} 
-                        onPress={() => setCreateRoutineVisible(false)} 
+                    <TouchableOpacity
+                        style={styles.overlayDismiss}
+                        activeOpacity={1}
+                        onPress={() => setCreateRoutineVisible(false)}
                     />
                     <ParchmentCard style={styles.createRoutineContainer}>
                         <Text style={styles.modalTitleDark}>NUEVO PLAN DE ATAQUE</Text>
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>NOMBRE DE LA RUTINA</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.medievalInput}
                                 placeholder="E.j. Empuje de Titán"
                                 placeholderTextColor="rgba(61,43,31,0.4)"
@@ -600,7 +614,7 @@ export const BarracksScreen: React.FC = () => {
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>SAGA / PROGRAMA (OPCIONAL)</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.medievalInput}
                                 placeholder="E.j. PPL, Bro Split, Arnold..."
                                 placeholderTextColor="rgba(61,43,31,0.4)"
@@ -608,15 +622,15 @@ export const BarracksScreen: React.FC = () => {
                                 onChangeText={setNewRoutineCategory}
                             />
                         </View>
-                        
+
                         <View style={styles.modalActionsRow}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.cancelActionBtn}
                                 onPress={() => setCreateRoutineVisible(false)}
                             >
                                 <Text style={styles.cancelActionText}>DESCARTAR</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.confirmActionBtn}
                                 onPress={handleCreateRoutine}
                             >
@@ -643,7 +657,7 @@ export const BarracksScreen: React.FC = () => {
 
                     <ScrollView style={styles.modalBody}>
                         <Text style={styles.modalTitle}>SALA DE MEJORA</Text>
-                        
+
                         {selectedDetailRoutine?.exercises?.map((re: any) => (
                             <ParchmentCard key={re.id} style={styles.exerciseCard}>
                                 <View style={styles.exerciseHeader}>
@@ -655,19 +669,19 @@ export const BarracksScreen: React.FC = () => {
                                         <Trash2 size={20} color="#c0392b" />
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 <View style={styles.routineSettingsRow}>
                                     <View style={styles.settingItem}>
                                         <Text style={styles.stepperLabelMini}>REPS OBJETIVO</Text>
-                                        <MedievalNumericInput 
-                                            value={re.target_reps} 
+                                        <MedievalNumericInput
+                                            value={re.target_reps}
                                             onChange={(v) => updateRoutineExercise(re.id, { target_reps: v })}
                                         />
                                     </View>
                                     <View style={styles.settingItem}>
                                         <Text style={styles.stepperLabelMini}>SERIES OBJETIVO</Text>
-                                        <MedievalNumericInput 
-                                            value={re.target_sets} 
+                                        <MedievalNumericInput
+                                            value={re.target_sets}
                                             onChange={(v) => updateRoutineExercise(re.id, { target_sets: v })}
                                         />
                                     </View>
@@ -798,7 +812,7 @@ const styles = StyleSheet.create({
     },
     routineChipText: {
         color: 'rgba(255,215,0,0.5)',
-        fontSize: 10,
+        fontSize: 16,
         fontWeight: 'bold',
         letterSpacing: 1,
     },
@@ -901,7 +915,7 @@ const styles = StyleSheet.create({
     routineName: {
         color: '#FFD700',
         fontWeight: 'bold',
-        fontSize: 16,
+        fontSize: 18,
     },
     routineDetail: {
         color: 'rgba(255,255,255,0.4)',

@@ -214,10 +214,10 @@ export const useTheatre = () => {
     return {
         activities, movies, series, loading, error, activityStats,
         isSessionActive, startTime, elapsedSeconds, selectedActivity,
+        setSelectedActivity,
         addActivity, addMovie, addSeries, addSeason,
         updateActivity, updateMovie, updateSeries, updateSeason,
         startSession, stopSession, cancelSession, fetchData: refresh, // Alias refresh to fetchData for compat
-        setSelectedActivity,
         habits: habitCtx
     };
 };

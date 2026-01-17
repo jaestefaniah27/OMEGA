@@ -6,8 +6,9 @@ const path = require('path');
 
 // CONFIGURACIÓN
 const CHECK_INTERVAL = 5000;
-const UPLOAD_INTERVAL = 60000;
+const UPLOAD_INTERVAL = 10000; // Debug 10s
 const WEB_URL = 'http://localhost:8081'; // URL de Expo Web en desarrollo
+const DEBUG = true;
 
 let supabase;
 let tray = null;
@@ -188,27 +189,36 @@ async function checkActivity() {
             const focusedNameLower = focused.name.toLowerCase();
 
             // Focus Checks (10 pts/sec)
-            // Find mapping where process_name matches focused app name (case insensitive)
             const focusMap = mappings.find(m => m.process_name.toLowerCase() === focusedNameLower);
 
             if (focusMap) {
-                const points = 10 * (CHECK_INTERVAL / 1000);
+                const points = 10 * (CHECK_INTERVAL / 1000); // 50 pts
                 pendingAuraByTheme[focusMap.theme_id] = (pendingAuraByTheme[focusMap.theme_id] || 0) + points;
                 console.log(`✨ AURA FOCUS: +${points} pts para tema ${focusMap.theme_id.substr(0, 4)}... (App: ${focused.name})`);
             }
 
             // Background Checks (1 pt/sec)
+            let bgCount = 0;
+            // Debug available apps
+            // if (DEBUG) console.log(`   🔎 Checking ${allOpen.length} apps for background match...`);
+
             allOpen.forEach(app => {
+                // Ensure app.name exists
+                if (!app.name) return;
+
                 const appNameLower = app.name.toLowerCase();
                 // Avoid double counting focused app as background
                 if (appNameLower === focusedNameLower) return;
 
                 const bgMap = mappings.find(m => m.process_name.toLowerCase() === appNameLower);
                 if (bgMap) {
-                    const points = 1 * (CHECK_INTERVAL / 1000);
+                    bgCount++;
+                    const points = 1 * (CHECK_INTERVAL / 1000); // 5 pts
                     pendingAuraByTheme[bgMap.theme_id] = (pendingAuraByTheme[bgMap.theme_id] || 0) + points;
+                    if (DEBUG) console.log(`   🌑 AURA BG: +${points} pts para tema ${bgMap.theme_id.substr(0, 4)}... (App: ${app.name})`);
                 }
             });
+            if (bgCount > 0) console.log(`   (Detectadas ${bgCount} apps en segundo plano con aura)`);
         }
 
         // D. Tray Update
@@ -249,11 +259,21 @@ async function uploadActivities() {
         for (const themeId of themeIds) {
             const amount = Math.floor(pendingAuraByTheme[themeId]);
             if (amount > 0) {
-                const { data: theme } = await supabase.from('mage_themes').select('pending_aura').eq('id', themeId).single();
-                if (theme) {
-                    const newTotal = (theme.pending_aura || 0) + amount;
-                    await supabase.from('mage_themes').update({ pending_aura: newTotal }).eq('id', themeId);
-                    console.log(`   > Tema ${themeId.substr(0, 4)}... : +${amount} (Total: ${newTotal})`);
+                try {
+                    console.log(`   > Actualizando Tema ${themeId.substr(0, 4)}... +${amount} pts`);
+
+                    const { error } = await supabase.rpc('increment_theme_aura', {
+                        p_theme_id: themeId,
+                        p_amount: amount
+                    });
+
+                    if (error) {
+                        console.error(`❌ Error updating aura for theme ${themeId}:`, error.message);
+                    } else {
+                        console.log("     ✅ Actualización exitosa.");
+                    }
+                } catch (e) {
+                    console.error("Error updating theme aura:", e);
                 }
             }
         }

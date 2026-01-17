@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { DailyRitual, RitualLog } from '../types/supabase';
 
@@ -99,7 +99,7 @@ export const useHabits = (userId: string | undefined) => {
         }
     }, [userId]);
 
-    const toggleHabit = async (logId: number, completed: boolean) => {
+    const toggleHabit = useCallback(async (logId: number, completed: boolean) => {
         try {
             const { error } = await supabase
                 .from('ritual_logs')
@@ -125,9 +125,9 @@ export const useHabits = (userId: string | undefined) => {
         } catch (error) {
             console.error('Error toggling habit:', error);
         }
-    };
+    }, [todayLogs, fetchHabits]);
 
-    const addRitual = async (ritual: Partial<DailyRitual>) => {
+    const addRitual = useCallback(async (ritual: Partial<DailyRitual>) => {
         try {
             const { data, error } = await supabase
                 .from('daily_rituals')
@@ -143,9 +143,9 @@ export const useHabits = (userId: string | undefined) => {
             console.error('Error adding ritual:', error);
             throw error;
         }
-    };
+    }, [userId, fetchHabits]);
 
-    const checkHabitProgress = async (type: string, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
+    const checkHabitProgress = useCallback(async (type: string, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
         if (!userId || todayLogs.length === 0) return { totalXp: 0, totalGold: 0 };
 
         let updated = false;
@@ -214,13 +214,13 @@ export const useHabits = (userId: string | undefined) => {
         }
 
         return { totalXp, totalGold };
-    };
+    }, [userId, todayLogs, fetchHabits]);
 
     useEffect(() => {
         fetchHabits();
     }, [fetchHabits]);
 
-    return {
+    return useMemo(() => ({
         rituals,
         todayLogs,
         loading,
@@ -228,5 +228,5 @@ export const useHabits = (userId: string | undefined) => {
         toggleHabit,
         addRitual,
         checkHabitProgress
-    };
+    }), [rituals, todayLogs, loading, fetchHabits, toggleHabit, addRitual, checkHabitProgress]);
 };

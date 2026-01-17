@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo, useCallback } from 'react';
 import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -275,8 +275,50 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const renderBurstRef = useRef({ count: 0, lastReset: Date.now() });
 
+    // Refs for stable state access in saveToLocal
+    const subjectsRef = useRef(subjects);
+    const booksRef = useRef(books);
+    const customColorsRef = useRef(customColors);
+    const bookStatsRef = useRef(bookStats);
+    const activitiesRef = useRef(activities);
+    const moviesRef = useRef(movies);
+    const seriesRef = useRef(series);
+    const activityStatsRef = useRef(activityStats);
+    const routinesRef = useRef(routines);
+    const historyRef = useRef(history);
+    const muscleFatigueRef = useRef(muscleFatigue);
+    const recordsRef = useRef(records);
+    const decreesRef = useRef(decrees);
+    const thoughtsRef = useRef(thoughts);
+    const sleepRecordsRef = useRef(sleepRecords);
+    const waterRecordsRef = useRef(waterRecords);
+    const mageProjectsRef = useRef(mageProjects);
+    const mageThemesRef = useRef(mageThemes);
+    const profileRef = useRef(profile);
+
+    // Update refs whenever state changes
+    useEffect(() => { subjectsRef.current = subjects; }, [subjects]);
+    useEffect(() => { booksRef.current = books; }, [books]);
+    useEffect(() => { customColorsRef.current = customColors; }, [customColors]);
+    useEffect(() => { bookStatsRef.current = bookStats; }, [bookStats]);
+    useEffect(() => { activitiesRef.current = activities; }, [activities]);
+    useEffect(() => { moviesRef.current = movies; }, [movies]);
+    useEffect(() => { seriesRef.current = series; }, [series]);
+    useEffect(() => { activityStatsRef.current = activityStats; }, [activityStats]);
+    useEffect(() => { routinesRef.current = routines; }, [routines]);
+    useEffect(() => { historyRef.current = history; }, [history]);
+    useEffect(() => { muscleFatigueRef.current = muscleFatigue; }, [muscleFatigue]);
+    useEffect(() => { recordsRef.current = records; }, [records]);
+    useEffect(() => { decreesRef.current = decrees; }, [decrees]);
+    useEffect(() => { thoughtsRef.current = thoughts; }, [thoughts]);
+    useEffect(() => { sleepRecordsRef.current = sleepRecords; }, [sleepRecords]);
+    useEffect(() => { waterRecordsRef.current = waterRecords; }, [waterRecords]);
+    useEffect(() => { mageProjectsRef.current = mageProjects; }, [mageProjects]);
+    useEffect(() => { mageThemesRef.current = mageThemes; }, [mageThemes]);
+    useEffect(() => { profileRef.current = profile; }, [profile]);
+
     // --- DEBUGGING HELPERS ---
-    const traceFetch = (source: string, isStart: boolean, startTime?: number) => {
+    const traceFetch = useCallback((source: string, isStart: boolean, startTime?: number) => {
         if (isStart) {
             console.log(`[GameSync] 🚀 START fetchAll | Source: ${source} | Time: ${new Date().toLocaleTimeString()}`);
             return performance.now();
@@ -284,10 +326,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const duration = (performance.now() - (startTime || 0)).toFixed(2);
             console.log(`[GameSync] ✅ END   fetchAll | Source: ${source} | Duration: ${duration}ms`);
         }
-    };
+    }, []);
 
     // Helper to time individual queries
-    const timeQuery = async (name: string, query: any): Promise<any> => {
+    const timeQuery = useCallback(async (name: string, query: any): Promise<any> => {
         const start = performance.now();
         const res = await query;
         const duration = performance.now() - start;
@@ -295,7 +337,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             console.log(`[Slow Query] 🐢 ${name}: ${duration.toFixed(0)}ms`);
         }
         return res;
-    };
+    }, []);
 
     const {
         rituals: habitRituals,
@@ -364,16 +406,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const saveToLocal = (
-        libData: { subjects: any[], books: any[], customColors: any[], bookStats: any },
-        theatData: { activities: any[], movies: any[], series: any[], activityStats: any },
-        barracksData: { routines: any[], history: any[], muscleFatigue: any, records: any },
-        castleData: { decrees: RoyalDecree[] },
-        templeData: { thoughts: TempleThought[], sleepRecords: TempleSleep[] },
-        tavernData: { waterRecords: TavernWater[] },
-        mageData: { projects: MageProject[], themes: MageTheme[] },
-        profData: any
-    ) => {
+    const saveToLocal = useCallback(() => {
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
         }
@@ -382,14 +415,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const serializationStart = performance.now();
                 const dump = {
-                    lib: libData,
-                    theat: theatData,
-                    barracks: barracksData,
-                    castle: castleData,
-                    temple: templeData,
-                    tavern: tavernData,
-                    mageTower: mageData,
-                    prof: profData,
+                    lib: { subjects: subjectsRef.current, books: booksRef.current, customColors: customColorsRef.current, bookStats: bookStatsRef.current },
+                    theat: { activities: activitiesRef.current, movies: moviesRef.current, series: seriesRef.current, activityStats: activityStatsRef.current },
+                    barracks: { routines: routinesRef.current, history: historyRef.current, muscleFatigue: muscleFatigueRef.current, records: recordsRef.current },
+                    castle: { decrees: decreesRef.current },
+                    temple: { thoughts: thoughtsRef.current, sleepRecords: sleepRecordsRef.current },
+                    tavern: { waterRecords: waterRecordsRef.current },
+                    mageTower: { projects: mageProjectsRef.current, themes: mageThemesRef.current },
+                    prof: profileRef.current,
                     timestamp: Date.now()
                 };
                 const payload = JSON.stringify(dump);
@@ -405,7 +438,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 saveTimeoutRef.current = null;
             }
         }, 2000); // 2 second debounce
-    };
+    }, []);
 
     const clearState = async () => {
         try {
@@ -436,209 +469,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // --- WORKOUT LOGIC ---
-    useEffect(() => {
-        const recoverWorkout = async () => {
-            const saved = await AsyncStorage.getItem(WORKOUT_STORAGE_KEY);
-            if (saved) {
-                const data = JSON.parse(saved);
-                setIsSessionActive(true);
-                setStartTime(data.startTime);
-                setWorkoutRoutineId(data.routineId);
-                setSetsLog(data.setsLog || []);
-            }
-        };
-        recoverWorkout();
-    }, []);
 
-    const startSession = async (routineId: string | null = null, initialExercises: any[] = []) => {
-        const now = new Date().toISOString();
-        setStartTime(now);
-        setWorkoutRoutineId(routineId);
-        setIsSessionActive(true);
-
-        const initialSets: any[] = [];
-        initialExercises.forEach(ex => {
-            const targetSets = ex.target_sets || 3;
-            const targetReps = ex.target_reps || 10;
-            for (let i = 0; i < targetSets; i++) {
-                initialSets.push({
-                    id: Math.random().toString(36).substr(2, 9),
-                    exercise_id: ex.exercise_id,
-                    exercise_name: ex.exercise?.name_es || ex.exercise?.name || 'Ejercicio',
-                    weight: 0,
-                    reps: targetReps,
-                    type: 'normal',
-                    completed: false
-                });
-            }
-        });
-        setSetsLog(initialSets);
-    };
-
-    const finishSession = async () => {
-        if (!isSessionActive || !startTime) return false;
-        const completedSets = setsLog.filter(s => s.completed);
-        if (completedSets.length === 0) {
-            return new Promise<boolean>((resolve) => {
-                Alert.alert("Aviso", "¿Terminar sin registrar ninguna serie?", [
-                    { text: "No", style: "cancel", onPress: () => resolve(false) },
-                    {
-                        text: "Sí, abandonar", style: "destructive", onPress: async () => {
-                            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
-                            setIsSessionActive(false);
-                            resolve(true);
-                        }
-                    }
-                ]);
-            });
-        }
-
-        try {
-            const { data: { user: u } } = await supabase.auth.getUser();
-            if (!u) throw new Error('No user');
-            const totalVolume = completedSets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
-            const { data: session, error: sError } = await supabase.from('workout_sessions').insert([{
-                user_id: u.id, routine_id: workoutRoutineId, started_at: startTime,
-                ended_at: new Date().toISOString(), bodyweight: profile?.hp_current || 0,
-                note: `Volumen total: ${totalVolume}kg`
-            }]).select().single();
-            if (sError) throw sError;
-            const setsToInsert = completedSets.map((s, idx) => ({
-                session_id: session.id, exercise_id: s.exercise_id, set_number: idx + 1,
-                weight_kg: s.weight, reps: s.reps, type: s.type
-            }));
-            const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert);
-            if (setsError) throw setsError;
-
-            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
-            setIsSessionActive(false);
-            setStartTime(null);
-            setSetsLog([]);
-
-            // Actualizar Decretos Reales (BARRACKS)
-            const durationSec = startTime ? Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) : 0;
-            const durationMin = Math.round(durationSec / 60);
-            await checkDecreeProgress('BARRACKS', '', 1, durationMin);
-
-            await fetchAll();
-            showGlobalToast(`¡Batalla Concluida! Daño: ${totalVolume}kg`, 'success');
-            return true;
-        } catch (e: any) {
-            Alert.alert("Error al guardar", e.message);
-            return false;
-        }
-    };
-
-    const addSet = (exerciseId: string, exerciseName: string) => {
-        const newSet = {
-            id: Math.random().toString(36).substr(2, 9),
-            exercise_id: exerciseId,
-            exercise_name: exerciseName,
-            weight: 0,
-            reps: 0,
-            type: 'normal',
-            completed: false
-        };
-        setSetsLog(prev => [...prev, newSet]);
-    };
-
-    const updateSet = (id: string, updates: Partial<any>) => {
-        setSetsLog(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-    };
-
-    const removeSet = (id: string) => {
-        setSetsLog(prev => prev.filter(s => s.id !== id));
-    };
-
-    const checkDecreeProgress = async (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
-        // Also check habit progress
-        const habitRewards = await checkHabitProgressInternal(type, tag, amount, durationMinutes, genericTag);
-        if (habitRewards?.totalXp > 0) await addXp(habitRewards.totalXp);
-        if (habitRewards?.totalGold > 0) await addGold(habitRewards.totalGold);
-
-        if (!user || !decrees) return;
-
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        // Filter valid decrees for this event
-        const pendingDecrees = decrees.filter(d => {
-            const matchesType = d.status === 'PENDING' &&
-                d.type === type &&
-                (!d.required_activity_tag || d.required_activity_tag === tag || (genericTag && d.required_activity_tag === genericTag));
-
-            if (!matchesType) return false;
-
-            // If it has a due_date, it MUST match Today to be processed
-            if (d.due_date) {
-                const dueStr = new Date(d.due_date).toISOString().split('T')[0];
-                return dueStr === todayStr;
-            }
-
-            // If no due_date, it's a general task that can be completed anytime
-            return true;
-        });
-
-        let updated = false;
-
-        for (const decree of pendingDecrees) {
-            const minTime = decree.recurrence?.min_time || 0;
-            const isTimeBased = decree.unit === 'MINUTES';
-
-            // 1. Requirements Check
-            if (minTime > 0 && durationMinutes !== undefined && durationMinutes < minTime) {
-                continue; // Too short to count
-            }
-
-            // 2. Increment Logic
-            // If unit is MINUTES, we add the duration. If SESSIONS, we add the fixed amount (usually 1).
-            const increment = isTimeBased ? (durationMinutes || 0) : amount;
-
-            if (increment <= 0) continue;
-
-            const newQuantity = (decree.current_quantity || 0) + increment;
-            const isCompleted = newQuantity >= (decree.target_quantity || 1);
-
-            const updates: Partial<RoyalDecree> = {
-                current_quantity: newQuantity,
-                status: isCompleted ? 'COMPLETED' : 'PENDING',
-                completed_at: isCompleted ? new Date().toISOString() : null
-            };
-
-            const { error } = await supabase
-                .from('royal_decrees')
-                .update(updates)
-                .eq('id', decree.id);
-
-            if (!error) {
-                updated = true;
-                if (isCompleted) {
-                    await addXp(50);
-                    await addGold(10);
-
-                    // Special logic for EXAM decrees: auto-complete the exam in the subject
-                    if (decree.type === 'EXAM') {
-                        const subjectWithExam = subjects.find(s =>
-                            (s.exams || []).some(ex => ex.decree_id === decree.id)
-                        );
-                        if (subjectWithExam) {
-                            const updatedExams = subjectWithExam.exams.map(ex =>
-                                ex.decree_id === decree.id ? { ...ex, is_completed: true } : ex
-                            );
-                            await updateSubject(subjectWithExam.id, { exams: updatedExams });
-                        }
-                    }
-                }
-            }
-        }
-
-        if (updated) {
-            await fetchAll();
-        }
-    };
 
     // --- FETCH ---
-    const fetchHeroStats = async () => {
+    const fetchHeroStats = useCallback(async () => {
         const currentUser = (await supabase.auth.getUser()).data.user;
         if (!currentUser) return;
 
@@ -655,9 +489,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('fetchHeroStats Error', e);
         }
-    };
+    }, [timeQuery]);
 
-    const fetchAll = async (source = 'Unknown') => {
+    const fetchAll = useCallback(async (source = 'Unknown') => {
         const currentUser = (await supabase.auth.getUser()).data.user;
         if (!currentUser) return;
 
@@ -860,16 +694,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
             // --- PERSIST ---
-            saveToLocal(
-                { subjects: subData, books: bookData, customColors: colData, bookStats: bStats },
-                { activities: actData, movies: movData, series: seriesWithSeasons, activityStats: tStats },
-                { routines: routineData, history: formattedHistory, muscleFatigue: fatigueData, records: recordData },
-                { decrees: decreeData },
-                { thoughts: thoughtData, sleepRecords: sleepData },
-                { waterRecords: waterData },
-                { projects: mageData, themes: themeData },
-                profData
-            );
+            saveToLocal();
 
             // --- AUTO-FAIL MAINTENANCE ---
             // If any pending decree is more than 24h past its due_date, mark it as FAILED
@@ -917,7 +742,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             isFetching.current = false;
             traceFetch(source, false, startTime);
         }
-    };
+    }, [traceFetch, fetchHeroStats, timeQuery, refreshHabits, user?.id]);
 
     // --- INIT ---
     useEffect(() => {
@@ -1075,25 +900,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }, [user?.id]); // DEPENDENCY CHANGE: Only reconnect if ID changes, not object ref
 
     // --- RPC HELPERS ---
-    const addGold = async (amount: number) => {
+    const addGold = useCallback(async (amount: number) => {
         try {
             // Optimistic Update & Persist
             if (profile) {
                 const newGold = (profile.gold || 0) + amount;
                 const newProfile = { ...profile, gold: newGold };
                 setProfile(newProfile);
-
-                // SAVE TO LOCAL IMMEDIATELLY (Critical for Offline Restart)
-                saveToLocal(
-                    { subjects, books, customColors, bookStats },
-                    { activities, movies, series, activityStats },
-                    { routines, history, muscleFatigue, records },
-                    { decrees },
-                    { thoughts, sleepRecords },
-                    { waterRecords },
-                    { projects: mageProjects, themes: mageThemes },
-                    newProfile
-                );
+                saveToLocal();
             }
 
             // RPC Call
@@ -1104,9 +918,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('RPC Error', e);
         }
-    };
+    }, [profile, saveToLocal]);
 
-    const addXp = async (amount: number) => {
+    const addXp = useCallback(async (amount: number) => {
         try {
             // Optimistic Update & Persist
             if (profile) {
@@ -1115,17 +929,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 const newProfile = { ...profile, current_xp: newXp, total_study_minutes: newTotal };
                 setProfile(newProfile);
 
-                // SAVE TO LOCAL IMMEDIATELLY
-                saveToLocal(
-                    { subjects, books, customColors, bookStats },
-                    { activities, movies, series, activityStats },
-                    { routines, history, muscleFatigue, records },
-                    { decrees },
-                    { thoughts, sleepRecords },
-                    { waterRecords },
-                    { projects: mageProjects, themes: mageThemes },
-                    newProfile
-                );
+                // SAVE TO LOCAL
+                saveToLocal();
             }
 
             const { error } = await supabase.rpc('add_xp', { amount });
@@ -1135,10 +940,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('RPC Error', e);
         }
-    };
+    }, [profile, saveToLocal]);
 
     // --- MUTATORS (LIBRARY) ---
-    const addSubject = async (name: string, color: string, course?: string) => {
+    const addSubject = useCallback(async (name: string, color: string, course?: string) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newSubject: Subject = {
@@ -1148,22 +953,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSubjects = [newSubject, ...subjects];
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('subjects').insert([{ name, color, course, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newSubject;
-    };
+    }, [user, subjects, saveToLocal, fetchAll]);
 
-    const updateSubject = async (id: string, updates: Partial<Subject>) => {
+    const updateSubject = useCallback(async (id: string, updates: Partial<Subject>) => {
         const newSubjects = subjects.map(s => s.id === id ? { ...s, ...updates } : s);
         setSubjects(newSubjects);
-        saveToLocal({ subjects: newSubjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('subjects').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [subjects, books, customColors, bookStats, activities, movies, series, activityStats, routines, history, muscleFatigue, records, decrees, thoughts, sleepRecords, waterRecords, mageProjects, mageThemes, profile, fetchAll]);
 
-    const addBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
+    const addBook = useCallback(async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newBook: Book = {
@@ -1173,30 +978,30 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newBooks = [newBook, ...books];
         setBooks(newBooks);
-        saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('books').insert([{ title, author, total_pages, cover_color, saga, saga_index, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newBook;
-    };
+    }, [user, books, saveToLocal, fetchAll]);
 
-    const updateBook = async (id: string, updates: Partial<Book>) => {
+    const updateBook = useCallback(async (id: string, updates: Partial<Book>) => {
         const newBooks = books.map(b => b.id === id ? { ...b, ...updates } : b);
         setBooks(newBooks);
         saveToLocal({ subjects, books: newBooks, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
         await supabase.from('books').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [books, subjects, customColors, bookStats, activities, movies, series, activityStats, routines, history, muscleFatigue, records, decrees, thoughts, sleepRecords, waterRecords, mageProjects, mageThemes, profile, fetchAll]);
 
-    const saveCustomColor = async (hex_code: string, name?: string) => {
+    const saveCustomColor = useCallback(async (hex_code: string, name?: string) => {
         if (!user) return;
         const { data, error } = await supabase.from('custom_colors').insert([{ hex_code, name, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data;
-    };
+    }, [user, fetchAll]);
 
     // --- MUTATORS (THEATRE) ---
-    const addActivity = async (name: string) => {
+    const addActivity = useCallback(async (name: string) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newActivity: TheatreActivity = {
@@ -1204,22 +1009,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newActivities = [newActivity, ...activities];
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('theatre_activities').insert([{ name, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newActivity;
-    };
+    }, [user, activities, saveToLocal, fetchAll]);
 
-    const updateActivity = async (id: string, name: string) => {
+    const updateActivity = useCallback(async (id: string, name: string) => {
         const newActivities = activities.map(a => a.id === id ? { ...a, name } : a);
         setActivities(newActivities);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities: newActivities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('theatre_activities').update({ name }).eq('id', id);
         await fetchAll();
-    };
+    }, [activities, saveToLocal, fetchAll]);
 
-    const addMovie = async (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) => {
+    const addMovie = useCallback(async (title: string, director?: string, saga?: string, comment?: string, rating: number = 0) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newMovie: TheatreMovie = {
@@ -1227,22 +1032,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newMovies = [newMovie, ...movies];
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('theatre_movies').insert([{ title, director, saga, comment, rating, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newMovie;
-    };
+    }, [user, movies, saveToLocal, fetchAll]);
 
-    const updateMovie = async (id: string, updates: Partial<TheatreMovie>) => {
+    const updateMovie = useCallback(async (id: string, updates: Partial<TheatreMovie>) => {
         const newMovies = movies.map(m => m.id === id ? { ...m, ...updates } : m);
         setMovies(newMovies);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies: newMovies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('theatre_movies').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [movies, saveToLocal, fetchAll]);
 
-    const addSeries = async (title: string) => {
+    const addSeries = useCallback(async (title: string) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newSeriesItem: TheatreSeries & { seasons: TheatreSeason[] } = {
@@ -1250,70 +1055,70 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSeriesList = [newSeriesItem, ...series];
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('theatre_series').insert([{ title, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newSeriesItem;
-    };
+    }, [user, series, saveToLocal, fetchAll]);
 
-    const updateSeries = async (id: string, title: string) => {
+    const updateSeries = useCallback(async (id: string, title: string) => {
         const newSeriesList = series.map(s => s.id === id ? { ...s, title } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('theatre_series').update({ title }).eq('id', id);
         await fetchAll();
-    };
+    }, [series, saveToLocal, fetchAll]);
 
-    const addSeason = async (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) => {
+    const addSeason = useCallback(async (series_id: string, season_number: number, episodes_count?: number, comment?: string, rating: number = 0) => {
         const tempId = `temp_${Date.now()}`;
         const newSeason: TheatreSeason = {
             id: tempId, series_id, season_number, episodes_count: episodes_count || 0, comment: comment || null, rating, created_at: new Date().toISOString()
         };
         const newSeriesList = series.map(s => s.id === series_id ? { ...s, seasons: [...(s.seasons || []), newSeason] } : s);
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('theatre_seasons').insert([{ series_id, season_number, episodes_count, comment, rating }]);
         await fetchAll();
-    };
+    }, [series, saveToLocal, fetchAll]);
 
-    const updateSeason = async (id: string, updates: Partial<TheatreSeason>) => {
+    const updateSeason = useCallback(async (id: string, updates: Partial<TheatreSeason>) => {
         const newSeriesList = series.map(s => ({
             ...s, seasons: (s.seasons || []).map(sea => sea.id === id ? { ...sea, ...updates } : sea)
         }));
         setSeries(newSeriesList);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series: newSeriesList, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('theatre_seasons').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [series, saveToLocal, fetchAll]);
 
     // --- MUTATORS (BARRACKS) ---
-    const createRoutine = async (name: string, category?: string) => {
+    const createRoutine = useCallback(async (name: string, category?: string) => {
         if (!user) return;
         const { data: routine, error: rError } = await supabase.from('routines').insert([{ name, category, user_id: user.id }]).select().single();
         if (!rError) await fetchAll();
         return routine;
-    };
+    }, [user, fetchAll]);
 
-    const addExerciseToRoutine = async (routineId: string, exerciseId: string, orderIndex: number) => {
+    const addExerciseToRoutine = useCallback(async (routineId: string, exerciseId: string, orderIndex: number) => {
         await supabase.from('routine_exercises').insert([{ routine_id: routineId, exercise_id: exerciseId, order_index: orderIndex, target_sets: 3, target_reps: 10 }]);
         await fetchAll();
-    };
+    }, [fetchAll]);
 
-    const removeExerciseFromRoutine = async (routineExerciseId: string) => {
+    const removeExerciseFromRoutine = useCallback(async (routineExerciseId: string) => {
         await supabase.from('routine_exercises').delete().eq('id', routineExerciseId);
         await fetchAll();
-    };
+    }, [fetchAll]);
 
-    const updateRoutineExercise = async (id: string, updates: { target_sets?: number, target_reps?: number }) => {
+    const updateRoutineExercise = useCallback(async (id: string, updates: { target_sets?: number, target_reps?: number }) => {
         await supabase.from('routine_exercises').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [fetchAll]);
 
-    const deleteRoutine = async (id: string) => {
+    const deleteRoutine = useCallback(async (id: string) => {
         await supabase.from('routines').delete().eq('id', id);
         await fetchAll();
-    };
+    }, [fetchAll]);
 
     // --- CALENDAR HOOK ---
     const calendar = useCalendar(user?.id);
@@ -1326,7 +1131,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }, [user, calendar.importCalendarId]);
 
     // --- MUTATORS (CASTLE) ---
-    const addDecree = async (decree: Partial<RoyalDecree> & { calendar_export?: boolean }) => {
+    const addDecree = useCallback(async (decree: Partial<RoyalDecree> & { calendar_export?: boolean }) => {
         if (!user) return;
         const { calendar_export, ...decreeData } = decree;
 
@@ -1334,7 +1139,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const { data: mainDecree, error } = await supabase.from('royal_decrees').insert([{ ...decreeData, user_id: user.id }]).select().single();
 
         if (!error && mainDecree) {
-            // 2. If it's repetitive, "explode" it into individual records for the next month/instances
+            // 2. If it's repetitive, "explode" it into individual records
             const recurrence = decreeData.recurrence as any;
             if (recurrence?.is_repetitive) {
                 const instances: any[] = [];
@@ -1343,7 +1148,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 const days = recurrence.days || [];
 
                 let runDate = decreeData.due_date ? new Date(decreeData.due_date) : new Date();
-                runDate.setHours(12, 0, 0, 0); // Use midday to avoid TZ jumps
+                runDate.setHours(12, 0, 0, 0);
 
                 const userEndDate = recurrence.end_date ? new Date(recurrence.end_date) : null;
                 if (userEndDate) userEndDate.setHours(23, 59, 59, 999);
@@ -1353,14 +1158,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
                 const stopDate = userEndDate && userEndDate < maxFuture ? userEndDate : maxFuture;
 
-                // First instance is the start date itself (only if it matches the frequency/days)
-                // Actually, let's keep it simple: the loop generates 'next' occurrences.
-                // The 'Anchor' record (mainDecree) already occupies the Start date.
-                // So we start calculating from the anchor date to find 'next' dates.
-
                 let iterationDate = new Date(runDate);
 
-                // Generate instances until stopDate
                 while (iterationDate < stopDate && instances.length < 1000) {
                     let nextDate = new Date(iterationDate);
 
@@ -1433,20 +1232,105 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             console.error('Error inserting main decree:', error);
         }
         return mainDecree;
-    };
+    }, [user, calendar, fetchAll]);
 
-    const updateDecree = async (id: string, updates: Partial<RoyalDecree>) => {
+    const updateDecree = useCallback(async (id: string, updates: Partial<RoyalDecree>) => {
         await supabase.from('royal_decrees').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [fetchAll]);
 
-    const deleteDecree = async (id: string) => {
+    const deleteDecree = useCallback(async (id: string) => {
         await supabase.from('royal_decrees').delete().eq('id', id);
         await fetchAll();
-    };
+    }, [fetchAll]);
+
+    const checkDecreeProgress = useCallback(async (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => {
+        // Also check habit progress
+        const habitRewards = await checkHabitProgressInternal(type, tag, amount, durationMinutes, genericTag);
+        if (habitRewards?.totalXp > 0) await addXp(habitRewards.totalXp);
+        if (habitRewards?.totalGold > 0) await addGold(habitRewards.totalGold);
+
+        if (!user || !decrees) return;
+
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Filter valid decrees for this event
+        const pendingDecrees = decrees.filter(d => {
+            const matchesType = d.status === 'PENDING' &&
+                d.type === type &&
+                (!d.required_activity_tag || d.required_activity_tag === tag || (genericTag && d.required_activity_tag === genericTag));
+
+            if (!matchesType) return false;
+
+            // If it has a due_date, it MUST match Today to be processed
+            if (d.due_date) {
+                const dueStr = new Date(d.due_date).toISOString().split('T')[0];
+                return dueStr === todayStr;
+            }
+
+            // If no due_date, it's a general task that can be completed anytime
+            return true;
+        });
+
+        let updated = false;
+
+        for (const decree of pendingDecrees) {
+            const minTime = decree.recurrence?.min_time || 0;
+            const isTimeBased = decree.unit === 'MINUTES';
+
+            // 1. Requirements Check
+            if (minTime > 0 && durationMinutes !== undefined && durationMinutes < minTime) {
+                continue; // Too short to count
+            }
+
+            // 2. Increment Logic
+            const increment = isTimeBased ? (durationMinutes || 0) : amount;
+
+            if (increment <= 0) continue;
+
+            const newQuantity = (decree.current_quantity || 0) + increment;
+            const isCompleted = newQuantity >= (decree.target_quantity || 1);
+
+            const updates: Partial<RoyalDecree> = {
+                current_quantity: newQuantity,
+                status: isCompleted ? 'COMPLETED' : 'PENDING',
+                completed_at: isCompleted ? new Date().toISOString() : null
+            };
+
+            const { error } = await supabase
+                .from('royal_decrees')
+                .update(updates)
+                .eq('id', decree.id);
+
+            if (!error) {
+                updated = true;
+                if (isCompleted) {
+                    await addXp(50);
+                    await addGold(10);
+
+                    // Special logic for EXAM decrees
+                    if (decree.type === 'EXAM') {
+                        const subjectWithExam = subjects.find(s =>
+                            (s.exams || []).some(ex => ex.decree_id === decree.id)
+                        );
+                        if (subjectWithExam) {
+                            const updatedExams = subjectWithExam.exams.map(ex =>
+                                ex.decree_id === decree.id ? { ...ex, is_completed: true } : ex
+                            );
+                            await updateSubject(subjectWithExam.id, { exams: updatedExams });
+                        }
+                    }
+                }
+            }
+        }
+
+        if (updated) {
+            await fetchAll();
+        }
+    }, [user, decrees, subjects, checkHabitProgressInternal, addXp, addGold, updateSubject, fetchAll]);
 
     // --- MUTATORS (TEMPLE) ---
-    const addThought = async (content: string, type: ThoughtType) => {
+    const addThought = useCallback(async (content: string, type: ThoughtType) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newThought: TempleThought = {
@@ -1455,24 +1339,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newThoughts = [newThought, ...thoughts];
         setThoughts(newThoughts);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts: newThoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('temple_thoughts').insert([{ content, type, user_id: user.id }]).select().single();
         if (!error) await fetchAll();
         return data || newThought;
-    };
+    }, [user, thoughts, saveToLocal, fetchAll]);
 
-    const resolveThought = async (id: string) => {
+    const resolveThought = useCallback(async (id: string) => {
         const newThoughts = thoughts.map(t => t.id === id ? { ...t, is_resolved: true } : t);
         setThoughts(newThoughts);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts: newThoughts, sleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('temple_thoughts').update({ is_resolved: true }).eq('id', id);
         showGlobalToast('✨ Pensamiento Liberado', 'success');
         await addXp(10);
         await fetchAll();
-    };
+    }, [thoughts, saveToLocal, addXp, fetchAll]);
 
-    const addSleep = async (hours: number, quality?: string) => {
+    const addSleep = useCallback(async (hours: number, quality?: string) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newRecord: TempleSleep = {
@@ -1481,7 +1365,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newSleepRecords = [newRecord, ...sleepRecords];
         setSleepRecords(newSleepRecords);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords: newSleepRecords }, { waterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('temple_sleep').insert([{ hours, quality, user_id: user.id }]).select().single();
         if (!error) {
@@ -1489,15 +1373,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await fetchAll();
         }
         return data || newRecord;
-    };
+    }, [user, sleepRecords, saveToLocal, addXp, fetchAll]);
 
     // --- MUTATORS (TAVERN) ---
-    const addWater = async (amount: number) => {
+    const addWater = useCallback(async (amount: number) => {
         if (!user) return;
         const today = new Date().toISOString().split('T')[0];
         const tempId = `temp_${Date.now()}`;
 
-        // Optimistic update: see if record for today exists to increment locally
         const existingIdx = waterRecords.findIndex(r => r.date === today);
         let newWaterRecords: TavernWater[];
         if (existingIdx >= 0) {
@@ -1509,7 +1392,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
 
         setWaterRecords(newWaterRecords);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords: newWaterRecords }, { projects: mageProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         if (existingIdx >= 0) {
             await supabase.from('tavern_water').update({ amount: newWaterRecords[existingIdx].amount }).eq('id', waterRecords[existingIdx].id);
@@ -1518,10 +1401,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
 
         await fetchAll();
-    };
+    }, [user, waterRecords, saveToLocal, fetchAll]);
 
     // --- MUTATORS (MAGE TOWER) ---
-    const addProject = async (name: string, themeId: string) => {
+    const addProject = useCallback(async (name: string, themeId: string) => {
         if (!user) return;
         const tempId = `temp_${Date.now()}`;
         const newProj: MageProject = {
@@ -1529,7 +1412,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         };
         const newProjects = [newProj, ...mageProjects];
         setMageProjects(newProjects);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+        saveToLocal();
 
         const { data, error } = await supabase.from('mage_projects').insert([{ name, theme_id: themeId, user_id: user.id }]).select().single();
         if (error) {
@@ -1539,26 +1422,26 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await fetchAll();
         }
         return data || newProj;
-    };
+    }, [user, mageProjects, saveToLocal, fetchAll]);
 
-    const updateProject = async (id: string, updates: Partial<MageProject>) => {
+    const updateProject = useCallback(async (id: string, updates: Partial<MageProject>) => {
         const newProjects = mageProjects.map(p => p.id === id ? { ...p, ...updates } : p);
         setMageProjects(newProjects);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+        saveToLocal();
         await supabase.from('mage_projects').update(updates).eq('id', id);
         await fetchAll();
-    };
+    }, [mageProjects, saveToLocal, fetchAll]);
 
-    const deleteProject = async (id: string) => {
+    const deleteProject = useCallback(async (id: string) => {
         const newProjects = mageProjects.filter(p => p.id !== id);
         setMageProjects(newProjects);
-        saveToLocal({ subjects, books, customColors, bookStats }, { activities, movies, series, activityStats }, { routines, history, muscleFatigue, records }, { decrees }, { thoughts, sleepRecords }, { waterRecords }, { projects: newProjects, themes: mageThemes }, profile);
+        saveToLocal();
         const { error } = await supabase.from('mage_projects').delete().eq('id', id);
         if (error) console.error('MageTower: Error deleting project', error);
         await fetchAll();
-    };
+    }, [mageProjects, saveToLocal, fetchAll]);
 
-    const deleteMapping = async (id: string) => {
+    const deleteMapping = useCallback(async (id: string) => {
         try {
             const { error } = await supabase.from('app_aura_mappings').delete().eq('id', id);
             if (error) throw error;
@@ -1568,9 +1451,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             console.error(e);
             showGlobalToast('Error al eliminar canalización', 'error');
         }
-    };
+    }, [fetchAll]);
 
-    const addTheme = async (name: string, symbol: string, color: string) => {
+    const addTheme = useCallback(async (name: string, symbol: string, color: string) => {
         if (!user) return;
         const { data, error } = await supabase.from('mage_themes').insert([{ name, symbol, color, user_id: user.id }]).select().single();
         if (error) {
@@ -1580,12 +1463,197 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await fetchAll();
         }
         return data;
-    };
+    }, [user, fetchAll]);
 
-    const deleteTheme = async (id: string) => {
+    const deleteTheme = useCallback(async (id: string) => {
         await supabase.from('mage_themes').delete().eq('id', id);
         await fetchAll();
-    };
+    }, [fetchAll]);
+
+    const canalizeAura = useCallback(async (projectId: string, themeId: string) => {
+        if (!profile) return;
+        const aura = unhandledAuraByTheme[themeId] || 0;
+        if (aura <= 0) return;
+
+        const project = mageProjects.find(p => p.id === projectId);
+        if (!project) return;
+
+        // 1. Update project mana
+        const { error: pError } = await supabase
+            .from('mage_projects')
+            .update({ mana_amount: project.mana_amount + aura })
+            .eq('id', projectId);
+
+        if (pError) throw pError;
+
+        // 2. Reset theme pending_aura to 0
+        const { error: themeError } = await supabase
+            .from('mage_themes')
+            .update({ pending_aura: 0 })
+            .eq('id', themeId);
+
+        if (themeError) throw themeError;
+
+        await fetchAll();
+        showGlobalToast(`¡${aura} de Aura canalizada con éxito!`, 'success');
+    }, [profile, unhandledAuraByTheme, mageProjects, fetchAll]);
+
+    const toggleChanneling = useCallback(async (projectId: string, themeId: string) => {
+        if (!profile) return;
+        const theme = mageThemes.find(t => t.id === themeId);
+        if (!theme) return;
+
+        // Toggle logic: If currently active, disable. If different or null, enable.
+        const isCurrentlyActive = theme.active_project_id === projectId;
+        const newActiveId = isCurrentlyActive ? null : projectId;
+
+        // 1. Update theme active_project_id
+        const { error } = await supabase
+            .from('mage_themes')
+            .update({ active_project_id: newActiveId })
+            .eq('id', themeId);
+
+        if (error) {
+            showGlobalToast('Error al cambiar canalización', 'error');
+            return;
+        }
+
+        // 2. If Activating, FLUSH pending aura immediately to this project
+        if (newActiveId) {
+            const aura = unhandledAuraByTheme[themeId] || 0;
+            if (aura > 0) {
+                const project = mageProjects.find(p => p.id === newActiveId);
+                if (project) {
+                    await supabase.from('mage_projects').update({ mana_amount: project.mana_amount + aura }).eq('id', newActiveId);
+                    await supabase.from('mage_themes').update({ pending_aura: 0 }).eq('id', themeId);
+                    showGlobalToast(`Conexión establecida. +${aura} Aura transferida.`, 'success');
+                } else {
+                    showGlobalToast('Conexión establecida', 'success');
+                }
+            } else {
+                showGlobalToast('Conexión establecida', 'success');
+            }
+        } else {
+            showGlobalToast('Canalización detenida', 'info');
+        }
+
+        await fetchAll();
+    }, [profile, mageThemes, unhandledAuraByTheme, fetchAll]);
+
+    // --- WORKOUT LOGIC ---
+    useEffect(() => {
+        const recoverWorkout = async () => {
+            const saved = await AsyncStorage.getItem(WORKOUT_STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                setIsSessionActive(true);
+                setStartTime(data.startTime);
+                setWorkoutRoutineId(data.routineId);
+                setSetsLog(data.setsLog || []);
+            }
+        };
+        recoverWorkout();
+    }, []);
+
+    const startSession = useCallback(async (routineId: string | null = null, initialExercises: any[] = []) => {
+        const now = new Date().toISOString();
+        setStartTime(now);
+        setWorkoutRoutineId(routineId);
+        setIsSessionActive(true);
+
+        const initialSets: any[] = [];
+        initialExercises.forEach(ex => {
+            const targetSets = ex.target_sets || 3;
+            const targetReps = ex.target_reps || 10;
+            for (let i = 0; i < targetSets; i++) {
+                initialSets.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    exercise_id: ex.exercise_id,
+                    exercise_name: ex.exercise?.name_es || ex.exercise?.name || 'Ejercicio',
+                    weight: 0,
+                    reps: targetReps,
+                    type: 'normal',
+                    completed: false
+                });
+            }
+        });
+        setSetsLog(initialSets);
+    }, []);
+
+    const finishSession = useCallback(async () => {
+        if (!isSessionActive || !startTime) return false;
+        const completedSets = setsLog.filter(s => s.completed);
+        if (completedSets.length === 0) {
+            return new Promise<boolean>((resolve) => {
+                Alert.alert("Aviso", "¿Terminar sin registrar ninguna serie?", [
+                    { text: "No", style: "cancel", onPress: () => resolve(false) },
+                    {
+                        text: "Sí, abandonar", style: "destructive", onPress: async () => {
+                            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+                            setIsSessionActive(false);
+                            resolve(true);
+                        }
+                    }
+                ]);
+            });
+        }
+
+        try {
+            const { data: { user: u } } = await supabase.auth.getUser();
+            if (!u) throw new Error('No user');
+            const totalVolume = completedSets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
+            const { data: session, error: sError } = await supabase.from('workout_sessions').insert([{
+                user_id: u.id, routine_id: workoutRoutineId, started_at: startTime,
+                ended_at: new Date().toISOString(), bodyweight: profile?.hp_current || 0,
+                note: `Volumen total: ${totalVolume}kg`
+            }]).select().single();
+            if (sError) throw sError;
+            const setsToInsert = completedSets.map((s, idx) => ({
+                session_id: session.id, exercise_id: s.exercise_id, set_number: idx + 1,
+                weight_kg: s.weight, reps: s.reps, type: s.type
+            }));
+            const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert);
+            if (setsError) throw setsError;
+
+            await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
+            setIsSessionActive(false);
+            setStartTime(null);
+            setSetsLog([]);
+
+            // Actualizar Decretos Reales (BARRACKS)
+            const durationSec = startTime ? Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) : 0;
+            const durationMin = Math.round(durationSec / 60);
+            await checkDecreeProgress('BARRACKS', '', 1, durationMin);
+
+            await fetchAll();
+            showGlobalToast(`¡Batalla Concluida! Daño: ${totalVolume}kg`, 'success');
+            return true;
+        } catch (e: any) {
+            Alert.alert("Error al guardar", e.message);
+            return false;
+        }
+    }, [isSessionActive, startTime, setsLog, workoutRoutineId, profile, checkDecreeProgress, fetchAll]);
+
+    const addSet = useCallback((exerciseId: string, exerciseName: string) => {
+        const newSet = {
+            id: Math.random().toString(36).substr(2, 9),
+            exercise_id: exerciseId,
+            exercise_name: exerciseName,
+            weight: 0,
+            reps: 0,
+            type: 'normal',
+            completed: false
+        };
+        setSetsLog(prev => [...prev, newSet]);
+    }, []);
+
+    const updateSet = useCallback((id: string, updates: Partial<any>) => {
+        setSetsLog(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    }, []);
+
+    const removeSet = useCallback((id: string) => {
+        setSetsLog(prev => prev.filter(s => s.id !== id));
+    }, []);
 
     const value: GameContextType = useMemo(() => ({
         library: {
@@ -1667,74 +1735,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             mappings: mageAppMappings,
             unhandledAuraByTheme,
             deleteMapping,
-            canalizeAura: async (projectId: string, themeId: string) => {
-                if (!profile) return;
-                const aura = unhandledAuraByTheme[themeId] || 0;
-                if (aura <= 0) return;
-
-                const project = mageProjects.find(p => p.id === projectId);
-                if (!project) return;
-
-                // 1. Update project mana
-                const { error: pError } = await supabase
-                    .from('mage_projects')
-                    .update({ mana_amount: project.mana_amount + aura })
-                    .eq('id', projectId);
-
-                if (pError) throw pError;
-
-                // 2. Reset theme pending_aura to 0
-                const { error: themeError } = await supabase
-                    .from('mage_themes')
-                    .update({ pending_aura: 0 })
-                    .eq('id', themeId);
-
-                if (themeError) throw themeError;
-
-                await fetchAll();
-                showGlobalToast(`¡${aura} de Aura canalizada con éxito!`, 'success');
-            },
-            toggleChanneling: async (projectId: string, themeId: string) => {
-                if (!profile) return;
-                const theme = mageThemes.find(t => t.id === themeId);
-                if (!theme) return;
-
-                // Toggle logic: If currently active, disable. If different or null, enable.
-                const isCurrentlyActive = theme.active_project_id === projectId;
-                const newActiveId = isCurrentlyActive ? null : projectId;
-
-                // 1. Update theme active_project_id
-                const { error } = await supabase
-                    .from('mage_themes')
-                    .update({ active_project_id: newActiveId })
-                    .eq('id', themeId);
-
-                if (error) {
-                    showGlobalToast('Error al cambiar canalización', 'error');
-                    return;
-                }
-
-                // 2. If Activating, FLUSH pending aura immediately to this project
-                if (newActiveId) {
-                    const aura = unhandledAuraByTheme[themeId] || 0;
-                    if (aura > 0) {
-                        const project = mageProjects.find(p => p.id === newActiveId);
-                        if (project) {
-                            await supabase.from('mage_projects').update({ mana_amount: project.mana_amount + aura }).eq('id', newActiveId);
-                            await supabase.from('mage_themes').update({ pending_aura: 0 }).eq('id', themeId);
-                            showGlobalToast(`Conexión establecida. +${aura} Aura transferida.`, 'success');
-                        } else {
-                            showGlobalToast('Conexión establecida', 'success');
-                        }
-                    } else {
-                        showGlobalToast('Conexión establecida', 'success');
-                    }
-                } else {
-                    showGlobalToast('Canalización detenida', 'info');
-                }
-
-                await fetchAll();
-            }
+            canalizeAura,
+            toggleChanneling
         },
         calendar,
         workout: {

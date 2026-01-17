@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { usePlatform } from '../services/PlatformContext';
@@ -18,15 +18,15 @@ export const useCalendar = (userId: string | undefined) => {
         checkPermission();
     }, []);
 
-    const checkPermission = async () => {
+    const checkPermission = useCallback(async () => {
         const granted = await platform.calendar.getPermissions();
         setPermissionGranted(granted);
         if (granted) {
             loadCalendars();
         }
-    };
+    }, [platform.calendar]);
 
-    const loadSettings = async () => {
+    const loadSettings = useCallback(async () => {
         try {
             const stored = await AsyncStorage.getItem(CALENDAR_STORAGE_KEY);
             if (stored) {
@@ -37,9 +37,9 @@ export const useCalendar = (userId: string | undefined) => {
         } catch (e) {
             console.error("Failed to load calendar settings", e);
         }
-    };
+    }, []);
 
-    const saveSettings = async (importId: string | null, exportId: string | null) => {
+    const saveSettings = useCallback(async (importId: string | null, exportId: string | null) => {
         try {
             await AsyncStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify({ importId, exportId }));
             setImportCalendarId(importId);
@@ -47,18 +47,18 @@ export const useCalendar = (userId: string | undefined) => {
         } catch (e) {
             console.error("Failed to save calendar settings", e);
         }
-    };
+    }, []);
 
-    const loadCalendars = async () => {
+    const loadCalendars = useCallback(async () => {
         const granted = await platform.calendar.requestPermissions();
         setPermissionGranted(granted);
         if (granted) {
             const cals = await platform.calendar.getCalendars();
             setCalendars(cals);
         }
-    };
+    }, [platform.calendar]);
 
-    const syncNativeEventsToDecrees = async () => {
+    const syncNativeEventsToDecrees = useCallback(async () => {
         if (!importCalendarId || !userId) return;
         setIsSyncing(true);
         try {
@@ -68,9 +68,9 @@ export const useCalendar = (userId: string | undefined) => {
         } finally {
             setIsSyncing(false);
         }
-    };
+    }, [importCalendarId, userId, platform.calendar]);
 
-    const exportDecreeToCalendar = async (title: string, date: Date | null, notes?: string) => {
+    const exportDecreeToCalendar = useCallback(async (title: string, date: Date | null, notes?: string) => {
         if (!exportCalendarId || !date) return;
         try {
             return await platform.calendar.exportEvent(title, date, notes, exportCalendarId);
@@ -78,12 +78,12 @@ export const useCalendar = (userId: string | undefined) => {
             console.error("Export failed", e);
             return null;
         }
-    };
+    }, [exportCalendarId, platform.calendar]);
 
-    return {
+    return useMemo(() => ({
         calendars,
         status: { status: permissionGranted ? 'granted' : 'denied' },
-        requestPermission: loadCalendars, // Re-using loadCalendars as requestPermission for simplicity
+        requestPermission: loadCalendars,
         importCalendarId,
         exportCalendarId,
         isSyncing,
@@ -91,5 +91,9 @@ export const useCalendar = (userId: string | undefined) => {
         syncNativeEventsToDecrees,
         exportDecreeToCalendar,
         registerBackgroundFetch: async () => { console.log("Background fetch not implemented for this platform yet"); },
-    };
+    }), [
+        calendars, permissionGranted, loadCalendars,
+        importCalendarId, exportCalendarId, isSyncing,
+        saveSettings, syncNativeEventsToDecrees, exportDecreeToCalendar
+    ]);
 };

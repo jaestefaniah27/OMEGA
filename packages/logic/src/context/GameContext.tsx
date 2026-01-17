@@ -160,8 +160,9 @@ interface GameContextType {
         deleteTheme: (id: string) => Promise<void>;
         mappings: MageAppMapping[];
         unhandledAuraByTheme: Record<string, number>;
-        canalizeAura: (projectId: string, themeId: string) => Promise<void>;
         deleteMapping: (id: string) => Promise<void>;
+        canalizeAura: (projectId: string, themeId: string) => Promise<void>;
+        toggleChanneling: (projectId: string, themeId: string) => Promise<void>;
     };
 
     // --- CALENDAR INTEGRATION ---
@@ -671,28 +672,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const mappingData = results[19].data || [];
 
             // --- CALCULATE PENDING AURA ---
+            // Now reading directly from mage_themes as the worker updates it there directly
             const auraByTheme: Record<string, number> = {};
-            if (profData?.last_aura_processing_at) {
-                const { data: activitySums } = await supabase
-                    .from('computer_activities')
-                    .select('app_name, duration_seconds')
-                    .eq('user_id', currentUser.id)
-                    .gt('created_at', profData.last_aura_processing_at);
-
-                if (activitySums) {
-                    activitySums.forEach(row => {
-                        const mapping = mappingData.find(m => m.app_name === row.app_name);
-                        if (mapping) {
-                            auraByTheme[mapping.theme_id] = (auraByTheme[mapping.theme_id] || 0) + (row.duration_seconds || 0);
-                        }
-                    });
+            themeData.forEach((t: any) => {
+                if (t.pending_aura > 0) {
+                    auraByTheme[t.id] = t.pending_aura;
                 }
-            }
-
-            // Convert seconds to "Mana units" (60s = 1 Mara)
-            Object.keys(auraByTheme).forEach(tid => {
-                auraByTheme[tid] = Math.floor(auraByTheme[tid] / 60);
             });
+
+
 
             setUnhandledAuraByTheme(auraByTheme);
             setMageAppMappings(mappingData);
@@ -913,6 +901,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                                 fetchAll();
                             }
                         }
+                    }
+                )
+                // NEW: Listen for theme aura changes (Desktop Worker updates)
+                .on('postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'mage_themes',
+                        filter: `user_id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
+                        fetchAll();
                     }
                 )
                 .subscribe((status) => {
@@ -1539,16 +1540,57 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
                 if (pError) throw pError;
 
-                // 2. Update last_aura_processing_at to NOW
-                const { error: profError } = await supabase
-                    .from('profiles')
-                    .update({ last_aura_processing_at: new Date().toISOString() })
-                    .eq('id', profile.id);
+                // 2. Reset theme pending_aura to 0
+                const { error: themeError } = await supabase
+                    .from('mage_themes')
+                    .update({ pending_aura: 0 })
+                    .eq('id', themeId);
 
-                if (profError) throw profError;
+                if (themeError) throw themeError;
 
                 await fetchAll();
                 showGlobalToast(`¡${aura} de Aura canalizada con éxito!`, 'success');
+            },
+            toggleChanneling: async (projectId: string, themeId: string) => {
+                if (!profile) return;
+                const theme = mageThemes.find(t => t.id === themeId);
+                if (!theme) return;
+
+                // Toggle logic: If currently active, disable. If different or null, enable.
+                const isCurrentlyActive = theme.active_project_id === projectId;
+                const newActiveId = isCurrentlyActive ? null : projectId;
+
+                // 1. Update theme active_project_id
+                const { error } = await supabase
+                    .from('mage_themes')
+                    .update({ active_project_id: newActiveId })
+                    .eq('id', themeId);
+
+                if (error) {
+                    showGlobalToast('Error al cambiar canalización', 'error');
+                    return;
+                }
+
+                // 2. If Activating, FLUSH pending aura immediately to this project
+                if (newActiveId) {
+                    const aura = unhandledAuraByTheme[themeId] || 0;
+                    if (aura > 0) {
+                        const project = mageProjects.find(p => p.id === newActiveId);
+                        if (project) {
+                            await supabase.from('mage_projects').update({ mana_amount: project.mana_amount + aura }).eq('id', newActiveId);
+                            await supabase.from('mage_themes').update({ pending_aura: 0 }).eq('id', themeId);
+                            showGlobalToast(`Conexión establecida. +${aura} Aura transferida.`, 'success');
+                        } else {
+                            showGlobalToast('Conexión establecida', 'success');
+                        }
+                    } else {
+                        showGlobalToast('Conexión establecida', 'success');
+                    }
+                } else {
+                    showGlobalToast('Canalización detenida', 'info');
+                }
+
+                await fetchAll();
             }
         },
         calendar,

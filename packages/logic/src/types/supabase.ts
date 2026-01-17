@@ -265,7 +265,8 @@ export interface MageTheme {
     name: string;
     symbol: string;
     color: string;
-    pending_aura: number;
+    pending_aura?: number;
+    active_project_id?: string | null;
     created_at: string;
 }
 

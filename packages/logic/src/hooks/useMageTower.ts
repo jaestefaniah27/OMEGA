@@ -30,6 +30,7 @@ export const useMageTower = () => {
         mappings: mageTower.mappings,
         unhandledAuraByTheme: mageTower.unhandledAuraByTheme,
         canalizeAura: mageTower.canalizeAura,
+        toggleChanneling: mageTower.toggleChanneling,
         deleteMapping: mageTower.deleteMapping
     };
 };

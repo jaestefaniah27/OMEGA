@@ -40,7 +40,7 @@ export const WizardTowerScreen: React.FC = () => {
     const {
         projects, themes, createProject, updateProject, deleteProject,
         archiveProject, createTheme, deleteTheme, loading,
-        unhandledAuraByTheme, canalizeAura, mappings, deleteMapping
+        unhandledAuraByTheme, canalizeAura, mappings, deleteMapping, toggleChanneling
     } = useMageTower();
 
     // Project Modal State
@@ -156,14 +156,41 @@ export const WizardTowerScreen: React.FC = () => {
         const iconName = theme?.symbol || 'Sparkles';
         const color = theme?.color || '#4834d4';
         const projectAura = theme ? (unhandledAuraByTheme[theme.id] || 0) : 0;
+        const isActive = theme?.active_project_id === project.id;
 
         return (
             <TouchableOpacity
                 key={project.id}
-                style={styles.projectItem}
+                style={[
+                    styles.projectItem,
+                    isActive && {
+                        borderColor: color,
+                        borderWidth: 2,
+                        transform: [{ scale: 1.02 }]
+                    }
+                ]}
                 onLongPress={() => handleLongPressProject(project)}
+                onPress={() => toggleChanneling(project.id, theme!.id)}
                 activeOpacity={0.7}
             >
+                {isActive && (
+                    <View style={{
+                        position: 'absolute',
+                        top: -10,
+                        right: 15,
+                        backgroundColor: color,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        elevation: 5,
+                        shadowColor: color,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 5
+                    }}>
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>✨ CANALIZANDO</Text>
+                    </View>
+                )}
                 <View style={styles.projectInfo}>
                     <View style={styles.projectNameSection}>
                         <IconRenderer name={iconName} color={color} />
@@ -171,14 +198,11 @@ export const WizardTowerScreen: React.FC = () => {
                             <Text style={styles.projectName}>{project.name}</Text>
                             <Text style={styles.projectScope}>{theme?.name || 'Ámbito Desconocido'}</Text>
                         </View>
-                        {projectAura > 0 && (
-                            <TouchableOpacity
-                                style={styles.projectAuraBadge}
-                                onPress={() => canalizeAura(project.id, theme!.id)}
-                            >
+                        {projectAura > 0 && !isActive && (
+                            <View style={styles.projectAuraBadge}>
                                 <Zap size={14} color="#FFD700" />
                                 <Text style={styles.projectAuraText}>+{projectAura}</Text>
-                            </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                     <View style={styles.manaSection}>
@@ -187,7 +211,7 @@ export const WizardTowerScreen: React.FC = () => {
                     </View>
                 </View>
                 <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: project.mana_amount > 0 ? `${Math.min(project.mana_amount, 100)}%` : '0%', backgroundColor: color }]} />
+                    <View style={[styles.progressBarFill, { width: project.mana_amount > 0 ? `${Math.min(project.mana_amount / 10, 100)}%` : '0%', backgroundColor: color }]} />
                 </View>
             </TouchableOpacity>
         );
@@ -266,6 +290,28 @@ export const WizardTowerScreen: React.FC = () => {
                                 projects.filter(p => p.status !== 'ARCHIVED').map(renderProject)
                             )}
 
+                            {/* Mostrar aura acumulada por tema (si > 0) */}
+                            {themes.length > 0 && Object.entries(unhandledAuraByTheme).some(([_, amount]) => amount > 0) && (
+                                <View style={{ marginTop: 20 }}>
+                                    <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+                                        <Flame size={16} color="#d4af37" />
+                                        <Text style={[styles.sectionTitle, { fontSize: 12, color: '#d4af37' }]}>ENERGÍA LATENTE POR ÁMBITO</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                                        {themes.map(t => {
+                                            const amount = unhandledAuraByTheme[t.id] || 0;
+                                            if (amount <= 0) return null;
+                                            return (
+                                                <View key={t.id} style={[styles.themeAuraChip, { borderColor: t.color }]}>
+                                                    <IconRenderer name={t.symbol} color={t.color} size={12} />
+                                                    <Text style={[styles.themeAuraText, { color: t.color }]}>{t.name}: {amount}</Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
+
                             <View style={{ height: 200 }} />
                         </ScrollView>
 
@@ -291,21 +337,7 @@ export const WizardTowerScreen: React.FC = () => {
                                 </View>
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.canalizeBtn, totalAura === 0 && styles.canalizeBtnDisabled]}
-                                onPress={() => {
-                                    if (totalAura > 0) {
-                                        showCustomAlert("Canalizar Energía", "Elige una investigación vinculada para transmutar su aura específica.");
-                                    } else {
-                                        showZeroAuraBubble();
-                                    }
-                                }}
-                            >
-                                <Zap size={16} color={totalAura === 0 ? "#7f8c8d" : "#FFD700"} />
-                                <Text style={[styles.canalizeBtnText, totalAura === 0 && { color: '#7f8c8d' }]}>
-                                    CANALIZAR ARTEFACTOS
-                                </Text>
-                            </TouchableOpacity>
+
                         </View>
                     </View>
 
@@ -684,6 +716,8 @@ export const WizardTowerScreen: React.FC = () => {
                 visible={auraModalVisible}
                 onClose={() => setAuraModalVisible(false)}
             />
+
+
         </View >
     );
 };
@@ -1374,6 +1408,54 @@ const styles = StyleSheet.create({
         color: '#FFD700',
         fontSize: 12,
         fontWeight: 'bold',
+        marginLeft: 4,
+    },
+    themeAuraChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    themeAuraText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 6,
+        letterSpacing: 0.5,
+    },
+    channelingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: 'rgba(255, 215, 0, 0.05)',
+        borderRadius: 12,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(61, 43, 31, 0.1)',
+    },
+    channelingProjectName: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+    },
+    channelingProjectMana: {
+        fontSize: 12,
+        color: '#7f8c8d',
+    },
+    channelingAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1c40f',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+    },
+    channelingActionText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#fff',
         marginLeft: 4,
     }
 });

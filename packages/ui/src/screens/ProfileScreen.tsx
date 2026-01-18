@@ -44,7 +44,7 @@ const AttributeProgressBar = ({ label, level, xp, icon, color }: { label: string
     );
 };
 
-export const ProfileScreen: React.FC = () => {
+export const ProfileScreen: React.FC = React.memo(() => {
     const navigation = useNavigation();
     const { profile, heroStats, loading: statsLoading } = useUserStats();
     const [loading, setLoading] = useState(false);
@@ -305,7 +305,7 @@ export const ProfileScreen: React.FC = () => {
             )}
         </View>
     );
-};
+}, () => true);
 
 const styles = StyleSheet.create({
     container: {

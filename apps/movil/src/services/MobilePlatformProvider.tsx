@@ -6,13 +6,15 @@ import * as KeepAwake from 'expo-keep-awake';
 import * as Notifications from 'expo-notifications';
 import {
   PlatformProvider as BasePlatformProvider,
+} from '@omega/logic/src/services/PlatformContext';
+import {
   IPlatformService,
   ICalendarService,
   IHapticsService,
   IKeepAwakeService,
-  INotificationService,
-  supabase
-} from '@omega/logic';
+  INotificationService
+} from '@omega/logic/src/services/PlatformInterfaces';
+import { supabase } from '@omega/logic/src/lib/supabase';
 
 // --- LOGIC MOVED FROM HOOKS TO ADAPTER ---
 
@@ -75,7 +77,7 @@ const MobileCalendarService: ICalendarService = {
       await supabase.from('royal_decrees').insert(newDecrees);
     }
   },
-  exportEvent: async (title, date, notes, exportCalendarId) => {
+  exportEvent: async (title: string, date: Date, notes: string, exportCalendarId: string) => {
     const endDate = new Date(date);
     endDate.setHours(endDate.getHours() + 1);
 
@@ -105,7 +107,7 @@ const MobileNotificationService: INotificationService = {
     const { status } = await Notifications.requestPermissionsAsync();
     return status === 'granted';
   },
-  scheduleNotification: async (title, body, seconds = 0, identifier) => {
+  scheduleNotification: async (title: string, body: string, seconds: number = 0, identifier: string) => {
     return await Notifications.scheduleNotificationAsync({
       identifier,
       content: {
@@ -117,10 +119,10 @@ const MobileNotificationService: INotificationService = {
       trigger: seconds > 0 ? { seconds, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL } : null,
     });
   },
-  cancelNotification: async (identifier) => {
+  cancelNotification: async (identifier: string) => {
     await Notifications.cancelScheduledNotificationAsync(identifier);
   },
-  dismissNotification: async (identifier) => {
+  dismissNotification: async (identifier: string) => {
     await Notifications.dismissNotificationAsync(identifier);
   },
 };

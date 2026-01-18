@@ -223,10 +223,24 @@ const realtimeReducer = (state: any, action: any) => {
         case 'SET_HERO_STATS':
             return { ...state, heroStats: action.payload };
         case 'BATCH_UPDATE_REALTIME':
+            // Anti-Churn: Only update if fields actually differ (excluding nulls if partial)
+            const newProfile = action.payload.profile && JSON.stringify(state.profile) !== JSON.stringify(action.payload.profile)
+                ? action.payload.profile
+                : state.profile;
+
+            const newStats = action.payload.heroStats && JSON.stringify(state.heroStats) !== JSON.stringify(action.payload.heroStats)
+                ? action.payload.heroStats
+                : state.heroStats;
+
+            // If nothing changed, return exact same state reference to prevent re-renders
+            if (newProfile === state.profile && newStats === state.heroStats) {
+                return state;
+            }
+
             return {
                 ...state,
-                profile: action.payload.profile ? { ...state.profile, ...action.payload.profile } : state.profile,
-                heroStats: action.payload.heroStats ? { ...state.heroStats, ...action.payload.heroStats } : state.heroStats,
+                profile: newProfile,
+                heroStats: newStats,
             };
         default:
             return state;
@@ -240,6 +254,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         profile: null,
         heroStats: null
     });
+
+    // Ref Pattern: Keep track of latest state without breaking closures
+    const stateRef = useRef(gameState);
+    useEffect(() => { stateRef.current = gameState; }, [gameState]);
 
     const { user, profile, heroStats } = gameState;
 
@@ -846,6 +864,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                         filter: `id=eq.${user.id}`
                     },
                     (payload) => {
+                        // Anti-Timestamp Filter: Check if only timestamps changed
+                        const currentState = stateRef.current;
+                        const currentStats = currentState.heroStats;
+                        const newStats = payload.new;
+
+                        if (currentStats && newStats) {
+                            // Shallow check of critical fields (HP, XP, Level, Gold) to avoid parsing if irrelevant
+                            // If ONLY updated_at changed, ignore.
+                            // We construct a "comparable" object without timestamps
+                            const { updated_at: _, ...cleanCurrent } = currentStats as any;
+                            const { updated_at: __, ...cleanNew } = newStats as any;
+
+                            if (JSON.stringify(cleanCurrent) === JSON.stringify(cleanNew)) {
+                                console.log('[GameSync] 🔇 Hero Stats update ignored (Noise/Timestamp only)');
+                                return;
+                            }
+                        }
+
                         console.log('GameContext: Hero Stats updated via Realtime');
                         dispatch({ type: 'BATCH_UPDATE_REALTIME', payload: { heroStats: payload.new } });
                     }

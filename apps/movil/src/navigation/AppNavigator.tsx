@@ -1,20 +1,20 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
-    HomeScreen,
-    CastleScreen,
-    LibraryScreen,
-    WizardTowerScreen,
-    BarracksScreen,
-    TavernScreen,
-    TempleScreen,
-    TheatreScreen,
-    SettingsScreen,
-    MarketScreen,
-    ProfileScreen,
-    WarTableScreen,
-    ZenFireplaceScreen
-} from '@omega/ui';
+    HomeScreen
+} from '@omega/ui/src/screens/HomeScreen';
+import { CastleScreen } from '@omega/ui/src/screens/CastleScreen';
+import { LibraryScreen } from '@omega/ui/src/screens/LibraryScreen';
+import { WizardTowerScreen } from '@omega/ui/src/screens/WizardTowerScreen';
+import { BarracksScreen } from '@omega/ui/src/screens/BarracksScreen';
+import { TavernScreen } from '@omega/ui/src/screens/TavernScreen';
+import { TempleScreen } from '@omega/ui/src/screens/TempleScreen';
+import { TheatreScreen } from '@omega/ui/src/screens/TheatreScreen';
+import { SettingsScreen } from '@omega/ui/src/screens/SettingsScreen';
+import { MarketScreen } from '@omega/ui/src/screens/MarketScreen';
+import { ProfileScreen } from '@omega/ui/src/screens/ProfileScreen';
+import { WarTableScreen } from '@omega/ui/src/screens/WarTableScreen';
+import { ZenFireplaceScreen } from '@omega/ui/src/screens/ZenFireplaceScreen';
 
 export type RootStackParamList = {
     Home: undefined;

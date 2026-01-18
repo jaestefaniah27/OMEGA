@@ -244,7 +244,7 @@ const GradeInput = ({ grade, onChange }: { grade: number | null, onChange: (val:
     );
 };
 
-export const LibraryScreen: React.FC = () => {
+export const LibraryScreen: React.FC = React.memo(() => {
     const navigation = useNavigation();
     const route = useRoute<any>();
     const {
@@ -1385,7 +1385,7 @@ export const LibraryScreen: React.FC = () => {
 
         </View>
     );
-};
+}, () => true);
 
 const styles = StyleSheet.create({
     container: {

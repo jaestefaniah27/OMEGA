@@ -530,7 +530,7 @@ export const CastleScreen: React.FC = React.memo(() => {
             />
         </View >
     );
-});
+}, () => true);
 
 const styles = StyleSheet.create({
     container: {

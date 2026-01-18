@@ -8,7 +8,8 @@ ON public.workout_sessions(user_id, started_at DESC);
 -- 2. Index for workout_sets joins
 CREATE INDEX IF NOT EXISTS idx_workout_sets_session_id 
 ON public.workout_sets(session_id);
-
+  
+  
 CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise_id 
 ON public.workout_sets(exercise_id);
 

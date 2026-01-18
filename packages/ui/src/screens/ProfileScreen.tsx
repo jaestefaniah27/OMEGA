@@ -10,7 +10,8 @@ import {
     Dimensions,
     TouchableOpacity
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { supabase, useUserStats, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins, Zap, BookOpen, Dumbbell, Scroll } from 'lucide-react-native';

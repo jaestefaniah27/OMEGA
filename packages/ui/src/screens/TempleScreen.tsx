@@ -11,7 +11,8 @@ import {
     Alert,
     TouchableOpacity
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Heart, Moon, Sun, Scroll, Flame, Send, Trash2, CheckCircle2 } from 'lucide-react-native';
 import { useTemple } from '@omega/logic';

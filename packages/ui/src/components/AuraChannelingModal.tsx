@@ -9,7 +9,8 @@ import {
     ActivityIndicator,
     Alert
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import {
     X, RefreshCw, Link as LinkIcon, Monitor, Check,
     Sparkles, Code, Cpu, Book, PenTool, FlaskConical, FlaskRound, Music, Palette,

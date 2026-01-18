@@ -15,7 +15,8 @@ import {
     Alert
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import {
     Swords,
     Shield,
@@ -35,7 +36,15 @@ import {
     ChevronDown,
     Trash2
 } from 'lucide-react-native';
-import { supabase, useRoutines, useWorkout, useUserStats } from '@omega/logic';
+import {
+    useWorkout,
+    useActiveWorkout,
+    useExercises,
+    useWorkoutTimer,
+    useRoutines,
+    useUserStats,
+    supabase
+} from '@omega/logic';
 import { MuscleHeatMap } from '../components/MuscleHeatMap';
 
 const { width, height } = Dimensions.get('window');
@@ -139,7 +148,8 @@ export const BarracksScreen: React.FC = () => {
 
     const { routines, history, createRoutine, refreshHistory, addExerciseToRoutine, removeExerciseFromRoutine, updateRoutineExercise } = useRoutines();
     const { muscleFatigue, records } = useUserStats();
-    const { isSessionActive, formatTime, setsLog, startSession, finishSession, addSet, updateSet, removeSet } = useWorkout();
+    const { isSessionActive, setsLog, startSession, finishSession, addSet, updateSet, removeSet } = useWorkout();
+    const { formatTime } = useWorkoutTimer();
 
     const [exerciseSearchVisible, setExerciseSearchVisible] = useState(false);
     const [searchText, setSearchText] = useState('');

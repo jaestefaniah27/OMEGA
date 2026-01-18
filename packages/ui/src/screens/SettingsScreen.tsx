@@ -11,7 +11,8 @@ import {
     TouchableOpacity,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { supabase, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Edit2, Settings, Calendar as CalendarIcon } from 'lucide-react-native';

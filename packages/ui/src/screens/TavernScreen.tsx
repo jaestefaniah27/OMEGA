@@ -8,7 +8,8 @@ import {
     TouchableOpacity,
     Alert
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { useTavern } from '@omega/logic';
 import { Utensils, Droplet, Flame, Trophy } from 'lucide-react-native';
 

@@ -13,7 +13,8 @@ import {
     DeviceEventEmitter,
     Animated
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     Drama,

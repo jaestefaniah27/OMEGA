@@ -7,7 +7,8 @@ import {
     Dimensions,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
 import { useNavigation } from '@react-navigation/native';
 import { Coins, ShoppingBag, FlaskConical, Package } from 'lucide-react-native';
 

@@ -471,7 +471,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
 
 
-    // --- FETCH ---
     const fetchHeroStats = useCallback(async () => {
         const currentUser = (await supabase.auth.getUser()).data.user;
         if (!currentUser) return;
@@ -491,258 +490,179 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [timeQuery]);
 
-    const fetchAll = useCallback(async (source = 'Unknown') => {
+    const fetchAll = useCallback(async (triggerSource?: string) => {
         const currentUser = (await supabase.auth.getUser()).data.user;
         if (!currentUser) return;
 
-        // Stabilize User State: Only update if the ID has actually changed
-        // This prevents the Realtime useEffect from tearing down connection on every fetch
+        // Stabilize User State
         if (currentUser.id !== user?.id) {
             setUser(currentUser);
         }
 
-        if (isFetching.current) {
-            console.log(`[GameSync] ⚠️  Ignored concurrent fetch request from: ${source}`);
-            return;
-        }
-
         const now = Date.now();
         const throttleLimit = 60000; // 1 minute
-        if (source === 'Realtime Profile Sync' && (now - lastFullSyncRef.current) < throttleLimit) {
-            console.log(`[GameSync] 🛡️ Throttled full fetchAll from: ${source}. Using lightweight refresh.`);
-            fetchHeroStats();
+        if (triggerSource && triggerSource.includes('Realtime') && (now - lastFullSyncRef.current < throttleLimit)) {
+            console.log(`[GameSync] 🛡️ Throttled: Skipping ${triggerSource} (Last sync ${Math.round((now - lastFullSyncRef.current) / 1000)}s ago)`);
             return;
         }
-        lastFullSyncRef.current = now;
 
-        const startTime = traceFetch(source, true);
+        if (isFetching.current) {
+            console.log(`[GameSync] ⚠️  Ignored concurrent fetch request from: ${triggerSource || 'Internal'}`);
+            return;
+        }
+
+        console.log(`[GameSync] 🚀 START fetchAll (Source: ${triggerSource || 'Manual/Init'})`);
+        lastFullSyncRef.current = now;
         isFetching.current = true;
 
         try {
-            if (!isHydrated.current) {
-                setMageLoading(true);
-            }
-
-            // setUser(currentUser); // REMOVED: Handled above with stability check
-
-            // PARALLEL FETCH
-            const results = await Promise.all([
-                // 0: subjects
-                timeQuery('subjects', supabase.from('subjects').select('*').order('created_at', { ascending: false })),
-                // 1: books
-                timeQuery('books', supabase.from('books').select('*').order('created_at', { ascending: false })),
-                // 2: custom_colors
-                timeQuery('custom_colors', supabase.from('custom_colors').select('*').order('created_at', { ascending: false })),
-                // 3: study_sessions
-                timeQuery('study_sessions', supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null)),
-                // 4: theatre_activities
-                timeQuery('theatre_activities', supabase.from('theatre_activities').select('*').order('created_at', { ascending: false })),
-                // 5: theatre_movies
-                timeQuery('theatre_movies', supabase.from('theatre_movies').select('*').order('created_at', { ascending: false })),
-                // 6: theatre_series
-                timeQuery('theatre_series', supabase.from('theatre_series').select('*').order('created_at', { ascending: false })),
-                // 7: theatre_seasons
-                timeQuery('theatre_seasons', supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true })),
-                // 8: profiles
-                timeQuery('profiles', supabase.from('profiles').select('*').eq('id', currentUser.id).single()),
-                // 9: routines
-                timeQuery('routines', supabase.from('routines').select(`*, exercises:routine_exercises(*, exercise:exercises(*))`).eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 10: workout_history
-                timeQuery('workout_history', supabase.from('workout_sessions').select(`*, routine:routines(name), sets:workout_sets(weight_kg, reps)`).eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(5)),
-                // 11: muscle_fatigue
-                timeQuery('muscle_fatigue', supabase.rpc('get_muscle_heat_map', { user_uuid: currentUser.id })),
-                // 12: personal_records
-                timeQuery('personal_records', supabase.rpc('get_personal_records', { user_uuid: currentUser.id })),
-                // 13: royal_decrees
-                timeQuery('royal_decrees', supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 14: temple_thoughts
-                timeQuery('temple_thoughts', supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 15: temple_sleep
-                timeQuery('temple_sleep', supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 16: tavern_water
-                timeQuery('tavern_water', supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false })),
-                // 17: mage_projects
-                timeQuery('mage_projects', supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 18: mage_themes
-                timeQuery('mage_themes', supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })),
-                // 19: mage_app_mappings
-                timeQuery('app_aura_mappings', supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id)),
-                // 20: user_stats
-                timeQuery('user_stats', supabase.from('user_stats').select('*').eq('id', currentUser.id).single())
+            // --- BATCH 1: CRITICAL DATA (Blocking) ---
+            await Promise.all([
+                fetchHeroStats(),
+                timeQuery('Royal Decrees', async () => {
+                    const { data } = await supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+                    setDecrees(data || []);
+                    setCastleLoading(false);
+                })
             ]);
 
-            const subData = results[0].data || [];
-            const bookData = results[1].data || [];
-            const colData = results[2].data || [];
-            const sessData = results[3].data || [];
-            const actData = results[4].data || [];
-            const movData = results[5].data || [];
-            const serData = results[6].data || [];
-            const seasData = results[7].data || [];
-            const profData = results[8].data;
-            const routineData = results[9].data || [];
-            const rawHistory = results[10].data || [];
-            const fatigueData = results[11].data || {};
-            const recordData = results[12].data || [];
-            const decreeData = results[13].data || [];
-            const thoughtData = results[14].data || [];
-            const sleepData = results[15].data || [];
-            const waterData = results[16].data || [];
-            const mageData = results[17].data || [];
-            const themeData = results[18].data || [];
-            const mappingData = results[19].data || [];
-            const statsData = results[20].data;
+            // --- BATCH 2: DOMAIN DATA (Non-blocking/Background) ---
+            const secondaryDataPromise = Promise.all([
+                // Library
+                timeQuery('Library', async () => {
+                    const [subRes, bookRes, colRes, sessRes] = await Promise.all([
+                        supabase.from('subjects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                        supabase.from('books').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                        supabase.from('custom_colors').select('*').eq('user_id', currentUser.id),
+                        supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null)
+                    ]);
 
-            // --- CALCULATE PENDING AURA ---
-            // Now reading directly from mage_themes as the worker updates it there directly
-            const auraByTheme: Record<string, number> = {};
-            themeData.forEach((t: any) => {
-                if (t.pending_aura > 0) {
-                    auraByTheme[t.id] = t.pending_aura;
-                }
+                    const bStats: Record<string, number> = {};
+                    (sessRes.data || []).forEach((s: any) => {
+                        if (s.book_id) bStats[s.book_id] = (bStats[s.book_id] || 0) + s.duration_minutes;
+                    });
+
+                    setSubjects(subRes.data || []);
+                    setBooks(bookRes.data || []);
+                    setCustomColors(colRes.data || []);
+                    setBookStats(bStats);
+                    setLibraryLoading(false);
+                }),
+                // Theatre
+                timeQuery('Theatre', async () => {
+                    const [actRes, movRes, serRes, seasRes] = await Promise.all([
+                        supabase.from('theatre_activities').select('*').eq('user_id', currentUser.id),
+                        supabase.from('theatre_movies').select('*').eq('user_id', currentUser.id),
+                        supabase.from('theatre_series').select('*').eq('user_id', currentUser.id),
+                        supabase.from('theatre_seasons').select('*').order('created_at', { ascending: false })
+                    ]);
+
+                    const seasonsMap: Record<string, any[]> = {};
+                    (seasRes.data || []).forEach((season: any) => {
+                        if (!seasonsMap[season.series_id]) seasonsMap[season.series_id] = [];
+                        seasonsMap[season.series_id].push(season);
+                    });
+
+                    const seriesWithSeasons = (serRes.data || []).map((s: any) => ({
+                        ...s,
+                        seasons: seasonsMap[s.id] || []
+                    }));
+
+                    const tStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
+                    (actRes.data || []).forEach((act: any) => {
+                        tStats[act.id] = { totalMinutes: act.total_minutes || 0, daysCount: act.days_count || 0 };
+                    });
+
+                    setActivities(actRes.data || []);
+                    setMovies(movRes.data || []);
+                    setSeries(seriesWithSeasons);
+                    setActivityStats(tStats);
+                    setTheatreLoading(false);
+                }),
+                // Barracks
+                timeQuery('Barracks', async () => {
+                    const [rRes, hRes, fRes, prRes] = await Promise.all([
+                        supabase.from('routines').select('*, exercises:routine_exercises(*, exercise:exercises(*))').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                        supabase.from('workout_sessions').select('*, routine:routines(name), sets:workout_sets(weight_kg, reps)').eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(20),
+                        supabase.rpc('get_muscle_fatigue'),
+                        supabase.rpc('get_personal_records')
+                    ]);
+
+                    const formattedHistory: WorkoutHistoryItem[] = (hRes.data || []).map((session: any) => {
+                        const totalTonnage = (session.sets || []).reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
+                        const duration = session.ended_at
+                            ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
+                            : 'En curso';
+
+                        return {
+                            id: session.id,
+                            date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                            routine: session.routine?.name || 'Misión Libre',
+                            duration,
+                            tonnage: totalTonnage.toLocaleString() + 'kg'
+                        };
+                    });
+
+                    setRoutines(rRes.data || []);
+                    setHistory(formattedHistory);
+                    setMuscleFatigue(fRes.data || {});
+                    setRecords(prRes.data || []);
+                    setBarracksLoading(false);
+                }),
+                // Temple
+                timeQuery('Temple', async () => {
+                    const [thRes, slRes] = await Promise.all([
+                        supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                        supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }).limit(7)
+                    ]);
+                    setThoughts(thRes.data || []);
+                    setSleepRecords(slRes.data || []);
+                    setTempleLoading(false);
+                }),
+                // Tavern
+                timeQuery('Tavern', async () => {
+                    const { data } = await supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }).limit(1);
+                    setWaterRecords(data || []);
+                    setTavernLoading(false);
+                }),
+                // Mage Tower
+                timeQuery('Mage Tower', async () => {
+                    const [pRes, tRes, mRes] = await Promise.all([
+                        supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+                        supabase.from('mage_themes').select('*').eq('user_id', currentUser.id),
+                        supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id)
+                    ]);
+
+                    const auraByTheme: Record<string, number> = {};
+                    (tRes.data || []).forEach((t: any) => {
+                        if (t.pending_aura > 0) auraByTheme[t.id] = t.pending_aura;
+                    });
+
+                    setMageProjects(pRes.data || []);
+                    setMageThemes(tRes.data || []);
+                    setMageAppMappings(mRes.data || []);
+                    setUnhandledAuraByTheme(auraByTheme);
+                    setMageLoading(false);
+                }),
+                // Habits
+                refreshHabits(true)
+            ]);
+
+            secondaryDataPromise.then(() => {
+                console.log('[GameSync] ✅ Secondary data batch completed in background');
+                isHydrated.current = true;
+                saveToLocal();
+            }).catch(err => {
+                console.error('[GameSync] ❌ Secondary data batch failed:', err);
             });
-
-
-
-            setUnhandledAuraByTheme(auraByTheme);
-            setMageAppMappings(mappingData);
-
-            // --- PROCESS LIBRARY ---
-            const bStats: Record<string, number> = {};
-            sessData.forEach((s: any) => {
-                if (s.book_id) {
-                    bStats[s.book_id] = (bStats[s.book_id] || 0) + s.duration_minutes;
-                }
-            });
-
-            setSubjects(subData);
-            setBooks(bookData);
-            setCustomColors(colData);
-            setBookStats(bStats);
-
-            // --- PROCESS THEATRE (Optimized O(N)) ---
-            const seasonsMap: Record<string, any[]> = {};
-            seasData.forEach((season: any) => {
-                const sId = season.series_id;
-                if (!seasonsMap[sId]) seasonsMap[sId] = [];
-                seasonsMap[sId].push(season);
-            });
-
-            const seriesWithSeasons = serData.map((s: any) => ({
-                ...s,
-                seasons: seasonsMap[s.id] || []
-            }));
-
-            const tStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
-            actData.forEach((act: any) => {
-                tStats[act.id] = {
-                    totalMinutes: act.total_minutes || 0,
-                    daysCount: act.days_count || 0
-                };
-            });
-
-            setActivities(actData);
-            setMovies(movData);
-            setSeries(seriesWithSeasons);
-            setActivityStats(tStats);
-
-            // --- PROCESS PROFILE ---
-            if (profData) {
-                setProfile(profData as Profile);
-            }
-
-            if (statsData) {
-                setHeroStats(statsData as HeroStats);
-            }
-
-            // --- PROCESS TEMPLE ---
-            setThoughts(thoughtData);
-            setSleepRecords(sleepData);
-            setTempleLoading(false);
-
-            // --- PROCESS BARRACKS ---
-            const formattedHistory: WorkoutHistoryItem[] = rawHistory.map((session: any) => {
-                const totalTonnage = session.sets.reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
-                const duration = session.ended_at
-                    ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
-                    : 'En curso';
-
-                return {
-                    id: session.id,
-                    date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
-                    routine: session.routine?.name || 'Misión Libre',
-                    duration,
-                    tonnage: totalTonnage.toLocaleString() + 'kg'
-                };
-            });
-
-            setRoutines(routineData);
-            setHistory(formattedHistory);
-            setMuscleFatigue(fatigueData);
-            setRecords(recordData);
-            setDecrees(decreeData);
-            setWaterRecords(waterData);
-            setMageProjects(mageData);
-            setMageThemes(themeData);
-            setMageLoading(false);
-
-            if (results[17].error) console.error('MageTower: Projects fetch error', results[17].error);
-            if (results[18].error) console.error('MageTower: Themes fetch error', results[18].error);
-
-            if (profData?.last_synced_at) {
-                lastProcessedSync.current = profData.last_synced_at;
-            }
-
-            // --- PERSIST ---
-            saveToLocal();
-
-            // --- AUTO-FAIL MAINTENANCE ---
-            // If any pending decree is more than 24h past its due_date, mark it as FAILED
-            const now = new Date();
-            const gracePeriod = 24 * 60 * 60 * 1000;
-            const overdue = decreeData.filter(d =>
-                d.status === 'PENDING' &&
-                d.due_date &&
-                (now.getTime() - new Date(d.due_date).getTime()) > gracePeriod
-            );
-
-            if (overdue.length > 0) {
-                const ids = overdue.map(d => d.id);
-                const { error: failError } = await supabase
-                    .from('royal_decrees')
-                    .update({ status: 'FAILED' })
-                    .in('id', ids);
-
-                if (!failError) {
-                    // Re-fetch once to get updated statuses
-                    const { data: refreshedDecrees } = await supabase
-                        .from('royal_decrees')
-                        .select('*')
-                        .eq('user_id', currentUser.id)
-                        .order('created_at', { ascending: false });
-
-                    if (refreshedDecrees) {
-                        setDecrees(refreshedDecrees);
-                    }
-                }
-            }
-
-            // --- HABITS ---
-            await refreshHabits(true);
 
         } catch (error) {
-            console.error('GameContext: Fetch Error', error);
+            console.error('[GameSync] ❌ Full Sync Error:', error);
         } finally {
-            setLibraryLoading(false);
-            setTheatreLoading(false);
-            setBarracksLoading(false);
-            setCastleLoading(false);
-            setMageLoading(false);
-            isHydrated.current = true;
             isFetching.current = false;
-            traceFetch(source, false, startTime);
+            console.log('[GameSync] 🏁 Critical batch done');
         }
-    }, [traceFetch, fetchHeroStats, timeQuery, refreshHabits, user?.id]);
+    }, [user?.id, fetchHeroStats, refreshHabits, saveToLocal, timeQuery]);
 
     // --- INIT ---
     useEffect(() => {

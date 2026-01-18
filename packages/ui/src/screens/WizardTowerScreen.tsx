@@ -14,7 +14,11 @@ import {
     DeviceEventEmitter,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard, ManualColorPicker, AuraChannelingModal } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
+// Direct imports used above
+import { ManualColorPicker } from '../ManualColorPicker';
+import { AuraChannelingModal } from '../components/AuraChannelingModal';
 import { useMageTower } from '@omega/logic';
 import {
     Sparkles, Code, Cpu, Book, PenTool, Plus, X, Zap,

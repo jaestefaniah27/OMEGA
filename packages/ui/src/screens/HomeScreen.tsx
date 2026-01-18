@@ -7,7 +7,7 @@ import {
     Dimensions,
     useWindowDimensions
 } from 'react-native';
-import { MapLocationPin } from '..';
+import { MapLocationPin } from '../MapLocationPin';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -38,9 +38,9 @@ export const HomeScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <View style={[
-                styles.mapBase, 
-                isDesktop && { 
-                    maxWidth: 1024, 
+                styles.mapBase,
+                isDesktop && {
+                    maxWidth: 1024,
                     alignSelf: 'center',
                     borderLeftWidth: 1,
                     borderRightWidth: 1,

@@ -14,7 +14,10 @@ import {
     Animated,
     DeviceEventEmitter
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton } from '../MedievalButton';
+import { ParchmentCard } from '../ParchmentCard';
+import { CameraColorPicker } from '../CameraColorPicker';
+import { ManualColorPicker } from '../ManualColorPicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     BookOpen,
@@ -34,7 +37,7 @@ import {
     Camera,
     Palette
 } from 'lucide-react-native';
-import { CameraColorPicker, ManualColorPicker } from '..';
+// Direct imports used above
 import { useLibrary, Subject, Book, Exam } from '@omega/logic';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 

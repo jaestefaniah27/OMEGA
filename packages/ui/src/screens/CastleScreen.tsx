@@ -34,7 +34,7 @@ import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
 
 const { width } = Dimensions.get('window');
 
-export const CastleScreen: React.FC = () => {
+export const CastleScreen: React.FC = React.memo(() => {
     const navigation = useNavigation();
     const { castle, habits, library, theatre } = useGame();
     const { subjects } = library;
@@ -530,7 +530,7 @@ export const CastleScreen: React.FC = () => {
             />
         </View >
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

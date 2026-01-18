@@ -3,8 +3,8 @@ import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { GameHUD } from '@omega/ui';
-import { GameProvider, useGame, ToastProvider, WorkoutTimerProvider, useWorkoutTimer } from '@omega/logic';
+import { GameHUD, PerformanceMonitor } from '@omega/ui';
+import { GameProvider, useGame, ToastProvider, WorkoutTimerProvider, useWorkoutTimer, initInterceptors } from '@omega/logic';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Timer, Castle, Calendar } from 'lucide-react-native';
@@ -15,6 +15,9 @@ import { MobilePlatformProvider } from './src/services/MobilePlatformProvider';
 import { useDesktopSpy } from './src/hooks/useDesktopSpy';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// 🔬 Inicialización de Operación Microscopio
+initInterceptors();
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>('Home');
@@ -69,6 +72,8 @@ export default function App() {
           <Text style={styles.spySubtext} numberOfLines={1}>{windowTitle}</Text>
         </View>
       )}
+      {/* 🔬 MONITOR DE RENDIMIENTO (Solo en desarrollo) */}
+      <PerformanceMonitor />
     </GestureHandlerRootView>
   );
 }

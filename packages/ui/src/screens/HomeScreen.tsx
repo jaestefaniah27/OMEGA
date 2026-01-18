@@ -29,7 +29,7 @@ type RootStackParamList = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
-export const HomeScreen: React.FC = () => {
+export const HomeScreen: React.FC = React.memo(() => {
     const navigation = useNavigation<NavigationProp>();
 
     const { width } = useWindowDimensions();
@@ -124,7 +124,7 @@ export const HomeScreen: React.FC = () => {
             </View>
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

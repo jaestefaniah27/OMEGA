@@ -49,7 +49,7 @@ export const GameHUD: React.FC<{
     onCastlePress?: () => void;
     onSettingsPress?: () => void;
     castleIcon?: React.ElementType; // New prop for dynamic icon
-}> = ({
+}> = React.memo(({
     onProfilePress,
     onMapPress,
     onQuickAddPress,
@@ -57,42 +57,42 @@ export const GameHUD: React.FC<{
     onSettingsPress,
     castleIcon = Castle // Default to Castle
 }) => {
-        return (
-            <View style={styles.container}>
-                <View style={styles.hudBar}>
-                    <HUDButton
-                        onPress={() => onCastlePress?.()}
-                        icon={castleIcon}
-                    />
-                    <HUDButton
-                        onPress={() => onMapPress?.()}
-                        icon={Map}
-                    />
+    return (
+        <View style={styles.container}>
+            <View style={styles.hudBar}>
+                <HUDButton
+                    onPress={() => onCastlePress?.()}
+                    icon={castleIcon}
+                />
+                <HUDButton
+                    onPress={() => onMapPress?.()}
+                    icon={Map}
+                />
 
-                    {/* Helper view to make space for the floating Quickadd */}
-                    <View style={styles.spacer} />
+                {/* Helper view to make space for the floating Quickadd */}
+                <View style={styles.spacer} />
 
-                    <HUDButton
-                        onPress={() => onProfilePress?.()}
-                        icon={User}
-                    />
-                    <HUDButton
-                        onPress={() => onSettingsPress?.()}
-                        icon={Settings}
-                    />
-                </View>
-
-                {/* Quickadd - Central Floating Button */}
-                <View style={styles.QuickAddContainer}>
-                    <HUDButton
-                        onPress={() => onQuickAddPress?.()}
-                        icon={Plus}
-                        isLarge
-                    />
-                </View>
+                <HUDButton
+                    onPress={() => onProfilePress?.()}
+                    icon={User}
+                />
+                <HUDButton
+                    onPress={() => onSettingsPress?.()}
+                    icon={Settings}
+                />
             </View>
-        );
-    };
+
+            {/* Quickadd - Central Floating Button */}
+            <View style={styles.QuickAddContainer}>
+                <HUDButton
+                    onPress={() => onQuickAddPress?.()}
+                    icon={Plus}
+                    isLarge
+                />
+            </View>
+        </View>
+    );
+});
 
 const styles = StyleSheet.create({
     container: {

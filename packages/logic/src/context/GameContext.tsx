@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo, useCallback, useReducer } from 'react';
 import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DiagnosticStore } from '../debug/DiagnosticStore';
+import { useWhyDidYouUpdate } from '../hooks/useWhyDidYouUpdate';
 import {
     Subject,
     Book,
@@ -212,10 +214,38 @@ export const useGame = () => {
     return context;
 };
 
+const realtimeReducer = (state: any, action: any) => {
+    switch (action.type) {
+        case 'SET_USER':
+            return { ...state, user: action.payload };
+        case 'SET_PROFILE':
+            return { ...state, profile: action.payload };
+        case 'SET_HERO_STATS':
+            return { ...state, heroStats: action.payload };
+        case 'BATCH_UPDATE_REALTIME':
+            return {
+                ...state,
+                profile: action.payload.profile ? { ...state.profile, ...action.payload.profile } : state.profile,
+                heroStats: action.payload.heroStats ? { ...state.heroStats, ...action.payload.heroStats } : state.heroStats,
+            };
+        default:
+            return state;
+    }
+};
+
 export const GameProvider = ({ children }: { children: ReactNode }) => {
-    // User & Profile
-    const [user, setUser] = useState<any | null>(null);
-    const [profile, setProfile] = useState<Profile | null>(null);
+    // User & Profile (Reduced State)
+    const [gameState, dispatch] = useReducer(realtimeReducer, {
+        user: null,
+        profile: null,
+        heroStats: null
+    });
+
+    const { user, profile, heroStats } = gameState;
+
+    const setUser = useCallback((u: any) => dispatch({ type: 'SET_USER', payload: u }), []);
+    const setProfile = useCallback((p: Profile | null) => dispatch({ type: 'SET_PROFILE', payload: p }), []);
+    const setHeroStats = useCallback((stats: HeroStats | null) => dispatch({ type: 'SET_HERO_STATS', payload: stats }), []);
 
     // Library State
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -257,13 +287,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [unhandledAuraByTheme, setUnhandledAuraByTheme] = useState<Record<string, number>>({});
     const [mageLoading, setMageLoading] = useState(true);
 
-    const [heroStats, setHeroStats] = useState<HeroStats | null>(null);
 
     // Workout State
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [startTime, setStartTime] = useState<string | null>(null);
     const [workoutRoutineId, setWorkoutRoutineId] = useState<string | null>(null);
     const [setsLog, setSetsLog] = useState<any[]>([]);
+
+    // --- DIAGNOSTICS ---
+    if (__DEV__) {
+        useWhyDidYouUpdate('GameProvider', {
+            user, profile, heroStats, subjects, books, routines, history, isSessionActive
+        });
+    }
     const WORKOUT_STORAGE_KEY = '@omega_active_workout_v2';
 
     // Initial Load Flag to prevent double-fetch issues or hydration flicker
@@ -428,8 +464,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 const payload = JSON.stringify(dump);
                 const serializationTime = (performance.now() - serializationStart).toFixed(2);
 
-                const sizeInKB = (payload.length / 1024).toFixed(2);
-                console.log(`[Storage] 💾 Saving to Local (Debounced) | Size: ${sizeInKB} KB | Serialization: ${serializationTime}ms`);
+                const sizeInKB = (payload.length / 1024);
+                DiagnosticStore.update({ stateSizeKB: Math.round(sizeInKB) });
+
+                console.log(`[Storage] 💾 Saving to Local (Debounced) | Size: ${sizeInKB.toFixed(2)} KB | Serialization: ${serializationTime}ms`);
 
                 await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, payload);
             } catch (e) {
@@ -481,8 +519,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 timeQuery('user_stats', supabase.from('user_stats').select('*').eq('id', currentUser.id).single())
             ]);
 
-            if (profRes.data) setProfile(profRes.data as Profile);
-            if (statsRes.data) setHeroStats(statsRes.data as HeroStats);
+            if (profRes.data || statsRes.data) {
+                dispatch({
+                    type: 'BATCH_UPDATE_REALTIME',
+                    payload: {
+                        profile: profRes.data,
+                        heroStats: statsRes.data
+                    }
+                });
+            }
 
             console.log('[GameSync] ⚡ Hero Stats Refreshed (Lightweight)');
         } catch (e) {
@@ -500,14 +545,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const now = Date.now();
-        const throttleLimit = 60000; // 1 minute
-        if (triggerSource && triggerSource.includes('Realtime') && (now - lastFullSyncRef.current < throttleLimit)) {
-            console.log(`[GameSync] 🛡️ Throttled: Skipping ${triggerSource} (Last sync ${Math.round((now - lastFullSyncRef.current) / 1000)}s ago)`);
+        const throttleLimit = 5000; // 5 second safety brake for non-user actions
+
+        if (triggerSource !== 'USER_ACTION' && (now - lastFullSyncRef.current < throttleLimit)) {
+            console.warn(`[GameSync] ⏳ Fetch ignorado: Demasiado pronto (${now - lastFullSyncRef.current}ms). Source: ${triggerSource}`);
             return;
         }
 
         if (isFetching.current) {
-            console.log(`[GameSync] ⚠️  Ignored concurrent fetch request from: ${triggerSource || 'Internal'}`);
+            console.warn(`[GameSync] ⛔ Fetch bloqueado: Ya hay uno en curso. Source: ${triggerSource || 'Internal'}`);
             return;
         }
 
@@ -801,7 +847,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     },
                     (payload) => {
                         console.log('GameContext: Hero Stats updated via Realtime');
-                        setHeroStats(payload.new as HeroStats);
+                        dispatch({ type: 'BATCH_UPDATE_REALTIME', payload: { heroStats: payload.new } });
                     }
                 )
                 .subscribe((status) => {

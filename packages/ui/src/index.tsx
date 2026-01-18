@@ -25,3 +25,6 @@ export * from './screens/SettingsScreen';
 export * from './screens/WarTableScreen';
 export * from './screens/WizardTowerScreen';
 export * from './screens/ZenFireplaceScreen';
+
+// Debug Tools
+export * from './debug/PerformanceMonitor';

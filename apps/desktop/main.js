@@ -21,7 +21,8 @@ let mappings = [];
 let pendingAuraByTheme = {}; // { theme_id: number }
 
 // DETECTION STATE
-let knownApps = new Set(); // Apps we have already seen this session (or fetched from DB)
+let knownApps = new Set();
+let startTime = Date.now();
 
 // --- 1. CONEXIÓN ---
 // La conexión se inicializa en app.whenReady()
@@ -306,6 +307,11 @@ function createMainWindow() {
 
     mainWindow.loadURL(WEB_URL);
 
+    mainWindow.once('ready-to-show', () => {
+        const loadTime = Date.now() - startTime;
+        console.log(`\n🚀 [LATENCIA] Aplicación lista en ${loadTime}ms\n`);
+    });
+
     mainWindow.on('close', (e) => {
         if (!forceQuit) {
             e.preventDefault();
@@ -360,6 +366,21 @@ app.whenReady().then(async () => {
 
     setInterval(checkActivity, CHECK_INTERVAL);
     setInterval(uploadActivities, UPLOAD_INTERVAL);
+
+    // --- MONITOR DE RENDIMIENTO ---
+    setInterval(() => {
+        const metrics = app.getAppMetrics();
+        console.log('\n📊 --- MÉTRICAS DE PROCESO ---');
+        metrics.forEach(m => {
+            const memMB = (m.memory.workingSetSize / 1024).toFixed(2);
+            const cpu = m.cpu.percentCPUUsage.toFixed(1);
+            console.log(`[${m.type}] PID: ${m.pid} | Mem: ${memMB} MB | CPU: ${cpu}%`);
+        });
+
+        const nodeMem = process.memoryUsage();
+        console.log(`🧠 [MAIN] Node Heap: ${(nodeMem.heapUsed / 1024 / 1024).toFixed(2)} MB | RSS: ${(nodeMem.rss / 1024 / 1024).toFixed(2)} MB`);
+        console.log('-----------------------------\n');
+    }, 30000); // Cada 30 segundos
 });
 
 app.on('window-all-closed', (e) => {

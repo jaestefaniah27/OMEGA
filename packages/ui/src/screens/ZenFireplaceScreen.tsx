@@ -11,6 +11,7 @@ import {
     Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { ScreenWrapper } from '..';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,32 +41,34 @@ export const ZenFireplaceScreen: React.FC = () => {
     }, []);
 
     return (
-        <Pressable style={styles.container} onLongPress={() => navigation.goBack()}>
-            <StatusBar hidden />
-            <ImageBackground
-                source={BACKGROUND_IMAGE}
-                style={styles.background}
-                resizeMode="cover"
-            >
-                {/* Glow Overlay */}
-                <Animated.View
-                    style={[
-                        styles.glowOverlay,
-                        {
-                            opacity: glowAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.1, 0.3],
-                            }),
-                        },
-                    ]}
-                />
+        <ScreenWrapper background="#000">
+            <Pressable style={styles.container} onLongPress={() => navigation.goBack()}>
+                <StatusBar hidden />
+                <ImageBackground
+                    source={BACKGROUND_IMAGE}
+                    style={styles.background}
+                    resizeMode="cover"
+                >
+                    {/* Glow Overlay */}
+                    <Animated.View
+                        style={[
+                            styles.glowOverlay,
+                            {
+                                opacity: glowAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.1, 0.3],
+                                }),
+                            },
+                        ]}
+                    />
 
-                <View style={styles.content}>
-                    <Text style={styles.zenQuote}>"En el silencio de la llama, encontrarás tu propia paz."</Text>
-                    <Text style={styles.zenSub}>Mantén pulsado para regresar</Text>
-                </View>
-            </ImageBackground>
-        </Pressable>
+                    <View style={styles.content}>
+                        <Text style={styles.zenQuote}>"En el silencio de la llama, encontrarás tu propia paz."</Text>
+                        <Text style={styles.zenSub}>Mantén pulsado para regresar</Text>
+                    </View>
+                </ImageBackground>
+            </Pressable>
+        </ScreenWrapper>
     );
 };
 

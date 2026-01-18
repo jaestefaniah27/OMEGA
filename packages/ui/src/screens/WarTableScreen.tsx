@@ -10,10 +10,10 @@ import {
     DeviceEventEmitter
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { ParchmentCard, MedievalButton } from '..';
-import { 
-    ChevronLeft, 
-    ChevronRight, 
+import { ParchmentCard, MedievalButton, ScreenWrapper } from '..';
+import {
+    ChevronLeft,
+    ChevronRight,
     Scroll as ScrollIcon,
     Trophy,
     Square,
@@ -26,11 +26,11 @@ import { RoyalDecreeModal } from '../components/RoyalDecreeModal';
 
 // Configure Calendar Locale
 LocaleConfig.locales['es'] = {
-  monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
-  monthNamesShort: ['Ene.', 'Feb.', 'Mar', 'Abr', 'May', 'Jun', 'Jul.', 'Ago', 'Sep.', 'Oct.', 'Nov.', 'Dic.'],
-  dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
-  dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Juv', 'Vie', 'Sáb'],
-  today: 'Hoy'
+    monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    monthNamesShort: ['Ene.', 'Feb.', 'Mar', 'Abr', 'May', 'Jun', 'Jul.', 'Ago', 'Sep.', 'Oct.', 'Nov.', 'Dic.'],
+    dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+    dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Juv', 'Vie', 'Sáb'],
+    today: 'Hoy'
 };
 LocaleConfig.defaultLocale = 'es';
 
@@ -50,8 +50,8 @@ export const WarTableScreen: React.FC = () => {
         });
         return set;
     }, [decrees]);
-    
-    
+
+
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().split('T')[0]);
     const [calendarKey, setCalendarKey] = useState(0);
@@ -75,7 +75,7 @@ export const WarTableScreen: React.FC = () => {
         if (endStr && checkStr > endStr) return false;
 
         const recurrence = decree.recurrence as any;
-        
+
         // NEW LOGIC: If this decree has separate instances already created, 
         // we disable the virtual repetition so we don't see duplicates.
         const isParentWithInstances = parentIds.has(decree.id);
@@ -91,11 +91,11 @@ export const WarTableScreen: React.FC = () => {
         // Using midday for Date objects to prevent TZ shifts during getDay()
         const checkDate = new Date(dateString + 'T12:00:00');
         const startDate = new Date(decree.created_at);
-        startDate.setHours(0,0,0,0);
-        
+        startDate.setHours(0, 0, 0, 0);
+
         const freq = recurrence.frequency;
         if (freq === 'DAILY') return true;
-        
+
         const dayOfWeek = checkDate.getDay();
         if (freq === 'WEEKLY' || freq === 'CUSTOM') {
             return recurrence.days?.includes(dayOfWeek);
@@ -113,7 +113,7 @@ export const WarTableScreen: React.FC = () => {
     // Calculate marked dates
     const markedDates = useMemo(() => {
         const marks: any = {};
-        
+
         const windowStart = new Date(selectedDate);
         windowStart.setMonth(windowStart.getMonth() - 6);
         const windowEnd = new Date(selectedDate);
@@ -136,7 +136,7 @@ export const WarTableScreen: React.FC = () => {
             d.setDate(d.getDate() + i);
             const dStr = d.toISOString().split('T')[0];
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-            
+
             let hasActiveDecree = false;
             let dotColor = '#d4af37';
 
@@ -169,7 +169,7 @@ export const WarTableScreen: React.FC = () => {
             }
 
             const isSelected = dStr === selectedDate;
-            
+
             if (hasActiveDecree || isSelected || isWeekend) {
                 marks[dStr] = {
                     marked: hasActiveDecree,
@@ -229,14 +229,14 @@ export const WarTableScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.decreeDesc}>{decree.description}</Text>
-                
+
                 {decree.target_quantity > 1 && (
                     <View style={styles.progressSection}>
                         <View style={styles.miniProgress}>
                             <View style={[styles.miniProgressBar, { width: `${Math.min(progress, 100)}%` }]} />
                         </View>
                         <Text style={styles.progressText}>
-                            {decree.unit === 'MINUTES' 
+                            {decree.unit === 'MINUTES'
                                 ? `${decree.current_quantity}m / ${decree.target_quantity}m`
                                 : `${decree.current_quantity} / ${decree.target_quantity} ses.`
                             } ({Math.round(progress)}%)
@@ -262,121 +262,123 @@ export const WarTableScreen: React.FC = () => {
     const [scrollEnabled, setScrollEnabled] = useState(true);
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <ChevronLeft size={24} color="#FFD700" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>MESA DE GUERRA</Text>
-                    <Text style={styles.headerSubtitle}>Crónicas del Destino</Text>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <ChevronLeft size={24} color="#FFD700" />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={styles.headerTitle}>MESA DE GUERRA</Text>
+                        <Text style={styles.headerSubtitle}>Crónicas del Destino</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.todayButton}
+                        onPress={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            setSelectedDate(today);
+                            setCurrentMonth(today);
+                            setCalendarKey(prev => prev + 1);
+                        }}
+                    >
+                        <Text style={styles.todayButtonText}>HOY</Text>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                    style={styles.todayButton}
-                    onPress={() => {
-                        const today = new Date().toISOString().split('T')[0];
-                        setSelectedDate(today);
-                        setCurrentMonth(today);
-                        setCalendarKey(prev => prev + 1);
-                    }}
-                >
-                    <Text style={styles.todayButtonText}>HOY</Text>
-                </TouchableOpacity>
-            </View>
 
-            <ScrollView 
-                scrollEnabled={scrollEnabled}
-                contentContainerStyle={styles.scrollContent} 
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Calendar Section */}
-                <ParchmentCard style={styles.calendarCard}>
-                    <Calendar
-                        key={calendarKey}
-                        current={currentMonth}
-                        onDayPress={day => {
-                            setSelectedDate(day.dateString);
-                            setCurrentMonth(day.dateString);
-                        }}
-                        onMonthChange={month => setCurrentMonth(month.dateString)}
-                        markedDates={markedDates}
-                        firstDay={1}
-                        enableSwipeMonths={true}
-                        theme={{
-                            backgroundColor: 'transparent',
-                            calendarBackground: 'transparent',
-                            textSectionTitleColor: '#8b4513',
-                            todayTextColor: '#e67e22',
-                            dayTextColor: '#3d2b1f',
-                            textDisabledColor: 'rgba(61, 43, 31, 0.3)',
-                            dotColor: '#d4af37',
-                            arrowColor: '#8b4513',
-                            monthTextColor: '#3d2b1f',
-                            indicatorColor: '#3d2b1f',
-                            textDayFontWeight: 'bold',
-                            textMonthFontWeight: 'bold',
-                            textDayHeaderFontWeight: 'bold',
-                            textDayFontSize: 14,
-                            textMonthFontSize: 16,
-                            textDayHeaderFontSize: 12
-                        }}
-                    />
-                </ParchmentCard>
-
-                {/* Selected Day Agenda */}
-                <View 
-                    style={styles.agendaSection}
-                    onTouchStart={(e) => {
-                        setTouchStartX(e.nativeEvent.pageX);
-                        setTouchStartY(e.nativeEvent.pageY);
-                    }}
-                    onTouchMove={(e) => {
-                        const dx = Math.abs(e.nativeEvent.pageX - touchStartX);
-                        const dy = Math.abs(e.nativeEvent.pageY - touchStartY);
-                        // If horizontal move is dominant and significant, lock vertical scroll
-                        if (dx > dy && dx > 10) {
-                            setScrollEnabled(false);
-                        }
-                    }}
-                    onTouchEnd={(e) => {
-                        const dx = e.nativeEvent.pageX - touchStartX;
-                        setScrollEnabled(true);
-                        if (Math.abs(dx) > 60) {
-                            if (dx > 0) handleDayChange('prev');
-                            else handleDayChange('next');
-                        }
-                    }}
-                    onTouchCancel={() => setScrollEnabled(true)}
+                <ScrollView
+                    scrollEnabled={scrollEnabled}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
                 >
-                    <View style={styles.agendaHeader}>
-                        <Flame size={18} color="#FFD700" />
-                        <Text style={styles.agendaTitle}>
-                            {selectedDate === new Date().toISOString().split('T')[0] ? 'ÓRDENES PARA HOY' : `ÓRDENES DEL ${new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`}
-                        </Text>
+                    {/* Calendar Section */}
+                    <ParchmentCard style={styles.calendarCard}>
+                        <Calendar
+                            key={calendarKey}
+                            current={currentMonth}
+                            onDayPress={day => {
+                                setSelectedDate(day.dateString);
+                                setCurrentMonth(day.dateString);
+                            }}
+                            onMonthChange={month => setCurrentMonth(month.dateString)}
+                            markedDates={markedDates}
+                            firstDay={1}
+                            enableSwipeMonths={true}
+                            theme={{
+                                backgroundColor: 'transparent',
+                                calendarBackground: 'transparent',
+                                textSectionTitleColor: '#8b4513',
+                                todayTextColor: '#e67e22',
+                                dayTextColor: '#3d2b1f',
+                                textDisabledColor: 'rgba(61, 43, 31, 0.3)',
+                                dotColor: '#d4af37',
+                                arrowColor: '#8b4513',
+                                monthTextColor: '#3d2b1f',
+                                indicatorColor: '#3d2b1f',
+                                textDayFontWeight: 'bold',
+                                textMonthFontWeight: 'bold',
+                                textDayHeaderFontWeight: 'bold',
+                                textDayFontSize: 14,
+                                textMonthFontSize: 16,
+                                textDayHeaderFontSize: 12
+                            }}
+                        />
+                    </ParchmentCard>
+
+                    {/* Selected Day Agenda */}
+                    <View
+                        style={styles.agendaSection}
+                        onTouchStart={(e) => {
+                            setTouchStartX(e.nativeEvent.pageX);
+                            setTouchStartY(e.nativeEvent.pageY);
+                        }}
+                        onTouchMove={(e) => {
+                            const dx = Math.abs(e.nativeEvent.pageX - touchStartX);
+                            const dy = Math.abs(e.nativeEvent.pageY - touchStartY);
+                            // If horizontal move is dominant and significant, lock vertical scroll
+                            if (dx > dy && dx > 10) {
+                                setScrollEnabled(false);
+                            }
+                        }}
+                        onTouchEnd={(e) => {
+                            const dx = e.nativeEvent.pageX - touchStartX;
+                            setScrollEnabled(true);
+                            if (Math.abs(dx) > 60) {
+                                if (dx > 0) handleDayChange('prev');
+                                else handleDayChange('next');
+                            }
+                        }}
+                        onTouchCancel={() => setScrollEnabled(true)}
+                    >
+                        <View style={styles.agendaHeader}>
+                            <Flame size={18} color="#FFD700" />
+                            <Text style={styles.agendaTitle}>
+                                {selectedDate === new Date().toISOString().split('T')[0] ? 'ÓRDENES PARA HOY' : `ÓRDENES DEL ${new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`}
+                            </Text>
+                        </View>
+
+                        {dayDecrees.length > 0 ? (
+                            dayDecrees.map(renderDecreeItem)
+                        ) : (
+                            <View style={styles.emptyAgenda}>
+                                <MapIcon size={40} color="rgba(255, 215, 0, 0.2)" />
+                                <Text style={styles.emptyText}>No hay mandatos reales para este día en las crónicas.</Text>
+                            </View>
+                        )}
                     </View>
 
-                    {dayDecrees.length > 0 ? (
-                        dayDecrees.map(renderDecreeItem)
-                    ) : (
-                        <View style={styles.emptyAgenda}>
-                            <MapIcon size={40} color="rgba(255, 215, 0, 0.2)" />
-                            <Text style={styles.emptyText}>No hay mandatos reales para este día en las crónicas.</Text>
-                        </View>
-                    )}
-                </View>
-
-                <View style={{ height: 100 }} />
-            </ScrollView>
-            <RoyalDecreeModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSave={addDecree}
-            />
-        </View>
+                    <View style={{ height: 100 }} />
+                </ScrollView>
+                <RoyalDecreeModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    onSave={addDecree}
+                />
+            </View>
+        </ScreenWrapper>
     );
 };
 

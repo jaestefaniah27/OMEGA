@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     Alert
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useTavern } from '@omega/logic';
 import { Utensils, Droplet, Flame, Trophy } from 'lucide-react-native';
 
@@ -45,88 +45,86 @@ export const TavernScreen: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.backgroundPlaceholder}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper background="#3d2b1f">
+            <ScrollView contentContainerStyle={styles.scrollContent}>
 
-                    <Text style={styles.headerTitle}>🍺 LA TABERNA DEL JABALÍ</Text>
+                <Text style={styles.headerTitle}>🍺 LA TABERNA DEL JABALÍ</Text>
 
-                    {/* Sección La Barra: Hidratación */}
-                    <ParchmentCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Droplet size={20} color="#3498db" />
-                            <Text style={styles.sectionTitle}>LA BARRA</Text>
-                        </View>
+                {/* Sección La Barra: Hidratación */}
+                <ParchmentCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Droplet size={20} color="#3498db" />
+                        <Text style={styles.sectionTitle}>LA BARRA</Text>
+                    </View>
 
-                        <View style={styles.hydrationInfo}>
-                            <Text style={styles.expertQuote}>
-                                "Un guerrero sabio sabe que la fuerza no solo viene del acero, sino de la pureza de su sangre. Bebe al menos {recommendedWater} jarras diarias."
-                            </Text>
-                        </View>
-
-                        <View style={styles.waterTracker}>
-                            <Text style={styles.waterLabel}>Vasos de agua:</Text>
-                            <Text style={styles.waterValue}>{todayWater} / {recommendedWater}</Text>
-                        </View>
-
-                        <View style={styles.jarContainer}>
-                            <View style={styles.jarGrid}>
-                                {renderJars()}
-                            </View>
-                        </View>
-
-                        {isGoalReached && (
-                            <View style={styles.goalReachedBadge}>
-                                <Trophy size={16} color="#FFD700" />
-                                <Text style={styles.goalReachedText}>¡OBJETIVO CUMPLIDO!</Text>
-                            </View>
-                        )}
-
-                        <MedievalButton
-                            title={isDrinking ? "Bebiendo..." : "¡Beber una Jarra!"}
-                            onPress={handleAddWater}
-                            variant="primary"
-                            disabled={isDrinking}
-                            style={styles.drinkButton}
-                        />
-                    </ParchmentCard>
-
-                    {/* Sección El Despensero: Macros (Placeholder) */}
-                    <ParchmentCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Utensils size={20} color="#3d2b1f" />
-                            <Text style={styles.sectionTitle}>EL DESPENSERO</Text>
-                        </View>
-                        <Text style={styles.placeholderText}>
-                            Próximamente: Seguimiento de alimentos y raciones para mantener tu energía vital.
+                    <View style={styles.hydrationInfo}>
+                        <Text style={styles.expertQuote}>
+                            "Un guerrero sabio sabe que la fuerza no solo viene del acero, sino de la pureza de su sangre. Bebe al menos {recommendedWater} jarras diarias."
                         </Text>
-                        <View style={styles.macroRow}>
-                            <View style={styles.macroItem}>
-                                <Flame size={16} color="#e67e22" />
-                                <Text style={styles.macroLabel}>--- Cal</Text>
-                            </View>
-                            <View style={styles.macroItem}>
-                                <View style={[styles.dot, { backgroundColor: '#e74c3c' }]} />
-                                <Text style={styles.macroLabel}>Prot: --g</Text>
-                            </View>
+                    </View>
+
+                    <View style={styles.waterTracker}>
+                        <Text style={styles.waterLabel}>Vasos de agua:</Text>
+                        <Text style={styles.waterValue}>{todayWater} / {recommendedWater}</Text>
+                    </View>
+
+                    <View style={styles.jarContainer}>
+                        <View style={styles.jarGrid}>
+                            {renderJars()}
                         </View>
-                        <View style={styles.macroRow}>
-                            <View style={styles.macroItem}>
-                                <View style={[styles.dot, { backgroundColor: '#f1c40f' }]} />
-                                <Text style={styles.macroLabel}>Grv: --g</Text>
-                            </View>
-                            <View style={styles.macroItem}>
-                                <View style={[styles.dot, { backgroundColor: '#2ecc71' }]} />
-                                <Text style={styles.macroLabel}>Carb: --g</Text>
-                            </View>
+                    </View>
+
+                    {isGoalReached && (
+                        <View style={styles.goalReachedBadge}>
+                            <Trophy size={16} color="#FFD700" />
+                            <Text style={styles.goalReachedText}>¡OBJETIVO CUMPLIDO!</Text>
                         </View>
-                    </ParchmentCard>
+                    )}
+
+                    <MedievalButton
+                        title={isDrinking ? "Bebiendo..." : "¡Beber una Jarra!"}
+                        onPress={handleAddWater}
+                        variant="primary"
+                        disabled={isDrinking}
+                        style={styles.drinkButton}
+                    />
+                </ParchmentCard>
+
+                {/* Sección El Despensero: Macros (Placeholder) */}
+                <ParchmentCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Utensils size={20} color="#3d2b1f" />
+                        <Text style={styles.sectionTitle}>EL DESPENSERO</Text>
+                    </View>
+                    <Text style={styles.placeholderText}>
+                        Próximamente: Seguimiento de alimentos y raciones para mantener tu energía vital.
+                    </Text>
+                    <View style={styles.macroRow}>
+                        <View style={styles.macroItem}>
+                            <Flame size={16} color="#e67e22" />
+                            <Text style={styles.macroLabel}>--- Cal</Text>
+                        </View>
+                        <View style={styles.macroItem}>
+                            <View style={[styles.dot, { backgroundColor: '#e74c3c' }]} />
+                            <Text style={styles.macroLabel}>Prot: --g</Text>
+                        </View>
+                    </View>
+                    <View style={styles.macroRow}>
+                        <View style={styles.macroItem}>
+                            <View style={[styles.dot, { backgroundColor: '#f1c40f' }]} />
+                            <Text style={styles.macroLabel}>Grv: --g</Text>
+                        </View>
+                        <View style={styles.macroItem}>
+                            <View style={[styles.dot, { backgroundColor: '#2ecc71' }]} />
+                            <Text style={styles.macroLabel}>Carb: --g</Text>
+                        </View>
+                    </View>
+                </ParchmentCard>
 
 
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            </View>
-        </View>
+                <View style={{ height: 100 }} />
+            </ScrollView>
+        </ScreenWrapper>
     );
 };
 

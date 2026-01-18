@@ -11,7 +11,7 @@ import {
     DeviceEventEmitter,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useNavigation } from '@react-navigation/native';
 import {
     Trophy,
@@ -306,228 +306,230 @@ export const CastleScreen: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>GRAN SALA DEL TRONO</Text>
-                <Text style={styles.headerSubtitle}>"El destino del reino se escribe aquí"</Text>
-            </View>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>GRAN SALA DEL TRONO</Text>
+                    <Text style={styles.headerSubtitle}>"El destino del reino se escribe aquí"</Text>
+                </View>
 
-            {/* Tab Selector */}
-            <View style={styles.tabSelector}>
-                <Animated.View
-                    style={[
-                        styles.tabIndicator,
-                        {
-                            transform: [{
-                                translateX: scrollX.interpolate({
-                                    inputRange: [0, width],
-                                    outputRange: [4, ((width - 38) / 2) + 4]
-                                })
-                            }],
-                            width: (width - 38) / 2
-                        }
-                    ]}
-                />
+                {/* Tab Selector */}
+                <View style={styles.tabSelector}>
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                transform: [{
+                                    translateX: scrollX.interpolate({
+                                        inputRange: [0, width],
+                                        outputRange: [4, ((width - 38) / 2) + 4]
+                                    })
+                                }],
+                                width: (width - 38) / 2
+                            }
+                        ]}
+                    />
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                    >
+                        <Crown size={20} color={viewMode === 'ACTIVE' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, viewMode === 'ACTIVE' && styles.tabBtnTextActive]}>DECRETOS</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
+                    >
+                        <History size={20} color={viewMode === 'ARCHIVE' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, viewMode === 'ARCHIVE' && styles.tabBtnTextActive]}>MAUSOLEO</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                    ref={horizontalScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ width: width * 2 }}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        setViewMode(offsetX >= width / 2 ? 'ARCHIVE' : 'ACTIVE');
+                    }}
                 >
-                    <Crown size={20} color={viewMode === 'ACTIVE' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.tabBtnText, viewMode === 'ACTIVE' && styles.tabBtnTextActive]}>DECRETOS</Text>
-                </TouchableOpacity>
+                    {/* HABITS (PROTOCOLOS) PANE */}
+                    <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
+                        {/* Protocolos Vigentes Section */}
+                        <ParchmentCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
+                            <View style={styles.sectionHeader}>
+                                <Shield size={20} color="#3d2b1f" />
+                                <Text style={styles.sectionTitle}>PROTOCOLOS VIGENTES</Text>
+                            </View>
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
-                >
-                    <History size={20} color={viewMode === 'ARCHIVE' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.tabBtnText, viewMode === 'ARCHIVE' && styles.tabBtnTextActive]}>MAUSOLEO</Text>
-                </TouchableOpacity>
-            </View>
+                            {habits?.loading && (habits?.todayLogs || []).length === 0 ? (
+                                <ActivityIndicator size="small" color="#d4af37" />
+                            ) : (habits?.todayLogs || []).length > 0 ? (
+                                (habits?.todayLogs || []).map(log => {
+                                    const ritual = log.definition;
+                                    if (!ritual) return null;
 
-            <ScrollView
-                ref={horizontalScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ width: width * 2 }}
-                scrollEventThrottle={16}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                onMomentumScrollEnd={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x;
-                    setViewMode(offsetX >= width / 2 ? 'ARCHIVE' : 'ACTIVE');
-                }}
-            >
-                {/* HABITS (PROTOCOLOS) PANE */}
-                <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
-                    {/* Protocolos Vigentes Section */}
-                    <ParchmentCard style={styles.sectionCard} contentStyle={styles.sectionCardContent}>
-                        <View style={styles.sectionHeader}>
-                            <Shield size={20} color="#3d2b1f" />
-                            <Text style={styles.sectionTitle}>PROTOCOLOS VIGENTES</Text>
-                        </View>
+                                    const isMercenary = ritual.schedule_type === 'weekly_quota';
 
-                        {habits?.loading && (habits?.todayLogs || []).length === 0 ? (
-                            <ActivityIndicator size="small" color="#d4af37" />
-                        ) : (habits?.todayLogs || []).length > 0 ? (
-                            (habits?.todayLogs || []).map(log => {
-                                const ritual = log.definition;
-                                if (!ritual) return null;
+                                    return (
+                                        <TouchableOpacity
+                                            key={log.id}
+                                            style={styles.decreeItem}
+                                            onPress={() => handleRitualPress(ritual)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.decreeHeader}>
+                                                <TouchableOpacity
+                                                    onPress={() => !ritual.activity_type && habits.toggleHabit(log.id, !log.completed)}
+                                                    disabled={!!ritual.activity_type}
+                                                    style={{ opacity: ritual.activity_type ? 0.6 : 1, marginTop: 12 }}
+                                                >
+                                                    {log.completed ? (
+                                                        <CheckSquare size={24} color="#27ae60" />
+                                                    ) : ritual.activity_type ? (
+                                                        <Clock size={24} color="#8b4513" />
+                                                    ) : (
+                                                        <Square size={24} color="#3d2b1f" />
+                                                    )}
+                                                </TouchableOpacity>
 
-                                const isMercenary = ritual.schedule_type === 'weekly_quota';
+                                                <View style={{ flex: 1, marginLeft: 15 }}>
+                                                    <Text style={styles.decreeTitle}>{ritual.title}</Text>
 
-                                return (
-                                    <TouchableOpacity
-                                        key={log.id}
-                                        style={styles.decreeItem}
-                                        onPress={() => handleRitualPress(ritual)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.decreeHeader}>
-                                            <TouchableOpacity
-                                                onPress={() => !ritual.activity_type && habits.toggleHabit(log.id, !log.completed)}
-                                                disabled={!!ritual.activity_type}
-                                                style={{ opacity: ritual.activity_type ? 0.6 : 1, marginTop: 12 }}
-                                            >
-                                                {log.completed ? (
-                                                    <CheckSquare size={24} color="#27ae60" />
-                                                ) : ritual.activity_type ? (
-                                                    <Clock size={24} color="#8b4513" />
-                                                ) : (
-                                                    <Square size={24} color="#3d2b1f" />
-                                                )}
-                                            </TouchableOpacity>
+                                                    {ritual.activity_type && (
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                            {React.createElement(getZoneInfo(ritual).icon, { size: 18, color: getZoneInfo(ritual).color })}
+                                                            <Text style={{ fontSize: 18, color: getZoneInfo(ritual).color, marginLeft: 8, fontWeight: '900', letterSpacing: 0.5 }}>
+                                                                {getZoneInfo(ritual).label.toUpperCase()}
+                                                            </Text>
+                                                        </View>
+                                                    )}
 
-                                            <View style={{ flex: 1, marginLeft: 15 }}>
-                                                <Text style={styles.decreeTitle}>{ritual.title}</Text>
-
-                                                {ritual.activity_type && (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                                        {React.createElement(getZoneInfo(ritual).icon, { size: 18, color: getZoneInfo(ritual).color })}
-                                                        <Text style={{ fontSize: 18, color: getZoneInfo(ritual).color, marginLeft: 8, fontWeight: '900', letterSpacing: 0.5 }}>
-                                                            {getZoneInfo(ritual).label.toUpperCase()}
-                                                        </Text>
-                                                    </View>
-                                                )}
-
-                                                <Text style={{ fontSize: 11, color: '#8b4513', fontWeight: 'bold', opacity: 0.6, marginTop: 4 }}>
-                                                    {ritual.schedule_type === 'daily' ? 'MONJE' : ritual.schedule_type === 'specific_days' ? 'GUARDIA' : 'MERCENARIO'}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        {/* Progress Bar for Time-based or Multi-step rituals */}
-                                        {ritual.target_value > 1 && (
-                                            <View style={{ marginTop: 10 }}>
-                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                    <Text style={{ fontSize: 10, color: '#8b4513', fontStyle: 'italic' }}>Progreso Diario</Text>
-                                                    <Text style={{ fontSize: 10, color: '#3d2b1f', fontWeight: 'bold' }}>
-                                                        {log.current_value} / {log.target_value} {ritual.unit === 'MINUTES' ? 'min' : ritual.unit === 'PAGES' ? 'págs' : 'ses.'}
+                                                    <Text style={{ fontSize: 11, color: '#8b4513', fontWeight: 'bold', opacity: 0.6, marginTop: 4 }}>
+                                                        {ritual.schedule_type === 'daily' ? 'MONJE' : ritual.schedule_type === 'specific_days' ? 'GUARDIA' : 'MERCENARIO'}
                                                     </Text>
                                                 </View>
-                                                <View style={styles.examProgressBarBg}>
-                                                    <View
-                                                        style={[
-                                                            styles.examProgressBarFill,
-                                                            {
-                                                                width: `${Math.min(100, (log.current_value / log.target_value) * 100)}%`,
-                                                                backgroundColor: log.completed ? '#27ae60' : '#d4af37'
-                                                            }
-                                                        ]}
-                                                    />
-                                                </View>
                                             </View>
-                                        )}
 
-                                        {isMercenary && (
-                                            <View style={styles.mercenarySlots}>
-                                                {Array.from({ length: ritual.weekly_target }).map((_, i) => {
-                                                    const previousCompletions = (ritual.current_streak || 0) - (log.completed ? 1 : 0);
-                                                    const currentCycleCompletions = previousCompletions % ritual.weekly_target;
-                                                    const isFilled = i < currentCycleCompletions || (log.completed && i === currentCycleCompletions);
-
-                                                    return (
+                                            {/* Progress Bar for Time-based or Multi-step rituals */}
+                                            {ritual.target_value > 1 && (
+                                                <View style={{ marginTop: 10 }}>
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={{ fontSize: 10, color: '#8b4513', fontStyle: 'italic' }}>Progreso Diario</Text>
+                                                        <Text style={{ fontSize: 10, color: '#3d2b1f', fontWeight: 'bold' }}>
+                                                            {log.current_value} / {log.target_value} {ritual.unit === 'MINUTES' ? 'min' : ritual.unit === 'PAGES' ? 'págs' : 'ses.'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.examProgressBarBg}>
                                                         <View
-                                                            key={i}
                                                             style={[
-                                                                styles.mercenarySlot,
-                                                                isFilled ? styles.mercenarySlotFilled : null
+                                                                styles.examProgressBarFill,
+                                                                {
+                                                                    width: `${Math.min(100, (log.current_value / log.target_value) * 100)}%`,
+                                                                    backgroundColor: log.completed ? '#27ae60' : '#d4af37'
+                                                                }
                                                             ]}
                                                         />
-                                                    );
-                                                })}
+                                                    </View>
+                                                </View>
+                                            )}
+
+                                            {isMercenary && (
+                                                <View style={styles.mercenarySlots}>
+                                                    {Array.from({ length: ritual.weekly_target }).map((_, i) => {
+                                                        const previousCompletions = (ritual.current_streak || 0) - (log.completed ? 1 : 0);
+                                                        const currentCycleCompletions = previousCompletions % ritual.weekly_target;
+                                                        const isFilled = i < currentCycleCompletions || (log.completed && i === currentCycleCompletions);
+
+                                                        return (
+                                                            <View
+                                                                key={i}
+                                                                style={[
+                                                                    styles.mercenarySlot,
+                                                                    isFilled ? styles.mercenarySlotFilled : null
+                                                                ]}
+                                                            />
+                                                        );
+                                                    })}
+                                                </View>
+                                            )}
+
+                                            <View style={styles.streakContainer}>
+                                                <Trophy size={10} color="#d4af37" />
+                                                <Text style={styles.streakText}>Racha: {ritual.current_streak} días</Text>
                                             </View>
-                                        )}
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            ) : (
+                                <View style={styles.emptyContainer}>
+                                    <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
+                                    <Text style={styles.emptyText}>Sin protocolos para hoy. Dicta nuevas leyes de disciplina en el Quickadd.</Text>
+                                </View>
+                            )}
+                        </ParchmentCard>
 
-                                        <View style={styles.streakContainer}>
-                                            <Trophy size={10} color="#d4af37" />
-                                            <Text style={styles.streakText}>Racha: {ritual.current_streak} días</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })
-                        ) : (
-                            <View style={styles.emptyContainer}>
-                                <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
-                                <Text style={styles.emptyText}>Sin protocolos para hoy. Dicta nuevas leyes de disciplina en el Quickadd.</Text>
+                        <ParchmentCard style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Sword size={20} color="#3d2b1f" />
+                                <Text style={styles.sectionTitle}>ASUNTOS PENDIENTES</Text>
                             </View>
-                        )}
-                    </ParchmentCard>
 
-                    <ParchmentCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Sword size={20} color="#3d2b1f" />
-                            <Text style={styles.sectionTitle}>ASUNTOS PENDIENTES</Text>
-                        </View>
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#d4af37" />
+                            ) : activeDecrees.length > 0 ? (
+                                activeDecrees.map(d => renderDecree(d))
+                            ) : (
+                                <View style={styles.emptyContainer}>
+                                    <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
+                                    <Text style={styles.emptyText}>El reino goza de paz. Pulsa el Quickadd para dictar nuevos mandatos.</Text>
+                                </View>
+                            )}
+                        </ParchmentCard>
 
-                        {loading ? (
-                            <ActivityIndicator size="small" color="#d4af37" />
-                        ) : activeDecrees.length > 0 ? (
-                            activeDecrees.map(d => renderDecree(d))
-                        ) : (
-                            <View style={styles.emptyContainer}>
-                                <ScrollIcon size={40} color="#8b4513" opacity={0.4} />
-                                <Text style={styles.emptyText}>El reino goza de paz. Pulsa el Quickadd para dictar nuevos mandatos.</Text>
+                        {/* Quick Access Buttons */}
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
+
+                    {/* ARCHIVE PANE (MAUSOLEO) */}
+                    <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
+                        <ParchmentCard style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Trophy size={20} color="#3d2b1f" />
+                                <Text style={styles.sectionTitle}>MAUSOLEO DE LOGROS</Text>
                             </View>
-                        )}
-                    </ParchmentCard>
 
-                    {/* Quick Access Buttons */}
-                    <View style={{ height: 100 }} />
+                            {completedDecrees.length > 0 ? (
+                                completedDecrees.map(d => renderDecree(d, true))
+                            ) : (
+                                <View style={styles.emptyContainer}>
+                                    <Shield size={40} color="#8b4513" opacity={0.4} />
+                                    <Text style={styles.emptyText}>Aún no hay crónicas de victorias en estos muros...</Text>
+                                </View>
+                            )}
+                        </ParchmentCard>
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
                 </ScrollView>
 
-                {/* ARCHIVE PANE (MAUSOLEO) */}
-                <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
-                    <ParchmentCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Trophy size={20} color="#3d2b1f" />
-                            <Text style={styles.sectionTitle}>MAUSOLEO DE LOGROS</Text>
-                        </View>
-
-                        {completedDecrees.length > 0 ? (
-                            completedDecrees.map(d => renderDecree(d, true))
-                        ) : (
-                            <View style={styles.emptyContainer}>
-                                <Shield size={40} color="#8b4513" opacity={0.4} />
-                                <Text style={styles.emptyText}>Aún no hay crónicas de victorias en estos muros...</Text>
-                            </View>
-                        )}
-                    </ParchmentCard>
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            </ScrollView>
-
-            <RoyalDecreeModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSave={addDecree}
-            />
-        </View >
+                <RoyalDecreeModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    onSave={addDecree}
+                />
+            </View >
+        </ScreenWrapper>
     );
 };
 

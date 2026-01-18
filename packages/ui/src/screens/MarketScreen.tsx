@@ -7,7 +7,7 @@ import {
     Dimensions,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useNavigation } from '@react-navigation/native';
 import { Coins, ShoppingBag, FlaskConical, Package } from 'lucide-react-native';
 
@@ -17,58 +17,56 @@ export const MarketScreen: React.FC = () => {
     const navigation = useNavigation();
 
     return (
-        <View style={styles.container}>
-            <View style={styles.backgroundPlaceholder}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper background="#1a1a1a">
+            <ScrollView contentContainerStyle={styles.scrollContent}>
 
-                    <Text style={styles.headerTitle}>⚖️ MERCADO NEGRO</Text>
+                <Text style={styles.headerTitle}>⚖️ MERCADO NEGRO</Text>
 
-                    {/* Saldo de Oro */}
-                    <ParchmentCard style={styles.balanceCard}>
-                        <View style={styles.balanceHeader}>
-                            <Coins size={30} color="#d4af37" />
-                            <Text style={styles.balanceTitle}>SALDO REAL</Text>
+                {/* Saldo de Oro */}
+                <ParchmentCard style={styles.balanceCard}>
+                    <View style={styles.balanceHeader}>
+                        <Coins size={30} color="#d4af37" />
+                        <Text style={styles.balanceTitle}>SALDO REAL</Text>
+                    </View>
+                    <Text style={styles.balanceAmount}>120 Oro</Text>
+                </ParchmentCard>
+
+                {/* SECCIÓN Tienda del Alquimista: Items */}
+                <ParchmentCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <FlaskConical size={20} color="#3d2b1f" />
+                        <Text style={styles.sectionTitle}>TIENDA DEL ALQUIMISTA</Text>
+                    </View>
+
+                    <View style={styles.shopItem}>
+                        <View style={styles.itemInfo}>
+                            <Package size={18} color="#3d2b1f" />
+                            <Text style={styles.itemName}>Pedir Pizza (Cena Épica)</Text>
                         </View>
-                        <Text style={styles.balanceAmount}>120 Oro</Text>
-                    </ParchmentCard>
+                        <MedievalButton
+                            title="500 Oro"
+                            onPress={() => console.log('Buy Pizza')}
+                            style={styles.buyButton}
+                        />
+                    </View>
 
-                    {/* SECCIÓN Tienda del Alquimista: Items */}
-                    <ParchmentCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <FlaskConical size={20} color="#3d2b1f" />
-                            <Text style={styles.sectionTitle}>TIENDA DEL ALQUIMISTA</Text>
+                    <View style={styles.shopItem}>
+                        <View style={styles.itemInfo}>
+                            <Package size={18} color="#3d2b1f" />
+                            <Text style={styles.itemName}>Videojuego Nuevo</Text>
                         </View>
-
-                        <View style={styles.shopItem}>
-                            <View style={styles.itemInfo}>
-                                <Package size={18} color="#3d2b1f" />
-                                <Text style={styles.itemName}>Pedir Pizza (Cena Épica)</Text>
-                            </View>
-                            <MedievalButton
-                                title="500 Oro"
-                                onPress={() => console.log('Buy Pizza')}
-                                style={styles.buyButton}
-                            />
-                        </View>
-
-                        <View style={styles.shopItem}>
-                            <View style={styles.itemInfo}>
-                                <Package size={18} color="#3d2b1f" />
-                                <Text style={styles.itemName}>Videojuego Nuevo</Text>
-                            </View>
-                            <MedievalButton
-                                title="5k Oro"
-                                onPress={() => console.log('Buy Game')}
-                                style={styles.buyButton}
-                            />
-                        </View>
-                    </ParchmentCard>
+                        <MedievalButton
+                            title="5k Oro"
+                            onPress={() => console.log('Buy Game')}
+                            style={styles.buyButton}
+                        />
+                    </View>
+                </ParchmentCard>
 
 
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            </View>
-        </View>
+                <View style={{ height: 100 }} />
+            </ScrollView>
+        </ScreenWrapper>
     );
 };
 

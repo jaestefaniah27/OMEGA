@@ -10,6 +10,7 @@ export * from './components/RoyalDecreeModal';
 export * from './components/ActiveWorkoutModal';
 export * from './components/MuscleHeatMap';
 export * from './components/AuraChannelingModal';
+export * from './components/ScreenWrapper';
 
 // Screens
 export * from './screens/BarracksScreen';

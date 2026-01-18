@@ -11,10 +11,10 @@ import {
     Alert,
     TouchableOpacity
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Heart, Moon, Sun, Scroll, Flame, Send, Trash2, CheckCircle2 } from 'lucide-react-native';
-import { useTemple } from '@omega/logic';
+import { useTemple, PerformanceLogger } from '@omega/logic';
 import { RootStackParamList } from '../../../../apps/movil/src/navigation/AppNavigator';
 
 const { width } = Dimensions.get('window');
@@ -68,119 +68,124 @@ export const TempleScreen: React.FC = () => {
     }
 
     return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.headerTitle}>⛪ TEMPLO DE LOS ANCESTROS</Text>
+        <ScreenWrapper background="#1a1a2e">
+            <View style={styles.container}>
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <Text style={styles.headerTitle}>⛪ TEMPLO DE LOS ANCESTROS</Text>
 
-                {/* BOTÓN ZEN */}
-                <TouchableOpacity
-                    style={styles.zenEntry}
-                    onPress={() => navigation.navigate('ZenFireplace' as any)}
-                >
-                    <Flame size={24} color="#FF8C00" />
-                    <Text style={styles.zenEntryText}>MEDITACIÓN ZEN</Text>
-                </TouchableOpacity>
+                    {/* BOTÓN ZEN */}
+                    <TouchableOpacity
+                        style={styles.zenEntry}
+                        onPress={() => {
+                            PerformanceLogger.setLastInteraction();
+                            navigation.navigate('ZenFireplace' as any);
+                        }}
+                    >
+                        <Flame size={24} color="#FF8C00" />
+                        <Text style={styles.zenEntryText}>MEDITACIÓN ZEN</Text>
+                    </TouchableOpacity>
 
-                {/* Sección El Altar: Gratitud */}
-                <ParchmentCard style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
-                        <Scroll size={20} color="#3d2b1f" />
-                        <Text style={styles.sectionTitle}>EL ALTAR (GRATITUD)</Text>
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="¿Por qué estás agradecido hoy?"
-                            placeholderTextColor="rgba(61, 43, 31, 0.4)"
-                            value={positiveDraft}
-                            onChangeText={setPositiveDraft}
-                        />
-                        <TouchableOpacity onPress={handleAddPositive} style={styles.sendButton}>
-                            <Send size={20} color="#3d2b1f" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.gratitudeList}>
-                        {positiveThoughts.slice(0, 5).map((t, i) => (
-                            <View key={t.id} style={styles.thoughtItem}>
-                                <Text style={styles.gratitudeItem}>• {t.content}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </ParchmentCard>
-
-                {/* Sección La Forja: Preocupaciones */}
-                <ParchmentCard style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
-                        <Flame size={20} color="#3d2b1f" />
-                        <Text style={styles.sectionTitle}>LA FORJA (LIBERACIÓN)</Text>
-                    </View>
-                    <Text style={styles.subTitle}>Entrega tus cargas al fuego:</Text>
-
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="¿Qué te preocupa?"
-                            placeholderTextColor="rgba(61, 43, 31, 0.4)"
-                            value={negativeDraft}
-                            onChangeText={setNegativeDraft}
-                        />
-                        <TouchableOpacity onPress={handleAddNegative} style={styles.sendButton}>
-                            <Send size={20} color="#3d2b1f" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.worryList}>
-                        {negativeThoughts.map((t) => (
-                            <View key={t.id} style={styles.worryItem}>
-                                <Text style={styles.worryText}>{t.content}</Text>
-                                <TouchableOpacity
-                                    onPress={() => unleashWorry(t.id)}
-                                    style={styles.unleashButton}
-                                >
-                                    <CheckCircle2 size={18} color="#27ae60" />
-                                    <Text style={styles.unleashText}>LIBERAR</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                        {negativeThoughts.length === 0 && (
-                            <Text style={styles.emptyText}>Tu espíritu está libre de cargas.</Text>
-                        )}
-                    </View>
-                </ParchmentCard>
-
-                {/* Sección La Cripta: Sueño */}
-                <ParchmentCard style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
-                        <Moon size={20} color="#3d2b1f" />
-                        <Text style={styles.sectionTitle}>LA CRIPTA (REPOSO)</Text>
-                    </View>
-
-                    {todaySleep ? (
-                        <View style={styles.sleepData}>
-                            <Text style={styles.sleepTime}>{todaySleep.hours}h</Text>
-                            <Text style={styles.sleepQuality}>Descanso Registrado</Text>
+                    {/* Sección El Altar: Gratitud */}
+                    <ParchmentCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Scroll size={20} color="#3d2b1f" />
+                            <Text style={styles.sectionTitle}>EL ALTAR (GRATITUD)</Text>
                         </View>
-                    ) : (
-                        <View style={styles.sleepInputRow}>
+
+                        <View style={styles.inputContainer}>
                             <TextInput
-                                style={[styles.input, { flex: 1 }]}
-                                placeholder="Horas de sueño"
-                                keyboardType="numeric"
-                                value={sleepHours}
-                                onChangeText={setSleepHours}
+                                style={styles.input}
+                                placeholder="¿Por qué estás agradecido hoy?"
+                                placeholderTextColor="rgba(61, 43, 31, 0.4)"
+                                value={positiveDraft}
+                                onChangeText={setPositiveDraft}
                             />
-                            <TouchableOpacity onPress={handleRegisterSleep} style={styles.registerSleepButton}>
-                                <Text style={styles.registerSleepText}>REGISTRAR</Text>
+                            <TouchableOpacity onPress={handleAddPositive} style={styles.sendButton}>
+                                <Send size={20} color="#3d2b1f" />
                             </TouchableOpacity>
                         </View>
-                    )}
-                </ParchmentCard>
 
-                <View style={{ height: 100 }} />
-            </ScrollView>
-        </View>
+                        <View style={styles.gratitudeList}>
+                            {positiveThoughts.slice(0, 5).map((t, i) => (
+                                <View key={t.id} style={styles.thoughtItem}>
+                                    <Text style={styles.gratitudeItem}>• {t.content}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </ParchmentCard>
+
+                    {/* Sección La Forja: Preocupaciones */}
+                    <ParchmentCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Flame size={20} color="#3d2b1f" />
+                            <Text style={styles.sectionTitle}>LA FORJA (LIBERACIÓN)</Text>
+                        </View>
+                        <Text style={styles.subTitle}>Entrega tus cargas al fuego:</Text>
+
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="¿Qué te preocupa?"
+                                placeholderTextColor="rgba(61, 43, 31, 0.4)"
+                                value={negativeDraft}
+                                onChangeText={setNegativeDraft}
+                            />
+                            <TouchableOpacity onPress={handleAddNegative} style={styles.sendButton}>
+                                <Send size={20} color="#3d2b1f" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.worryList}>
+                            {negativeThoughts.map((t) => (
+                                <View key={t.id} style={styles.worryItem}>
+                                    <Text style={styles.worryText}>{t.content}</Text>
+                                    <TouchableOpacity
+                                        onPress={() => unleashWorry(t.id)}
+                                        style={styles.unleashButton}
+                                    >
+                                        <CheckCircle2 size={18} color="#27ae60" />
+                                        <Text style={styles.unleashText}>LIBERAR</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                            {negativeThoughts.length === 0 && (
+                                <Text style={styles.emptyText}>Tu espíritu está libre de cargas.</Text>
+                            )}
+                        </View>
+                    </ParchmentCard>
+
+                    {/* Sección La Cripta: Sueño */}
+                    <ParchmentCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Moon size={20} color="#3d2b1f" />
+                            <Text style={styles.sectionTitle}>LA CRIPTA (REPOSO)</Text>
+                        </View>
+
+                        {todaySleep ? (
+                            <View style={styles.sleepData}>
+                                <Text style={styles.sleepTime}>{todaySleep.hours}h</Text>
+                                <Text style={styles.sleepQuality}>Descanso Registrado</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.sleepInputRow}>
+                                <TextInput
+                                    style={[styles.input, { flex: 1 }]}
+                                    placeholder="Horas de sueño"
+                                    keyboardType="numeric"
+                                    value={sleepHours}
+                                    onChangeText={setSleepHours}
+                                />
+                                <TouchableOpacity onPress={handleRegisterSleep} style={styles.registerSleepButton}>
+                                    <Text style={styles.registerSleepText}>REGISTRAR</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </ParchmentCard>
+
+                    <View style={{ height: 100 }} />
+                </ScrollView>
+            </View>
+        </ScreenWrapper>
     );
 };
 

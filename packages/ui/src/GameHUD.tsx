@@ -7,6 +7,7 @@ import {
     Platform
 } from 'react-native';
 import { Castle, Map, Plus, User, Settings } from 'lucide-react-native';
+import { PerformanceLogger } from '@omega/logic';
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +27,10 @@ const HUDButton: React.FC<HUDButtonProps> = ({
     return (
         <TouchableOpacity
             activeOpacity={0.7}
-            onPress={onPress}
+            onPress={() => {
+                PerformanceLogger.setLastInteraction();
+                onPress();
+            }}
             style={[
                 styles.button,
                 isLarge && styles.largeButton
@@ -49,7 +53,7 @@ export const GameHUD: React.FC<{
     onCastlePress?: () => void;
     onSettingsPress?: () => void;
     castleIcon?: React.ElementType; // New prop for dynamic icon
-}> = ({
+}> = React.memo(({
     onProfilePress,
     onMapPress,
     onQuickAddPress,
@@ -57,42 +61,42 @@ export const GameHUD: React.FC<{
     onSettingsPress,
     castleIcon = Castle // Default to Castle
 }) => {
-        return (
-            <View style={styles.container}>
-                <View style={styles.hudBar}>
-                    <HUDButton
-                        onPress={() => onCastlePress?.()}
-                        icon={castleIcon}
-                    />
-                    <HUDButton
-                        onPress={() => onMapPress?.()}
-                        icon={Map}
-                    />
+    return (
+        <View style={styles.container}>
+            <View style={styles.hudBar}>
+                <HUDButton
+                    onPress={() => onCastlePress?.()}
+                    icon={castleIcon}
+                />
+                <HUDButton
+                    onPress={() => onMapPress?.()}
+                    icon={Map}
+                />
 
-                    {/* Helper view to make space for the floating Quickadd */}
-                    <View style={styles.spacer} />
+                {/* Helper view to make space for the floating Quickadd */}
+                <View style={styles.spacer} />
 
-                    <HUDButton
-                        onPress={() => onProfilePress?.()}
-                        icon={User}
-                    />
-                    <HUDButton
-                        onPress={() => onSettingsPress?.()}
-                        icon={Settings}
-                    />
-                </View>
-
-                {/* Quickadd - Central Floating Button */}
-                <View style={styles.QuickAddContainer}>
-                    <HUDButton
-                        onPress={() => onQuickAddPress?.()}
-                        icon={Plus}
-                        isLarge
-                    />
-                </View>
+                <HUDButton
+                    onPress={() => onProfilePress?.()}
+                    icon={User}
+                />
+                <HUDButton
+                    onPress={() => onSettingsPress?.()}
+                    icon={Settings}
+                />
             </View>
-        );
-    };
+
+            {/* Quickadd - Central Floating Button */}
+            <View style={styles.QuickAddContainer}>
+                <HUDButton
+                    onPress={() => onQuickAddPress?.()}
+                    icon={Plus}
+                    isLarge
+                />
+            </View>
+        </View>
+    );
+});
 
 const styles = StyleSheet.create({
     container: {

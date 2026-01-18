@@ -42,6 +42,7 @@ export const AppNavigator: React.FC = () => {
                 headerShown: false,
                 animation: 'fade',
                 animationDuration: 200, // Faster transition
+                freezeOnBlur: true,
             }}
         >
             <Stack.Screen name="Home" component={HomeScreen} />

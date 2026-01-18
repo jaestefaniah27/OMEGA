@@ -10,6 +10,7 @@ import {
 import { MapLocationPin } from '..';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { PerformanceLogger } from '@omega/logic';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,9 +39,9 @@ export const HomeScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <View style={[
-                styles.mapBase, 
-                isDesktop && { 
-                    maxWidth: 1024, 
+                styles.mapBase,
+                isDesktop && {
+                    maxWidth: 1024,
                     alignSelf: 'center',
                     borderLeftWidth: 1,
                     borderRightWidth: 1,
@@ -55,7 +56,10 @@ export const HomeScreen: React.FC = () => {
                     icon="🏰"
                     top="24%"
                     left="50%"
-                    onPress={() => navigation.navigate('Castle')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Castle');
+                    }}
                 />
 
                 {/* Library: North-East */}
@@ -64,7 +68,10 @@ export const HomeScreen: React.FC = () => {
                     icon="📚"
                     top="20%"
                     left="82%"
-                    onPress={() => navigation.navigate('Library')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Library');
+                    }}
                 />
 
                 {/* Wizard Tower: Mid-East */}
@@ -73,7 +80,10 @@ export const HomeScreen: React.FC = () => {
                     icon="🧙‍♂️"
                     top="36%"
                     left="88%"
-                    onPress={() => navigation.navigate('WizardTower')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('WizardTower');
+                    }}
                 />
 
                 {/* Temple: Mid-West */}
@@ -82,7 +92,10 @@ export const HomeScreen: React.FC = () => {
                     icon="⛪"
                     top="42%"
                     left="18%"
-                    onPress={() => navigation.navigate('Temple')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Temple');
+                    }}
                 />
 
                 {/* Theatre: Center */}
@@ -91,7 +104,10 @@ export const HomeScreen: React.FC = () => {
                     icon="🎭"
                     top="48%"
                     left="60%"
-                    onPress={() => navigation.navigate('Theatre')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Theatre');
+                    }}
                 />
 
                 {/* Barracks: South-West */}
@@ -100,7 +116,10 @@ export const HomeScreen: React.FC = () => {
                     icon="⚔️"
                     top="65%"
                     left="20%"
-                    onPress={() => navigation.navigate('Barracks')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Barracks');
+                    }}
                 />
 
                 {/* Tavern: South-East (Near Market) */}
@@ -109,7 +128,10 @@ export const HomeScreen: React.FC = () => {
                     icon="🍳"
                     top="68%"
                     left="78%"
-                    onPress={() => navigation.navigate('Tavern')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Tavern');
+                    }}
                 />
 
                 <MapLocationPin
@@ -117,7 +139,10 @@ export const HomeScreen: React.FC = () => {
                     icon="🛒"
                     top="82%"
                     left="85%"
-                    onPress={() => navigation.navigate('Market')}
+                    onPress={() => {
+                        PerformanceLogger.setLastInteraction();
+                        navigation.navigate('Market');
+                    }}
                 />
 
 

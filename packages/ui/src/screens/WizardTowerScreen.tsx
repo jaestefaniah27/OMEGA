@@ -14,7 +14,7 @@ import {
     DeviceEventEmitter,
     Platform
 } from 'react-native';
-import { MedievalButton, ParchmentCard, ManualColorPicker, AuraChannelingModal } from '..';
+import { MedievalButton, ParchmentCard, ManualColorPicker, AuraChannelingModal, ScreenWrapper } from '..';
 import { useMageTower } from '@omega/logic';
 import {
     Sparkles, Code, Cpu, Book, PenTool, Plus, X, Zap,
@@ -233,536 +233,538 @@ export const WizardTowerScreen: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.backgroundPlaceholder}>
-                <View style={styles.topHeader}>
-                    <Text style={styles.headerTitle}>TORRE DE HECHICERÍA</Text>
-                    <Text style={styles.headerSubtitle}>"Donde la voluntad se transmuta en realidad"</Text>
-                </View>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                <View style={styles.backgroundPlaceholder}>
+                    <View style={styles.topHeader}>
+                        <Text style={styles.headerTitle}>TORRE DE HECHICERÍA</Text>
+                        <Text style={styles.headerSubtitle}>"Donde la voluntad se transmuta en realidad"</Text>
+                    </View>
 
-                {/* Tab Selector */}
-                <View style={styles.tabSelector}>
-                    <Animated.View
-                        style={[
-                            styles.tabIndicator,
-                            {
-                                transform: [{
-                                    translateX: scrollX.interpolate({
-                                        inputRange: [0, width],
-                                        outputRange: [4, ((width - 38) / 2) + 4]
-                                    })
-                                }],
-                                width: (width - 38) / 2
-                            }
-                        ]}
-                    />
+                    {/* Tab Selector */}
+                    <View style={styles.tabSelector}>
+                        <Animated.View
+                            style={[
+                                styles.tabIndicator,
+                                {
+                                    transform: [{
+                                        translateX: scrollX.interpolate({
+                                            inputRange: [0, width],
+                                            outputRange: [4, ((width - 38) / 2) + 4]
+                                        })
+                                    }],
+                                    width: (width - 38) / 2
+                                }
+                            ]}
+                        />
 
-                    <TouchableOpacity
-                        style={styles.tabBtn}
-                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                        <TouchableOpacity
+                            style={styles.tabBtn}
+                            onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                        >
+                            <FlaskConical size={18} color={viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513'} />
+                            <Text style={[styles.tabBtnText, { color: viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513' }]}>LABORATORIO</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.tabBtn}
+                            onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
+                        >
+                            <Scroll size={18} color={viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513'} />
+                            <Text style={[styles.tabBtnText, { color: viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513' }]}>REGISTROS</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView
+                        ref={horizontalScrollRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScroll={Animated.event(
+                            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                            { useNativeDriver: false }
+                        )}
+                        scrollEventThrottle={16}
+                        onMomentumScrollEnd={(e) => {
+                            const offsetX = e.nativeEvent.contentOffset.x;
+                            setViewMode(offsetX >= width / 2 ? 'REGISTROS' : 'LABORATORIO');
+                        }}
                     >
-                        <FlaskConical size={18} color={viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513'} />
-                        <Text style={[styles.tabBtnText, { color: viewMode === 'LABORATORIO' ? '#FFD700' : '#8b4513' }]}>LABORATORIO</Text>
-                    </TouchableOpacity>
+                        {/* --- TAB 1: LABORATORIO D'ALQUIMIA --- */}
+                        <View style={{ width }}>
+                            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+                                <View style={[styles.sectionHeader, { marginTop: 10 }]}>
+                                    <Sparkles size={18} color="#FFD700" />
+                                    <Text style={styles.sectionTitle}>INVESTIGACIONES ACTIVAS</Text>
+                                </View>
 
-                    <TouchableOpacity
-                        style={styles.tabBtn}
-                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
-                    >
-                        <Scroll size={18} color={viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513'} />
-                        <Text style={[styles.tabBtnText, { color: viewMode === 'REGISTROS' ? '#FFD700' : '#8b4513' }]}>REGISTROS</Text>
-                    </TouchableOpacity>
-                </View>
+                                {projects.filter(p => p.status !== 'ARCHIVED').length === 0 ? (
+                                    <ParchmentCard style={styles.emptyCard}>
+                                        <Text style={styles.emptyText}>No hay proyectos activos. Usa el botón (+) para iniciar una nueva investigación.</Text>
+                                    </ParchmentCard>
+                                ) : (
+                                    projects.filter(p => p.status !== 'ARCHIVED').map(renderProject)
+                                )}
 
-                <ScrollView
-                    ref={horizontalScrollRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={Animated.event(
-                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                        { useNativeDriver: false }
-                    )}
-                    scrollEventThrottle={16}
-                    onMomentumScrollEnd={(e) => {
-                        const offsetX = e.nativeEvent.contentOffset.x;
-                        setViewMode(offsetX >= width / 2 ? 'REGISTROS' : 'LABORATORIO');
-                    }}
-                >
-                    {/* --- TAB 1: LABORATORIO D'ALQUIMIA --- */}
-                    <View style={{ width }}>
-                        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+                                {/* Mostrar aura acumulada por tema (si > 0) */}
+                                {themes.length > 0 && Object.entries(unhandledAuraByTheme).some(([_, amount]) => amount > 0) && (
+                                    <View style={{ marginTop: 20 }}>
+                                        <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+                                            <Flame size={16} color="#d4af37" />
+                                            <Text style={[styles.sectionTitle, { fontSize: 12, color: '#d4af37' }]}>ENERGÍA LATENTE POR ÁMBITO</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                                            {themes.map(t => {
+                                                const amount = unhandledAuraByTheme[t.id] || 0;
+                                                if (amount <= 0) return null;
+                                                return (
+                                                    <View key={t.id} style={[styles.themeAuraChip, { borderColor: t.color }]}>
+                                                        <IconRenderer name={t.symbol} color={t.color} size={12} />
+                                                        <Text style={[styles.themeAuraText, { color: t.color }]}>{t.name}: {amount}</Text>
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                )}
+
+                                <View style={{ height: 200 }} />
+                            </ScrollView>
+
+                            {/* Footer Fijo de Aura */}
+                            <View style={styles.auraFixedFooter}>
+                                {bubbleVisible && (
+                                    <Animated.View style={[styles.bubbleContainer, { opacity: bubbleOpacity }]}>
+                                        <View style={styles.bubbleContent}>
+                                            <Text style={styles.bubbleText}>No hay energía latente... Realiza tus ritos diarios.</Text>
+                                        </View>
+                                        <View style={styles.bubbleArrow} />
+                                    </Animated.View>
+                                )}
+
+                                <View style={styles.auraInfoRow}>
+                                    <View style={styles.auraLabelGroup}>
+                                        <Flame size={20} color="#FFD700" />
+                                        <Text style={styles.auraLabel}>AURA LATENTE TOTAL</Text>
+                                    </View>
+                                    <View style={styles.auraValueGroup}>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            {formatAura(totalAura).cronolitos > 0 && (
+                                                <Text style={[styles.auraValue, { fontSize: 18, marginBottom: 2 }]}>
+                                                    {formatAura(totalAura).cronolitos}🧩 Cronolitos
+                                                </Text>
+                                            )}
+                                            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                                <Text style={styles.auraValue}>{formatAura(totalAura).rest}</Text>
+                                                <Text style={styles.auraUnit}>Aura</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+
+
+                            </View>
+                        </View>
+
+                        {/* --- TAB 2: SALA DE REGISTROS --- */}
+                        <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
                             <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-                                <Sparkles size={18} color="#FFD700" />
-                                <Text style={styles.sectionTitle}>INVESTIGACIONES ACTIVAS</Text>
+                                <Book size={18} color="#7f8c8d" />
+                                <Text style={[styles.sectionTitle, { color: '#7f8c8d' }]}>ARCHIVOS SACROS</Text>
                             </View>
 
-                            {projects.filter(p => p.status !== 'ARCHIVED').length === 0 ? (
-                                <ParchmentCard style={styles.emptyCard}>
-                                    <Text style={styles.emptyText}>No hay proyectos activos. Usa el botón (+) para iniciar una nueva investigación.</Text>
-                                </ParchmentCard>
+                            {projects.filter(p => p.status === 'ARCHIVED').length === 0 ? (
+                                <Text style={styles.emptyTextArchived}>Los archivos están vacíos por ahora.</Text>
                             ) : (
-                                projects.filter(p => p.status !== 'ARCHIVED').map(renderProject)
+                                projects.filter(p => p.status === 'ARCHIVED').map(p => (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        style={styles.archivedItem}
+                                        onLongPress={() => handleLongPressProject(p)}
+                                    >
+                                        <View style={styles.archivedLeft}>
+                                            <IconRenderer name={themes.find(t => t.id === p.theme_id)?.symbol || 'Scroll'} color="#7f8c8d" size={16} />
+                                            <Text style={styles.archivedName}>{p.name}</Text>
+                                        </View>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            {formatAura(p.mana_amount).cronolitos > 0 && (
+                                                <Text style={[styles.archivedAura, { color: '#d4af37' }]}>{formatAura(p.mana_amount).cronolitos} Cron.</Text>
+                                            )}
+                                            <Text style={styles.archivedAura}>{formatAura(p.mana_amount).rest} Aura</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))
                             )}
 
-                            {/* Mostrar aura acumulada por tema (si > 0) */}
-                            {themes.length > 0 && Object.entries(unhandledAuraByTheme).some(([_, amount]) => amount > 0) && (
-                                <View style={{ marginTop: 20 }}>
-                                    <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
-                                        <Flame size={16} color="#d4af37" />
-                                        <Text style={[styles.sectionTitle, { fontSize: 12, color: '#d4af37' }]}>ENERGÍA LATENTE POR ÁMBITO</Text>
-                                    </View>
-                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                                        {themes.map(t => {
-                                            const amount = unhandledAuraByTheme[t.id] || 0;
-                                            if (amount <= 0) return null;
+                            <ParchmentCard style={{ ...styles.managementCard, marginTop: 30 }}>
+                                <View style={styles.cardHeader}>
+                                    <Settings size={20} color="#3d2b1f" />
+                                    <Text style={styles.cardTitle}>MAESTRÍA DE ÁMBITOS</Text>
+                                </View>
+                                <Text style={styles.cardDesc}>Define los pilares de tu poder y canaliza energía de tus herramientas.</Text>
+
+                                {/* --- MAPPINGS LIST --- */}
+                                {mappings && mappings.length > 0 && (
+                                    <View style={styles.mappingsList}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                                            <Text style={styles.subHeader}>CANALIZACIONES ACTIVAS</Text>
+                                            <View style={{ backgroundColor: '#4CAF50', width: 8, height: 8, borderRadius: 4, marginLeft: 6 }} />
+                                        </View>
+
+                                        {mappings.map(m => {
+                                            const theme = themes.find(t => t.id === m.theme_id);
                                             return (
-                                                <View key={t.id} style={[styles.themeAuraChip, { borderColor: t.color }]}>
-                                                    <IconRenderer name={t.symbol} color={t.color} size={12} />
-                                                    <Text style={[styles.themeAuraText, { color: t.color }]}>{t.name}: {amount}</Text>
-                                                </View>
-                                            );
+                                                <TouchableOpacity
+                                                    key={m.id}
+                                                    style={[styles.mappingItem, { borderLeftColor: theme?.color || '#ccc' }]}
+                                                    onLongPress={() => {
+                                                        showCustomAlert(
+                                                            "Gestionar Canalización",
+                                                            `¿Qué deseas hacer con la conexión de "${m.process_name}"?`,
+                                                            [
+                                                                { text: "Cancelar", style: "cancel", onPress: () => setCustomAlertVisible(false) },
+                                                                {
+                                                                    text: "Romper Vínculo",
+                                                                    style: "destructive",
+                                                                    onPress: () => {
+                                                                        deleteMapping(m.id!);
+                                                                        setCustomAlertVisible(false);
+                                                                    }
+                                                                }
+                                                            ]
+                                                        )
+                                                    }}
+                                                >
+                                                    <View style={styles.mappingLeft}>
+                                                        <Monitor size={14} color="#3d2b1f" />
+                                                        <Text style={styles.mappingApp}>{m.process_name}</Text>
+                                                    </View>
+                                                    <View style={styles.mappingArrow}>
+                                                        <Zap size={10} color="rgba(61,43,31,0.3)" />
+                                                    </View>
+                                                    <View style={styles.mappingRight}>
+                                                        <IconRenderer name={theme?.symbol || 'Sparkles'} color={theme?.color} size={14} />
+                                                        <Text style={[styles.mappingTheme, { color: theme?.color }]}>{theme?.name}</Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            )
                                         })}
                                     </View>
-                                </View>
-                            )}
+                                )}
 
-                            <View style={{ height: 200 }} />
-                        </ScrollView>
-
-                        {/* Footer Fijo de Aura */}
-                        <View style={styles.auraFixedFooter}>
-                            {bubbleVisible && (
-                                <Animated.View style={[styles.bubbleContainer, { opacity: bubbleOpacity }]}>
-                                    <View style={styles.bubbleContent}>
-                                        <Text style={styles.bubbleText}>No hay energía latente... Realiza tus ritos diarios.</Text>
-                                    </View>
-                                    <View style={styles.bubbleArrow} />
-                                </Animated.View>
-                            )}
-
-                            <View style={styles.auraInfoRow}>
-                                <View style={styles.auraLabelGroup}>
-                                    <Flame size={20} color="#FFD700" />
-                                    <Text style={styles.auraLabel}>AURA LATENTE TOTAL</Text>
-                                </View>
-                                <View style={styles.auraValueGroup}>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        {formatAura(totalAura).cronolitos > 0 && (
-                                            <Text style={[styles.auraValue, { fontSize: 18, marginBottom: 2 }]}>
-                                                {formatAura(totalAura).cronolitos}🧩 Cronolitos
-                                            </Text>
-                                        )}
-                                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                            <Text style={styles.auraValue}>{formatAura(totalAura).rest}</Text>
-                                            <Text style={styles.auraUnit}>Aura</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-
-
-                        </View>
-                    </View>
-
-                    {/* --- TAB 2: SALA DE REGISTROS --- */}
-                    <ScrollView style={{ width }} contentContainerStyle={styles.scrollContent}>
-                        <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-                            <Book size={18} color="#7f8c8d" />
-                            <Text style={[styles.sectionTitle, { color: '#7f8c8d' }]}>ARCHIVOS SACROS</Text>
-                        </View>
-
-                        {projects.filter(p => p.status === 'ARCHIVED').length === 0 ? (
-                            <Text style={styles.emptyTextArchived}>Los archivos están vacíos por ahora.</Text>
-                        ) : (
-                            projects.filter(p => p.status === 'ARCHIVED').map(p => (
-                                <TouchableOpacity
-                                    key={p.id}
-                                    style={styles.archivedItem}
-                                    onLongPress={() => handleLongPressProject(p)}
-                                >
-                                    <View style={styles.archivedLeft}>
-                                        <IconRenderer name={themes.find(t => t.id === p.theme_id)?.symbol || 'Scroll'} color="#7f8c8d" size={16} />
-                                        <Text style={styles.archivedName}>{p.name}</Text>
-                                    </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        {formatAura(p.mana_amount).cronolitos > 0 && (
-                                            <Text style={[styles.archivedAura, { color: '#d4af37' }]}>{formatAura(p.mana_amount).cronolitos} Cron.</Text>
-                                        )}
-                                        <Text style={styles.archivedAura}>{formatAura(p.mana_amount).rest} Aura</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        )}
-
-                        <ParchmentCard style={{ ...styles.managementCard, marginTop: 30 }}>
-                            <View style={styles.cardHeader}>
-                                <Settings size={20} color="#3d2b1f" />
-                                <Text style={styles.cardTitle}>MAESTRÍA DE ÁMBITOS</Text>
-                            </View>
-                            <Text style={styles.cardDesc}>Define los pilares de tu poder y canaliza energía de tus herramientas.</Text>
-
-                            {/* --- MAPPINGS LIST --- */}
-                            {mappings && mappings.length > 0 && (
-                                <View style={styles.mappingsList}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                                        <Text style={styles.subHeader}>CANALIZACIONES ACTIVAS</Text>
-                                        <View style={{ backgroundColor: '#4CAF50', width: 8, height: 8, borderRadius: 4, marginLeft: 6 }} />
-                                    </View>
-
-                                    {mappings.map(m => {
-                                        const theme = themes.find(t => t.id === m.theme_id);
-                                        return (
-                                            <TouchableOpacity
-                                                key={m.id}
-                                                style={[styles.mappingItem, { borderLeftColor: theme?.color || '#ccc' }]}
-                                                onLongPress={() => {
-                                                    showCustomAlert(
-                                                        "Gestionar Canalización",
-                                                        `¿Qué deseas hacer con la conexión de "${m.process_name}"?`,
-                                                        [
-                                                            { text: "Cancelar", style: "cancel", onPress: () => setCustomAlertVisible(false) },
-                                                            {
-                                                                text: "Romper Vínculo",
-                                                                style: "destructive",
-                                                                onPress: () => {
-                                                                    deleteMapping(m.id!);
-                                                                    setCustomAlertVisible(false);
-                                                                }
-                                                            }
-                                                        ]
-                                                    )
-                                                }}
-                                            >
-                                                <View style={styles.mappingLeft}>
-                                                    <Monitor size={14} color="#3d2b1f" />
-                                                    <Text style={styles.mappingApp}>{m.process_name}</Text>
-                                                </View>
-                                                <View style={styles.mappingArrow}>
-                                                    <Zap size={10} color="rgba(61,43,31,0.3)" />
-                                                </View>
-                                                <View style={styles.mappingRight}>
-                                                    <IconRenderer name={theme?.symbol || 'Sparkles'} color={theme?.color} size={14} />
-                                                    <Text style={[styles.mappingTheme, { color: theme?.color }]}>{theme?.name}</Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        )
-                                    })}
-                                </View>
-                            )}
-
-                            <MedievalButton
-                                title={mappings.length > 0 ? "ESTABLECER VÍNCULO" : "CONFIGURAR CANALIZACIÓN"}
-                                onPress={() => setAuraModalVisible(true)}
-                                variant="secondary"
-                                icon={<Zap size={16} color="#FFD700" />}
-                                style={{ marginTop: 15, alignSelf: 'flex-start' }}
-                            />
-                        </ParchmentCard>
-
-                        <View style={{ height: 120 }} />
-                    </ScrollView>
-                </ScrollView>
-            </View>
-
-            {/* Modal para Nuevo Proyecto */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={projectModalVisible}
-                onRequestClose={() => setProjectModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{editingProject ? 'REFORJAR ARTEFACTO' : 'NUEVA INVESTIGACIÓN'}</Text>
-                            <TouchableOpacity onPress={() => setProjectModalVisible(false)}>
-                                <X size={24} color="#3d2b1f" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.inputLabel}>NOMBRE DEL ARTEFACTO</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ej: Proyecto Omega, Mi Libro..."
-                            value={projectName}
-                            onChangeText={setProjectName}
-                            placeholderTextColor="rgba(61, 43, 31, 0.4)"
-                        />
-
-                        <Text style={styles.inputLabel}>ÁMBITO DE PODER</Text>
-                        {themes.length === 0 ? (
-                            <View style={styles.noThemesBox}>
-                                <Text style={styles.noThemesText}>Aún no has definido ámbitos de poder (temas).</Text>
-                                <TouchableOpacity onPress={() => { setProjectModalVisible(false); setThemeModalVisible(true); }}>
-                                    <Text style={styles.createThemeLink}>Crear Primer Ámbito</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.themeGrid}>
-                                {themes.map(t => (
-                                    <TouchableOpacity
-                                        key={t.id}
-                                        style={[styles.themeBtn, selectedThemeId === t.id && { borderColor: t.color, backgroundColor: t.color + '20' }]}
-                                        onPress={() => setSelectedThemeId(t.id)}
-                                    >
-                                        <IconRenderer name={t.symbol} color={t.color} size={16} />
-                                        <Text style={[styles.themeBtnText, selectedThemeId === t.id && { color: t.color, fontWeight: 'bold' }]}>
-                                            {t.name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                                <TouchableOpacity
-                                    style={[styles.themeBtn, { borderStyle: 'dashed', borderColor: '#3d2b1f' }]}
-                                    onPress={() => {
-                                        setProjectModalVisible(false);
-                                        setTimeout(() => setThemeModalVisible(true), 400);
-                                    }}
-                                >
-                                    <Plus size={14} color="#3d2b1f" />
-                                    <Text style={styles.themeBtnText}>Nuevo</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        <MedievalButton
-                            title={editingProject ? "GUARDAR CAMBIOS" : "COMENZAR RITO"}
-                            onPress={handleSaveProject}
-                            variant="primary"
-                            style={{ marginTop: 20 }}
-                        />
-
-                        {editingProject && (
-                            <MedievalButton
-                                title={editingProject.status === 'ARCHIVED' ? "VOLVER A LA VIDA (ACTIVAR)" : "ARCHIVAR INVESTIGACIÓN"}
-                                onPress={() => {
-                                    const newStatus = editingProject.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED';
-                                    updateProject(editingProject.id, { status: newStatus });
-                                    setProjectModalVisible(false);
-                                }}
-                                variant="secondary"
-                                style={{ marginTop: 10 }}
-                                icon={<Book size={16} color="#3d2b1f" />}
-                            />
-                        )}
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Modal para Themes / Ámbitos */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={themeModalVisible}
-                onRequestClose={() => setThemeModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { maxHeight: '85%' }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>EDITOR DE ÁMBITOS</Text>
-                            <TouchableOpacity onPress={() => setThemeModalVisible(false)}>
-                                <X size={24} color="#3d2b1f" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView>
-                            <Text style={styles.inputLabel}>NUEVO ÁMBITO DE INVESTIGACIÓN</Text>
-                            <View style={styles.newThemeRow}>
-                                <TextInput
-                                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                    placeholder="Nombre del tema..."
-                                    value={newThemeName}
-                                    onChangeText={setNewThemeName}
-                                    placeholderTextColor="rgba(61, 43, 31, 0.4)"
-                                />
-                                <TouchableOpacity
-                                    style={[styles.colorIndicator, { backgroundColor: newThemeColor }]}
-                                    onPress={() => {
-                                        setThemeModalVisible(false);
-                                        setTimeout(() => setIsColorPickerVisible(true), 400);
-                                    }}
-                                />
-                            </View>
-
-                            <Text style={styles.inputLabel}>SÍMBOLO SAGRADO</Text>
-                            <View style={styles.iconSelectionGrid}>
-                                {Object.keys(ALL_ICONS).map(iconName => (
-                                    <TouchableOpacity
-                                        key={iconName}
-                                        style={[styles.iconBox, newThemeSymbol === iconName && styles.iconBoxActive]}
-                                        onPress={() => setNewThemeSymbol(iconName)}
-                                    >
-                                        <IconRenderer name={iconName} color={newThemeSymbol === iconName ? '#fff' : '#3d2b1f'} size={20} />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <MedievalButton
-                                title="AÑADIR ÁMBITO"
-                                onPress={handleCreateTheme}
-                                style={{ marginVertical: 15 }}
-                            />
-
-                            <View style={styles.existingThemesSection}>
-                                <Text style={styles.inputLabel}>ÁMBITOS EXISTENTES</Text>
-                                {themes.map(t => (
-                                    <View key={t.id} style={styles.existingThemeItem}>
-                                        <View style={styles.themeItemLeft}>
-                                            <IconRenderer name={t.symbol} color={t.color} />
-                                            <Text style={styles.themeItemName}>{t.name}</Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => deleteTheme(t.id)}>
-                                            <X size={18} color="#c0392b" />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            <ManualColorPicker
-                visible={isColorPickerVisible}
-                onClose={() => {
-                    setIsColorPickerVisible(false);
-                    setTimeout(() => setThemeModalVisible(true), 400);
-                }}
-                onColorSelect={(color) => {
-                    setNewThemeColor(color);
-                }}
-            />
-
-            {/* In-App Action Menu (Immersive) */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={actionMenuVisible}
-                onRequestClose={() => setActionMenuVisible(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setActionMenuVisible(false)}
-                >
-                    <View style={styles.actionMenuContent}>
-                        <ParchmentCard style={styles.actionCard}>
-                            <Text style={styles.actionTitle}>GESTIÓN DE ARTEFACTO</Text>
-                            <Text style={styles.actionSubtitle}>{selectedProjectForMenu?.name}</Text>
-
-                            <View style={styles.actionButtonsRow}>
-                                <TouchableOpacity
-                                    style={styles.actionItem}
-                                    onPress={() => {
-                                        setActionMenuVisible(false);
-                                        setEditingProject(selectedProjectForMenu);
-                                        setProjectName(selectedProjectForMenu.name);
-                                        setSelectedThemeId(selectedProjectForMenu.theme_id);
-                                        setProjectModalVisible(true);
-                                    }}
-                                >
-                                    <View style={[styles.actionIconCircle, { backgroundColor: '#3498db' }]}>
-                                        <PenTool size={20} color="#fff" />
-                                    </View>
-                                    <Text style={styles.actionText}>Editar</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.actionItem}
-                                    onPress={() => {
-                                        const isArchived = selectedProjectForMenu.status === 'ARCHIVED';
-                                        updateProject(selectedProjectForMenu.id, { status: isArchived ? 'ACTIVE' : 'ARCHIVED' });
-                                        setActionMenuVisible(false);
-                                    }}
-                                >
-                                    <View style={[styles.actionIconCircle, { backgroundColor: selectedProjectForMenu?.status === 'ARCHIVED' ? '#2ecc71' : '#95a5a6' }]}>
-                                        <Book size={20} color="#fff" />
-                                    </View>
-                                    <Text style={styles.actionText}>{selectedProjectForMenu?.status === 'ARCHIVED' ? 'Activar' : 'Archivar'}</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.actionItem}
-                                    onPress={() => {
-                                        showCustomAlert(
-                                            "Destruir Artefacto",
-                                            "¿Confirmas la destrucción total de este estudio?",
-                                            [
-                                                { text: "Mantener", style: 'cancel', onPress: () => setCustomAlertVisible(false) },
-                                                {
-                                                    text: "Destruir", onPress: () => {
-                                                        deleteProject(selectedProjectForMenu.id);
-                                                        setActionMenuVisible(false);
-                                                        setCustomAlertVisible(false);
-                                                    }, style: 'destructive'
-                                                }
-                                            ]
-                                        );
-                                    }}
-                                >
-                                    <View style={[styles.actionIconCircle, { backgroundColor: '#e74c3c' }]}>
-                                        <X size={20} color="#fff" />
-                                    </View>
-                                    <Text style={styles.actionText}>Eliminar</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.closeActionBtn}
-                                onPress={() => setActionMenuVisible(false)}
-                            >
-                                <Text style={styles.closeActionText}>CERRAR</Text>
-                            </TouchableOpacity>
-                        </ParchmentCard>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
-            {/* Immersive Custom Alert */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={customAlertVisible}
-                onRequestClose={() => setCustomAlertVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.alertCard}>
-                        <Text style={styles.alertTitle}>{customAlertTitle}</Text>
-                        <Text style={styles.alertMessage}>{customAlertMessage}</Text>
-                        <View style={styles.alertButtonsCol}>
-                            {customAlertButtons.map((btn, idx) => (
                                 <MedievalButton
-                                    key={idx}
-                                    title={btn.text}
-                                    variant={btn.style === 'destructive' ? 'danger' : 'primary'}
-                                    onPress={() => {
-                                        if (btn.onPress) {
-                                            btn.onPress();
-                                        } else {
-                                            setCustomAlertVisible(false);
-                                        }
-                                    }}
-                                    style={{ marginTop: 10, width: '100%' }}
+                                    title={mappings.length > 0 ? "ESTABLECER VÍNCULO" : "CONFIGURAR CANALIZACIÓN"}
+                                    onPress={() => setAuraModalVisible(true)}
+                                    variant="secondary"
+                                    icon={<Zap size={16} color="#FFD700" />}
+                                    style={{ marginTop: 15, alignSelf: 'flex-start' }}
                                 />
-                            ))}
-                            {!customAlertButtons.some(b => b.style === 'cancel' || b.text === 'ENTENDIDO') && customAlertButtons.length === 1 && (
-                                <TouchableOpacity onPress={() => setCustomAlertVisible(false)} style={{ marginTop: 15 }}>
+                            </ParchmentCard>
+
+                            <View style={{ height: 120 }} />
+                        </ScrollView>
+                    </ScrollView>
+                </View>
+
+                {/* Modal para Nuevo Proyecto */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={projectModalVisible}
+                    onRequestClose={() => setProjectModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{editingProject ? 'REFORJAR ARTEFACTO' : 'NUEVA INVESTIGACIÓN'}</Text>
+                                <TouchableOpacity onPress={() => setProjectModalVisible(false)}>
+                                    <X size={24} color="#3d2b1f" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.inputLabel}>NOMBRE DEL ARTEFACTO</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Ej: Proyecto Omega, Mi Libro..."
+                                value={projectName}
+                                onChangeText={setProjectName}
+                                placeholderTextColor="rgba(61, 43, 31, 0.4)"
+                            />
+
+                            <Text style={styles.inputLabel}>ÁMBITO DE PODER</Text>
+                            {themes.length === 0 ? (
+                                <View style={styles.noThemesBox}>
+                                    <Text style={styles.noThemesText}>Aún no has definido ámbitos de poder (temas).</Text>
+                                    <TouchableOpacity onPress={() => { setProjectModalVisible(false); setThemeModalVisible(true); }}>
+                                        <Text style={styles.createThemeLink}>Crear Primer Ámbito</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <View style={styles.themeGrid}>
+                                    {themes.map(t => (
+                                        <TouchableOpacity
+                                            key={t.id}
+                                            style={[styles.themeBtn, selectedThemeId === t.id && { borderColor: t.color, backgroundColor: t.color + '20' }]}
+                                            onPress={() => setSelectedThemeId(t.id)}
+                                        >
+                                            <IconRenderer name={t.symbol} color={t.color} size={16} />
+                                            <Text style={[styles.themeBtnText, selectedThemeId === t.id && { color: t.color, fontWeight: 'bold' }]}>
+                                                {t.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                    <TouchableOpacity
+                                        style={[styles.themeBtn, { borderStyle: 'dashed', borderColor: '#3d2b1f' }]}
+                                        onPress={() => {
+                                            setProjectModalVisible(false);
+                                            setTimeout(() => setThemeModalVisible(true), 400);
+                                        }}
+                                    >
+                                        <Plus size={14} color="#3d2b1f" />
+                                        <Text style={styles.themeBtnText}>Nuevo</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            <MedievalButton
+                                title={editingProject ? "GUARDAR CAMBIOS" : "COMENZAR RITO"}
+                                onPress={handleSaveProject}
+                                variant="primary"
+                                style={{ marginTop: 20 }}
+                            />
+
+                            {editingProject && (
+                                <MedievalButton
+                                    title={editingProject.status === 'ARCHIVED' ? "VOLVER A LA VIDA (ACTIVAR)" : "ARCHIVAR INVESTIGACIÓN"}
+                                    onPress={() => {
+                                        const newStatus = editingProject.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED';
+                                        updateProject(editingProject.id, { status: newStatus });
+                                        setProjectModalVisible(false);
+                                    }}
+                                    variant="secondary"
+                                    style={{ marginTop: 10 }}
+                                    icon={<Book size={16} color="#3d2b1f" />}
+                                />
+                            )}
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* Modal para Themes / Ámbitos */}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={themeModalVisible}
+                    onRequestClose={() => setThemeModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>EDITOR DE ÁMBITOS</Text>
+                                <TouchableOpacity onPress={() => setThemeModalVisible(false)}>
+                                    <X size={24} color="#3d2b1f" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView>
+                                <Text style={styles.inputLabel}>NUEVO ÁMBITO DE INVESTIGACIÓN</Text>
+                                <View style={styles.newThemeRow}>
+                                    <TextInput
+                                        style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                                        placeholder="Nombre del tema..."
+                                        value={newThemeName}
+                                        onChangeText={setNewThemeName}
+                                        placeholderTextColor="rgba(61, 43, 31, 0.4)"
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.colorIndicator, { backgroundColor: newThemeColor }]}
+                                        onPress={() => {
+                                            setThemeModalVisible(false);
+                                            setTimeout(() => setIsColorPickerVisible(true), 400);
+                                        }}
+                                    />
+                                </View>
+
+                                <Text style={styles.inputLabel}>SÍMBOLO SAGRADO</Text>
+                                <View style={styles.iconSelectionGrid}>
+                                    {Object.keys(ALL_ICONS).map(iconName => (
+                                        <TouchableOpacity
+                                            key={iconName}
+                                            style={[styles.iconBox, newThemeSymbol === iconName && styles.iconBoxActive]}
+                                            onPress={() => setNewThemeSymbol(iconName)}
+                                        >
+                                            <IconRenderer name={iconName} color={newThemeSymbol === iconName ? '#fff' : '#3d2b1f'} size={20} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <MedievalButton
+                                    title="AÑADIR ÁMBITO"
+                                    onPress={handleCreateTheme}
+                                    style={{ marginVertical: 15 }}
+                                />
+
+                                <View style={styles.existingThemesSection}>
+                                    <Text style={styles.inputLabel}>ÁMBITOS EXISTENTES</Text>
+                                    {themes.map(t => (
+                                        <View key={t.id} style={styles.existingThemeItem}>
+                                            <View style={styles.themeItemLeft}>
+                                                <IconRenderer name={t.symbol} color={t.color} />
+                                                <Text style={styles.themeItemName}>{t.name}</Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => deleteTheme(t.id)}>
+                                                <X size={18} color="#c0392b" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    </View>
+                </Modal>
+
+                <ManualColorPicker
+                    visible={isColorPickerVisible}
+                    onClose={() => {
+                        setIsColorPickerVisible(false);
+                        setTimeout(() => setThemeModalVisible(true), 400);
+                    }}
+                    onColorSelect={(color) => {
+                        setNewThemeColor(color);
+                    }}
+                />
+
+                {/* In-App Action Menu (Immersive) */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={actionMenuVisible}
+                    onRequestClose={() => setActionMenuVisible(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setActionMenuVisible(false)}
+                    >
+                        <View style={styles.actionMenuContent}>
+                            <ParchmentCard style={styles.actionCard}>
+                                <Text style={styles.actionTitle}>GESTIÓN DE ARTEFACTO</Text>
+                                <Text style={styles.actionSubtitle}>{selectedProjectForMenu?.name}</Text>
+
+                                <View style={styles.actionButtonsRow}>
+                                    <TouchableOpacity
+                                        style={styles.actionItem}
+                                        onPress={() => {
+                                            setActionMenuVisible(false);
+                                            setEditingProject(selectedProjectForMenu);
+                                            setProjectName(selectedProjectForMenu.name);
+                                            setSelectedThemeId(selectedProjectForMenu.theme_id);
+                                            setProjectModalVisible(true);
+                                        }}
+                                    >
+                                        <View style={[styles.actionIconCircle, { backgroundColor: '#3498db' }]}>
+                                            <PenTool size={20} color="#fff" />
+                                        </View>
+                                        <Text style={styles.actionText}>Editar</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.actionItem}
+                                        onPress={() => {
+                                            const isArchived = selectedProjectForMenu.status === 'ARCHIVED';
+                                            updateProject(selectedProjectForMenu.id, { status: isArchived ? 'ACTIVE' : 'ARCHIVED' });
+                                            setActionMenuVisible(false);
+                                        }}
+                                    >
+                                        <View style={[styles.actionIconCircle, { backgroundColor: selectedProjectForMenu?.status === 'ARCHIVED' ? '#2ecc71' : '#95a5a6' }]}>
+                                            <Book size={20} color="#fff" />
+                                        </View>
+                                        <Text style={styles.actionText}>{selectedProjectForMenu?.status === 'ARCHIVED' ? 'Activar' : 'Archivar'}</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.actionItem}
+                                        onPress={() => {
+                                            showCustomAlert(
+                                                "Destruir Artefacto",
+                                                "¿Confirmas la destrucción total de este estudio?",
+                                                [
+                                                    { text: "Mantener", style: 'cancel', onPress: () => setCustomAlertVisible(false) },
+                                                    {
+                                                        text: "Destruir", onPress: () => {
+                                                            deleteProject(selectedProjectForMenu.id);
+                                                            setActionMenuVisible(false);
+                                                            setCustomAlertVisible(false);
+                                                        }, style: 'destructive'
+                                                    }
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <View style={[styles.actionIconCircle, { backgroundColor: '#e74c3c' }]}>
+                                            <X size={20} color="#fff" />
+                                        </View>
+                                        <Text style={styles.actionText}>Eliminar</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.closeActionBtn}
+                                    onPress={() => setActionMenuVisible(false)}
+                                >
                                     <Text style={styles.closeActionText}>CERRAR</Text>
                                 </TouchableOpacity>
-                            )}
+                            </ParchmentCard>
                         </View>
-                    </ParchmentCard>
-                </View>
-            </Modal>
+                    </TouchableOpacity>
+                </Modal>
+
+                {/* Immersive Custom Alert */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={customAlertVisible}
+                    onRequestClose={() => setCustomAlertVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.alertCard}>
+                            <Text style={styles.alertTitle}>{customAlertTitle}</Text>
+                            <Text style={styles.alertMessage}>{customAlertMessage}</Text>
+                            <View style={styles.alertButtonsCol}>
+                                {customAlertButtons.map((btn, idx) => (
+                                    <MedievalButton
+                                        key={idx}
+                                        title={btn.text}
+                                        variant={btn.style === 'destructive' ? 'danger' : 'primary'}
+                                        onPress={() => {
+                                            if (btn.onPress) {
+                                                btn.onPress();
+                                            } else {
+                                                setCustomAlertVisible(false);
+                                            }
+                                        }}
+                                        style={{ marginTop: 10, width: '100%' }}
+                                    />
+                                ))}
+                                {!customAlertButtons.some(b => b.style === 'cancel' || b.text === 'ENTENDIDO') && customAlertButtons.length === 1 && (
+                                    <TouchableOpacity onPress={() => setCustomAlertVisible(false)} style={{ marginTop: 15 }}>
+                                        <Text style={styles.closeActionText}>CERRAR</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        </ParchmentCard>
+                    </View>
+                </Modal>
 
 
-            <AuraChannelingModal
-                visible={auraModalVisible}
-                onClose={() => setAuraModalVisible(false)}
-            />
+                <AuraChannelingModal
+                    visible={auraModalVisible}
+                    onClose={() => setAuraModalVisible(false)}
+                />
 
 
-        </View >
+            </View >
+        </ScreenWrapper>
     );
 };
 

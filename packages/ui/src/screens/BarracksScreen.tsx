@@ -15,7 +15,7 @@ import {
     Alert
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import {
     Swords,
     Shield,
@@ -272,428 +272,430 @@ export const BarracksScreen: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Header Aesthetic Copy of Theatre/Library */}
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>BARRACONES</Text>
-                <Text style={styles.headerSubtitle}>"Forjando la voluntad de los campeones"</Text>
-            </View>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                {/* Header Aesthetic Copy of Theatre/Library */}
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>BARRACONES</Text>
+                    <Text style={styles.headerSubtitle}>"Forjando la voluntad de los campeones"</Text>
+                </View>
 
-            {/* Tab Selector with Sliding Indicator */}
-            <View style={styles.tabSelector}>
-                <Animated.View
-                    style={[
-                        styles.tabIndicator,
-                        {
-                            transform: [{
-                                translateX: scrollX.interpolate({
-                                    inputRange: [0, width],
-                                    outputRange: [4, ((width - 38) / 2) + 4]
-                                })
-                            }],
-                            width: (width - 38) / 2
-                        }
-                    ]}
-                />
+                {/* Tab Selector with Sliding Indicator */}
+                <View style={styles.tabSelector}>
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                transform: [{
+                                    translateX: scrollX.interpolate({
+                                        inputRange: [0, width],
+                                        outputRange: [4, ((width - 38) / 2) + 4]
+                                    })
+                                }],
+                                width: (width - 38) / 2
+                            }
+                        ]}
+                    />
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
-                >
-                    <Swords size={18} color={viewMode === 'PATIO' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.tabBtnText, { color: viewMode === 'PATIO' ? '#FFD700' : '#8b4513' }]}>PATIO</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                    >
+                        <Swords size={18} color={viewMode === 'PATIO' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, { color: viewMode === 'PATIO' ? '#FFD700' : '#8b4513' }]}>PATIO</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
-                >
-                    <Shield size={18} color={viewMode === 'ESTRATEGIA' ? '#FFD700' : '#8b4513'} />
-                    <Text style={[styles.tabBtnText, { color: viewMode === 'ESTRATEGIA' ? '#FFD700' : '#8b4513' }]}>ESTRATEGIA</Text>
-                </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => horizontalScrollRef.current?.scrollTo({ x: width, animated: true })}
+                    >
+                        <Shield size={18} color={viewMode === 'ESTRATEGIA' ? '#FFD700' : '#8b4513'} />
+                        <Text style={[styles.tabBtnText, { color: viewMode === 'ESTRATEGIA' ? '#FFD700' : '#8b4513' }]}>ESTRATEGIA</Text>
+                    </TouchableOpacity>
+                </View>
 
-            {/* Swipeable Content */}
-            <ScrollView
-                ref={horizontalScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x;
-                    setViewMode(offsetX >= width / 2 ? 'ESTRATEGIA' : 'PATIO');
-                }}
-            >
-                {/* PATIO DE ARMAS (Action View) */}
+                {/* Swipeable Content */}
                 <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+                    ref={horizontalScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        setViewMode(offsetX >= width / 2 ? 'ESTRATEGIA' : 'PATIO');
+                    }}
                 >
-                    <View style={styles.heroSection}>
-                        <View style={styles.heroDecoration}>
-                            <Swords size={60} color="rgba(255,215,0,0.1)" />
-                        </View>
-                        <Text style={styles.heroTitle}>CAMPO DE ENTRENAMIENTO</Text>
-
-                        <View style={styles.routineSelector}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routineSelectorContent}>
-                                <TouchableOpacity
-                                    style={[styles.routineChip, selectedRoutineId === null && styles.activeRoutineChip]}
-                                    onPress={() => setSelectedRoutineId(null)}
-                                >
-                                    <Text style={[styles.routineChipText, selectedRoutineId === null && styles.activeRoutineChipText]}>MISIÓN LIBRE</Text>
-                                </TouchableOpacity>
-                                {routines.map(r => (
-                                    <TouchableOpacity
-                                        key={r.id}
-                                        style={[styles.routineChip, selectedRoutineId === r.id && styles.activeRoutineChip]}
-                                        onPress={() => setSelectedRoutineId(r.id)}
-                                    >
-                                        <Text style={[styles.routineChipText, selectedRoutineId === r.id && styles.activeRoutineChipText]}>{r.name.toUpperCase()}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-
-                        <MedievalButton
-                            title={selectedRoutineId ? "INICIAR RUTINA" : "INICIAR COMBATE"}
-                            onPress={handleStartPress}
-                            style={styles.heroButton}
-                        />
-                    </View>
-
-                    <ParchmentCard style={styles.strategySection}>
-                        <View style={styles.sectionHeader}>
-                            <Flame size={18} color="#e67e22" />
-                            <Text style={styles.sectionTitle}>FATIGA MUSCULAR</Text>
-                        </View>
-                        <View style={styles.heatmapBox}>
-                            <MuscleHeatMap fatigue={muscleFatigue} />
-                        </View>
-                    </ParchmentCard>
-
-                    <View style={styles.sectionHeader}>
-                        <History size={18} color="#FFD700" />
-                        <Text style={styles.sectionTitle}>ÚLTIMAS BATALLAS</Text>
-                    </View>
-                    {history.map(item => (
-                        <ParchmentCard key={item.id} style={styles.historyCard}>
-                            <View style={styles.historyHeader}>
-                                <Text style={styles.historyDate}>{item.date}</Text>
-                                <Text style={styles.historyRoutine}>{item.routine}</Text>
+                    {/* PATIO DE ARMAS (Action View) */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={styles.heroSection}>
+                            <View style={styles.heroDecoration}>
+                                <Swords size={60} color="rgba(255,215,0,0.1)" />
                             </View>
-                            <View style={styles.historyFooter}>
-                                <View style={styles.historyMetric}>
-                                    <Timer size={12} color="#8b4513" />
-                                    <Text style={styles.metricText}>{item.duration}</Text>
-                                </View>
-                                <View style={styles.historyMetric}>
-                                    <Dumbbell size={12} color="#8b4513" />
-                                    <Text style={styles.metricText}>{item.tonnage}</Text>
-                                </View>
+                            <Text style={styles.heroTitle}>CAMPO DE ENTRENAMIENTO</Text>
+
+                            <View style={styles.routineSelector}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routineSelectorContent}>
+                                    <TouchableOpacity
+                                        style={[styles.routineChip, selectedRoutineId === null && styles.activeRoutineChip]}
+                                        onPress={() => setSelectedRoutineId(null)}
+                                    >
+                                        <Text style={[styles.routineChipText, selectedRoutineId === null && styles.activeRoutineChipText]}>MISIÓN LIBRE</Text>
+                                    </TouchableOpacity>
+                                    {routines.map(r => (
+                                        <TouchableOpacity
+                                            key={r.id}
+                                            style={[styles.routineChip, selectedRoutineId === r.id && styles.activeRoutineChip]}
+                                            onPress={() => setSelectedRoutineId(r.id)}
+                                        >
+                                            <Text style={[styles.routineChipText, selectedRoutineId === r.id && styles.activeRoutineChipText]}>{r.name.toUpperCase()}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            <MedievalButton
+                                title={selectedRoutineId ? "INICIAR RUTINA" : "INICIAR COMBATE"}
+                                onPress={handleStartPress}
+                                style={styles.heroButton}
+                            />
+                        </View>
+
+                        <ParchmentCard style={styles.strategySection}>
+                            <View style={styles.sectionHeader}>
+                                <Flame size={18} color="#e67e22" />
+                                <Text style={styles.sectionTitle}>FATIGA MUSCULAR</Text>
+                            </View>
+                            <View style={styles.heatmapBox}>
+                                <MuscleHeatMap fatigue={muscleFatigue} />
                             </View>
                         </ParchmentCard>
-                    ))}
-                    {/* Space for HUD */}
-                    <View style={{ height: 120 }} />
-                </ScrollView>
 
-                {/* SALA DE ESTRATEGIA (Strategy View) */}
-                <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <ParchmentCard style={styles.strategySection}>
                         <View style={styles.sectionHeader}>
-                            <Trophy size={18} color="#FFD700" />
-                            <Text style={styles.sectionTitle}>RÉCORDS HISTÓRICOS</Text>
+                            <History size={18} color="#FFD700" />
+                            <Text style={styles.sectionTitle}>ÚLTIMAS BATALLAS</Text>
                         </View>
-                        {records.map((record: any) => (
-                            <View key={record.exercise_id} style={styles.recordRow}>
-                                <Text style={styles.recordExercise}>{record.exercise_name}</Text>
-                                <Text style={styles.recordWeight}>{record.max_weight}kg</Text>
-                                <Text style={styles.recordDate}>{new Date(record.achieved_at).toLocaleDateString()}</Text>
-                            </View>
-                        ))}
-                    </ParchmentCard>
-
-                    <View style={styles.sectionHeader}>
-                        <Scroll size={18} color="#FFD700" />
-                        <Text style={styles.sectionTitle}>PLANES DE ATAQUE</Text>
-                    </View>
-                    {routines.map(r => (
-                        <TouchableOpacity
-                            key={r.id}
-                            style={styles.routineCard}
-                            onPress={() => setDetailRoutineId(r.id)}
-                        >
-                            <View style={styles.routineInfo}>
-                                <Text style={styles.routineName}>{r.name}</Text>
-                                {r.category && <Text style={styles.routineCategoryTag}>{r.category.toUpperCase()}</Text>}
-                                <Text style={styles.routineDetail}>{r.exercises?.length || 0} habilidades registradas</Text>
-                            </View>
-                            <ChevronRight size={20} color="#FFD700" />
-                        </TouchableOpacity>
-                    ))}
-                    {/* Space for HUD */}
-                    <View style={{ height: 150 }} />
-                </ScrollView>
-            </ScrollView>
-
-            {/* IMMERSIVE WORKOUT VIEW */}
-            {modalVisible && (
-                <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a', zIndex: 1500 }]}>
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                        <View style={styles.modalHeader}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.epicStatusText}>{epicBattleStatus}</Text>
-                            </View>
-                            <View style={styles.modalTimer}><Timer size={18} color="#FFD700" /><Text style={styles.timerDigits}>{formatTime}</Text></View>
-                            <View style={{ flex: 1 }} />
-                        </View>
-                        <ScrollView style={styles.modalBody}>
-                            <Text style={styles.modalTitle}>FORJA TÁCTICA</Text>
-
-                            {(() => {
-                                const exercises: { id: string, name: string, sets: any[] }[] = [];
-                                setsLog.forEach(s => {
-                                    let ex = exercises.find(e => e.id === s.exercise_id);
-                                    if (!ex) {
-                                        ex = { id: s.exercise_id, name: s.exercise_name, sets: [] };
-                                        exercises.push(ex);
-                                    }
-                                    ex.sets.push(s);
-                                });
-
-                                return exercises.map(ex => (
-                                    <ParchmentCard key={ex.id} style={styles.exerciseCard}>
-                                        <View style={styles.exerciseHeader}>
-                                            <Text style={styles.exerciseTitle}>{ex.name}</Text>
-                                            <TouchableOpacity onPress={() => {
-                                                // Optional exercise settings
-                                            }}>
-                                                <Settings size={18} color="#3d2b1f" />
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        <View style={styles.setContainer}>
-                                            <View style={styles.setLabelRow}>
-                                                <Text style={styles.compShortLabel}>SET</Text>
-                                                <Text style={[styles.compShortLabel, { flex: 2 }]}>REPS</Text>
-                                                <Text style={[styles.compShortLabel, { flex: 2 }]}>KG</Text>
-                                                <Text style={styles.compShortLabel}>TIPO</Text>
-                                                <Text style={styles.compShortLabel}>OK</Text>
-                                            </View>
-
-                                            {ex.sets.map((s, sIdx) => (
-                                                <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
-                                                    <Text style={styles.setNumberCompact}>{sIdx + 1}</Text>
-
-                                                    <View style={{ flex: 2, alignItems: 'center' }}>
-                                                        <MedievalNumericInput
-                                                            value={s.reps}
-                                                            onChange={(v) => updateSet(s.id, { reps: v })}
-                                                            step={1}
-                                                        />
-                                                    </View>
-
-                                                    <View style={{ flex: 2, alignItems: 'center' }}>
-                                                        <MedievalNumericInput
-                                                            value={s.weight}
-                                                            onChange={(v) => updateSet(s.id, { weight: v })}
-                                                            step={2.5}
-                                                        />
-                                                    </View>
-
-                                                    <TouchableOpacity
-                                                        style={[styles.typeToggleCompact, { backgroundColor: getTypeColor(s.type) }]}
-                                                        onPress={() => {
-                                                            const types = ['warmup', 'normal', 'failure'];
-                                                            const next = types[(types.indexOf(s.type) + 1) % 3] as any;
-                                                            updateSet(s.id, { type: next });
-                                                        }}
-                                                    >
-                                                        <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
-                                                    </TouchableOpacity>
-
-                                                    <TouchableOpacity onPress={() => updateSet(s.id, { completed: !s.completed })}>
-                                                        <CheckCircle2 size={24} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-
-                                            <TouchableOpacity
-                                                style={styles.addSetButton}
-                                                onPress={() => addSet(ex.id, ex.name)}
-                                            >
-                                                <Plus size={14} color="#8b4513" />
-                                                <Text style={styles.addSetText}>AÑADIR SERIE</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </ParchmentCard>
-                                ));
-                            })()}
-
-                            <MedievalButton title="FINALIZAR BATALLA" onPress={handleFinishBattle} style={{ marginTop: 30 }} />
-                            <View style={{ height: 50 }} />
-                        </ScrollView>
-                    </KeyboardAvoidingView>
-                </View>
-            )}
-
-            {/* Exercise Selector View */}
-            {exerciseSearchVisible && (
-                <View style={[styles.absoluteOverlay, { zIndex: 2000 }]}>
-                    <TouchableOpacity
-                        style={styles.overlayDismiss}
-                        activeOpacity={1}
-                        onPress={() => setExerciseSearchVisible(false)}
-                    />
-                    <ParchmentCard style={styles.searchContainer}>
-                        <View style={styles.searchHeader}>
-                            <Search size={20} color="#3d2b1f" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Buscar ejercicio..."
-                                placeholderTextColor="rgba(61,43,31,0.4)"
-                                value={searchText}
-                                onChangeText={handleSearchExercise}
-                                autoFocus
-                            />
-                            <TouchableOpacity onPress={() => setExerciseSearchVisible(false)}>
-                                <X size={20} color="#3d2b1f" />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.resultsList}>
-                            {searchResults.map(ex => (
-                                <TouchableOpacity
-                                    key={ex.id}
-                                    style={styles.resultItem}
-                                    onPress={() => handleSelectExercise(ex)}
-                                >
-                                    <Text style={styles.resultText}>{ex.name_es || ex.name}</Text>
-                                    <Plus size={16} color="#8b4513" />
-                                </TouchableOpacity>
-                            ))}
-                            {searchText.length > 1 && searchResults.length === 0 && (
-                                <Text style={styles.noResultsText}>No se encontraron ejercicios</Text>
-                            )}
-                        </ScrollView>
-                    </ParchmentCard>
-                </View>
-            )}
-
-            {/* Routine Creation View */}
-            {createRoutineVisible && (
-                <View style={styles.absoluteOverlay}>
-                    <TouchableOpacity
-                        style={styles.overlayDismiss}
-                        activeOpacity={1}
-                        onPress={() => setCreateRoutineVisible(false)}
-                    />
-                    <ParchmentCard style={styles.createRoutineContainer}>
-                        <Text style={styles.modalTitleDark}>NUEVO PLAN DE ATAQUE</Text>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>NOMBRE DE LA RUTINA</Text>
-                            <TextInput
-                                style={styles.medievalInput}
-                                placeholder="E.j. Empuje de Titán"
-                                placeholderTextColor="rgba(61,43,31,0.4)"
-                                value={newRoutineName}
-                                onChangeText={setNewRoutineName}
-                                autoFocus
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>SAGA / PROGRAMA (OPCIONAL)</Text>
-                            <TextInput
-                                style={styles.medievalInput}
-                                placeholder="E.j. PPL, Bro Split, Arnold..."
-                                placeholderTextColor="rgba(61,43,31,0.4)"
-                                value={newRoutineCategory}
-                                onChangeText={setNewRoutineCategory}
-                            />
-                        </View>
-
-                        <View style={styles.modalActionsRow}>
-                            <TouchableOpacity
-                                style={styles.cancelActionBtn}
-                                onPress={() => setCreateRoutineVisible(false)}
-                            >
-                                <Text style={styles.cancelActionText}>DESCARTAR</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.confirmActionBtn}
-                                onPress={handleCreateRoutine}
-                            >
-                                <Text style={styles.confirmActionText}>FORJAR PLAN</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ParchmentCard>
-                </View>
-            )}
-
-            {/* Routine Detail View */}
-            {!!detailRoutineId && (
-                <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a' }]}>
-                    <View style={styles.modalHeader}>
-                        <TouchableOpacity onPress={() => setDetailRoutineId(null)}>
-                            <X size={24} color="#FFD700" />
-                        </TouchableOpacity>
-                        <View style={{ alignItems: 'center', flex: 1 }}>
-                            <Text style={styles.headerTitleSmall}>{selectedDetailRoutine?.name.toUpperCase()}</Text>
-                            {selectedDetailRoutine?.category && <Text style={[styles.routineCategoryTag, { color: 'rgba(255,215,0,0.6)', marginTop: 2 }]}>{selectedDetailRoutine.category.toUpperCase()}</Text>}
-                        </View>
-                        <View style={{ width: 24 }} />
-                    </View>
-
-                    <ScrollView style={styles.modalBody}>
-                        <Text style={styles.modalTitle}>SALA DE MEJORA</Text>
-
-                        {selectedDetailRoutine?.exercises?.map((re: any) => (
-                            <ParchmentCard key={re.id} style={styles.exerciseCard}>
-                                <View style={styles.exerciseHeader}>
-                                    <View>
-                                        <Text style={styles.exerciseTitle}>{re.exercise?.name_es || re.exercise?.name}</Text>
-                                        <Text style={styles.exerciseSubtitle}>{re.exercise?.category}</Text>
-                                    </View>
-                                    <TouchableOpacity onPress={() => removeExerciseFromRoutine(re.id)}>
-                                        <Trash2 size={20} color="#c0392b" />
-                                    </TouchableOpacity>
+                        {history.map(item => (
+                            <ParchmentCard key={item.id} style={styles.historyCard}>
+                                <View style={styles.historyHeader}>
+                                    <Text style={styles.historyDate}>{item.date}</Text>
+                                    <Text style={styles.historyRoutine}>{item.routine}</Text>
                                 </View>
-
-                                <View style={styles.routineSettingsRow}>
-                                    <View style={styles.settingItem}>
-                                        <Text style={styles.stepperLabelMini}>REPS OBJETIVO</Text>
-                                        <MedievalNumericInput
-                                            value={re.target_reps}
-                                            onChange={(v) => updateRoutineExercise(re.id, { target_reps: v })}
-                                        />
+                                <View style={styles.historyFooter}>
+                                    <View style={styles.historyMetric}>
+                                        <Timer size={12} color="#8b4513" />
+                                        <Text style={styles.metricText}>{item.duration}</Text>
                                     </View>
-                                    <View style={styles.settingItem}>
-                                        <Text style={styles.stepperLabelMini}>SERIES OBJETIVO</Text>
-                                        <MedievalNumericInput
-                                            value={re.target_sets}
-                                            onChange={(v) => updateRoutineExercise(re.id, { target_sets: v })}
-                                        />
+                                    <View style={styles.historyMetric}>
+                                        <Dumbbell size={12} color="#8b4513" />
+                                        <Text style={styles.metricText}>{item.tonnage}</Text>
                                     </View>
                                 </View>
                             </ParchmentCard>
                         ))}
+                        {/* Space for HUD */}
+                        <View style={{ height: 120 }} />
+                    </ScrollView>
 
+                    {/* SALA DE ESTRATEGIA (Strategy View) */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <ParchmentCard style={styles.strategySection}>
+                            <View style={styles.sectionHeader}>
+                                <Trophy size={18} color="#FFD700" />
+                                <Text style={styles.sectionTitle}>RÉCORDS HISTÓRICOS</Text>
+                            </View>
+                            {records.map((record: any) => (
+                                <View key={record.exercise_id} style={styles.recordRow}>
+                                    <Text style={styles.recordExercise}>{record.exercise_name}</Text>
+                                    <Text style={styles.recordWeight}>{record.max_weight}kg</Text>
+                                    <Text style={styles.recordDate}>{new Date(record.achieved_at).toLocaleDateString()}</Text>
+                                </View>
+                            ))}
+                        </ParchmentCard>
+
+                        <View style={styles.sectionHeader}>
+                            <Scroll size={18} color="#FFD700" />
+                            <Text style={styles.sectionTitle}>PLANES DE ATAQUE</Text>
+                        </View>
+                        {routines.map(r => (
+                            <TouchableOpacity
+                                key={r.id}
+                                style={styles.routineCard}
+                                onPress={() => setDetailRoutineId(r.id)}
+                            >
+                                <View style={styles.routineInfo}>
+                                    <Text style={styles.routineName}>{r.name}</Text>
+                                    {r.category && <Text style={styles.routineCategoryTag}>{r.category.toUpperCase()}</Text>}
+                                    <Text style={styles.routineDetail}>{r.exercises?.length || 0} habilidades registradas</Text>
+                                </View>
+                                <ChevronRight size={20} color="#FFD700" />
+                            </TouchableOpacity>
+                        ))}
+                        {/* Space for HUD */}
                         <View style={{ height: 150 }} />
                     </ScrollView>
-                </View>
-            )}
-        </View>
+                </ScrollView>
+
+                {/* IMMERSIVE WORKOUT VIEW */}
+                {modalVisible && (
+                    <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a', zIndex: 1500 }]}>
+                        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                            <View style={styles.modalHeader}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.epicStatusText}>{epicBattleStatus}</Text>
+                                </View>
+                                <View style={styles.modalTimer}><Timer size={18} color="#FFD700" /><Text style={styles.timerDigits}>{formatTime}</Text></View>
+                                <View style={{ flex: 1 }} />
+                            </View>
+                            <ScrollView style={styles.modalBody}>
+                                <Text style={styles.modalTitle}>FORJA TÁCTICA</Text>
+
+                                {(() => {
+                                    const exercises: { id: string, name: string, sets: any[] }[] = [];
+                                    setsLog.forEach(s => {
+                                        let ex = exercises.find(e => e.id === s.exercise_id);
+                                        if (!ex) {
+                                            ex = { id: s.exercise_id, name: s.exercise_name, sets: [] };
+                                            exercises.push(ex);
+                                        }
+                                        ex.sets.push(s);
+                                    });
+
+                                    return exercises.map(ex => (
+                                        <ParchmentCard key={ex.id} style={styles.exerciseCard}>
+                                            <View style={styles.exerciseHeader}>
+                                                <Text style={styles.exerciseTitle}>{ex.name}</Text>
+                                                <TouchableOpacity onPress={() => {
+                                                    // Optional exercise settings
+                                                }}>
+                                                    <Settings size={18} color="#3d2b1f" />
+                                                </TouchableOpacity>
+                                            </View>
+
+                                            <View style={styles.setContainer}>
+                                                <View style={styles.setLabelRow}>
+                                                    <Text style={styles.compShortLabel}>SET</Text>
+                                                    <Text style={[styles.compShortLabel, { flex: 2 }]}>REPS</Text>
+                                                    <Text style={[styles.compShortLabel, { flex: 2 }]}>KG</Text>
+                                                    <Text style={styles.compShortLabel}>TIPO</Text>
+                                                    <Text style={styles.compShortLabel}>OK</Text>
+                                                </View>
+
+                                                {ex.sets.map((s, sIdx) => (
+                                                    <View key={s.id} style={[styles.setRow, s.completed && styles.setRowCompleted]}>
+                                                        <Text style={styles.setNumberCompact}>{sIdx + 1}</Text>
+
+                                                        <View style={{ flex: 2, alignItems: 'center' }}>
+                                                            <MedievalNumericInput
+                                                                value={s.reps}
+                                                                onChange={(v) => updateSet(s.id, { reps: v })}
+                                                                step={1}
+                                                            />
+                                                        </View>
+
+                                                        <View style={{ flex: 2, alignItems: 'center' }}>
+                                                            <MedievalNumericInput
+                                                                value={s.weight}
+                                                                onChange={(v) => updateSet(s.id, { weight: v })}
+                                                                step={2.5}
+                                                            />
+                                                        </View>
+
+                                                        <TouchableOpacity
+                                                            style={[styles.typeToggleCompact, { backgroundColor: getTypeColor(s.type) }]}
+                                                            onPress={() => {
+                                                                const types = ['warmup', 'normal', 'failure'];
+                                                                const next = types[(types.indexOf(s.type) + 1) % 3] as any;
+                                                                updateSet(s.id, { type: next });
+                                                            }}
+                                                        >
+                                                            <Text style={styles.typeToggleText}>{getTypeText(s.type)}</Text>
+                                                        </TouchableOpacity>
+
+                                                        <TouchableOpacity onPress={() => updateSet(s.id, { completed: !s.completed })}>
+                                                            <CheckCircle2 size={24} color={s.completed ? '#27ae60' : 'rgba(0,0,0,0.1)'} />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                ))}
+
+                                                <TouchableOpacity
+                                                    style={styles.addSetButton}
+                                                    onPress={() => addSet(ex.id, ex.name)}
+                                                >
+                                                    <Plus size={14} color="#8b4513" />
+                                                    <Text style={styles.addSetText}>AÑADIR SERIE</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </ParchmentCard>
+                                    ));
+                                })()}
+
+                                <MedievalButton title="FINALIZAR BATALLA" onPress={handleFinishBattle} style={{ marginTop: 30 }} />
+                                <View style={{ height: 50 }} />
+                            </ScrollView>
+                        </KeyboardAvoidingView>
+                    </View>
+                )}
+
+                {/* Exercise Selector View */}
+                {exerciseSearchVisible && (
+                    <View style={[styles.absoluteOverlay, { zIndex: 2000 }]}>
+                        <TouchableOpacity
+                            style={styles.overlayDismiss}
+                            activeOpacity={1}
+                            onPress={() => setExerciseSearchVisible(false)}
+                        />
+                        <ParchmentCard style={styles.searchContainer}>
+                            <View style={styles.searchHeader}>
+                                <Search size={20} color="#3d2b1f" />
+                                <TextInput
+                                    style={styles.searchInput}
+                                    placeholder="Buscar ejercicio..."
+                                    placeholderTextColor="rgba(61,43,31,0.4)"
+                                    value={searchText}
+                                    onChangeText={handleSearchExercise}
+                                    autoFocus
+                                />
+                                <TouchableOpacity onPress={() => setExerciseSearchVisible(false)}>
+                                    <X size={20} color="#3d2b1f" />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.resultsList}>
+                                {searchResults.map(ex => (
+                                    <TouchableOpacity
+                                        key={ex.id}
+                                        style={styles.resultItem}
+                                        onPress={() => handleSelectExercise(ex)}
+                                    >
+                                        <Text style={styles.resultText}>{ex.name_es || ex.name}</Text>
+                                        <Plus size={16} color="#8b4513" />
+                                    </TouchableOpacity>
+                                ))}
+                                {searchText.length > 1 && searchResults.length === 0 && (
+                                    <Text style={styles.noResultsText}>No se encontraron ejercicios</Text>
+                                )}
+                            </ScrollView>
+                        </ParchmentCard>
+                    </View>
+                )}
+
+                {/* Routine Creation View */}
+                {createRoutineVisible && (
+                    <View style={styles.absoluteOverlay}>
+                        <TouchableOpacity
+                            style={styles.overlayDismiss}
+                            activeOpacity={1}
+                            onPress={() => setCreateRoutineVisible(false)}
+                        />
+                        <ParchmentCard style={styles.createRoutineContainer}>
+                            <Text style={styles.modalTitleDark}>NUEVO PLAN DE ATAQUE</Text>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>NOMBRE DE LA RUTINA</Text>
+                                <TextInput
+                                    style={styles.medievalInput}
+                                    placeholder="E.j. Empuje de Titán"
+                                    placeholderTextColor="rgba(61,43,31,0.4)"
+                                    value={newRoutineName}
+                                    onChangeText={setNewRoutineName}
+                                    autoFocus
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>SAGA / PROGRAMA (OPCIONAL)</Text>
+                                <TextInput
+                                    style={styles.medievalInput}
+                                    placeholder="E.j. PPL, Bro Split, Arnold..."
+                                    placeholderTextColor="rgba(61,43,31,0.4)"
+                                    value={newRoutineCategory}
+                                    onChangeText={setNewRoutineCategory}
+                                />
+                            </View>
+
+                            <View style={styles.modalActionsRow}>
+                                <TouchableOpacity
+                                    style={styles.cancelActionBtn}
+                                    onPress={() => setCreateRoutineVisible(false)}
+                                >
+                                    <Text style={styles.cancelActionText}>DESCARTAR</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.confirmActionBtn}
+                                    onPress={handleCreateRoutine}
+                                >
+                                    <Text style={styles.confirmActionText}>FORJAR PLAN</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </ParchmentCard>
+                    </View>
+                )}
+
+                {/* Routine Detail View */}
+                {!!detailRoutineId && (
+                    <View style={[styles.absoluteFullScreen, { backgroundColor: '#1a0f0a' }]}>
+                        <View style={styles.modalHeader}>
+                            <TouchableOpacity onPress={() => setDetailRoutineId(null)}>
+                                <X size={24} color="#FFD700" />
+                            </TouchableOpacity>
+                            <View style={{ alignItems: 'center', flex: 1 }}>
+                                <Text style={styles.headerTitleSmall}>{selectedDetailRoutine?.name.toUpperCase()}</Text>
+                                {selectedDetailRoutine?.category && <Text style={[styles.routineCategoryTag, { color: 'rgba(255,215,0,0.6)', marginTop: 2 }]}>{selectedDetailRoutine.category.toUpperCase()}</Text>}
+                            </View>
+                            <View style={{ width: 24 }} />
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <Text style={styles.modalTitle}>SALA DE MEJORA</Text>
+
+                            {selectedDetailRoutine?.exercises?.map((re: any) => (
+                                <ParchmentCard key={re.id} style={styles.exerciseCard}>
+                                    <View style={styles.exerciseHeader}>
+                                        <View>
+                                            <Text style={styles.exerciseTitle}>{re.exercise?.name_es || re.exercise?.name}</Text>
+                                            <Text style={styles.exerciseSubtitle}>{re.exercise?.category}</Text>
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeExerciseFromRoutine(re.id)}>
+                                            <Trash2 size={20} color="#c0392b" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View style={styles.routineSettingsRow}>
+                                        <View style={styles.settingItem}>
+                                            <Text style={styles.stepperLabelMini}>REPS OBJETIVO</Text>
+                                            <MedievalNumericInput
+                                                value={re.target_reps}
+                                                onChange={(v) => updateRoutineExercise(re.id, { target_reps: v })}
+                                            />
+                                        </View>
+                                        <View style={styles.settingItem}>
+                                            <Text style={styles.stepperLabelMini}>SERIES OBJETIVO</Text>
+                                            <MedievalNumericInput
+                                                value={re.target_sets}
+                                                onChange={(v) => updateRoutineExercise(re.id, { target_sets: v })}
+                                            />
+                                        </View>
+                                    </View>
+                                </ParchmentCard>
+                            ))}
+
+                            <View style={{ height: 150 }} />
+                        </ScrollView>
+                    </View>
+                )}
+            </View>
+        </ScreenWrapper>
     );
 };
 

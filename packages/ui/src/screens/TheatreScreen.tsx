@@ -13,7 +13,7 @@ import {
     DeviceEventEmitter,
     Animated
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     Drama,
@@ -132,473 +132,475 @@ export const TheatreScreen: React.FC = () => {
     }, [viewMode]);
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>GRAN TEATRO REAL</Text>
-                <Text style={styles.headerSubtitle}>"Donde la magia cobra vida"</Text>
-            </View>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>GRAN TEATRO REAL</Text>
+                    <Text style={styles.headerSubtitle}>"Donde la magia cobra vida"</Text>
+                </View>
 
-            {/* Tab Selector */}
-            <View style={styles.tabSelector}>
-                {/* Animated Indicator Background */}
-                <Animated.View
-                    style={[
-                        styles.tabIndicator,
-                        {
-                            transform: [{
-                                translateX: scrollX.interpolate({
+                {/* Tab Selector */}
+                <View style={styles.tabSelector}>
+                    {/* Animated Indicator Background */}
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                transform: [{
+                                    translateX: scrollX.interpolate({
+                                        inputRange: [0, width],
+                                        outputRange: [4, ((width - 38) / 2) + 4]
+                                    })
+                                }],
+                                width: (width - 38) / 2
+                            }
+                        ]}
+                    />
+
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => {
+                            horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+                        }}
+                    >
+                        <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                            {/* INACTIVE LAYER */}
+                            <Music size={20} color="#8b4513" />
+
+                            {/* ACTIVE LAYER (GLOWING) */}
+                            <Animated.View style={{
+                                position: 'absolute',
+                                opacity: scrollX.interpolate({
                                     inputRange: [0, width],
-                                    outputRange: [4, ((width - 38) / 2) + 4]
+                                    outputRange: [1, 0]
+                                }),
+                                shadowColor: '#FFD700',
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 1,
+                                shadowRadius: 10,
+                                elevation: 5,
+                            }}>
+                                <Music size={20} color="#FFD700" />
+                            </Animated.View>
+                        </View>
+
+                        <Animated.Text style={[
+                            styles.tabBtnText,
+                            {
+                                color: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: ['#FFD700', '#8b4513']
+                                }),
+                                textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [10, 0]
                                 })
-                            }],
-                            width: (width - 38) / 2
-                        }
-                    ]}
-                />
+                            }
+                        ]}>
+                            CAMERINOS
+                        </Animated.Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => {
-                        horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
-                    }}
-                >
-                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                        {/* INACTIVE LAYER */}
-                        <Music size={20} color="#8b4513" />
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => {
+                            horizontalScrollRef.current?.scrollTo({ x: width, animated: true });
+                        }}
+                    >
+                        <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                            {/* INACTIVE LAYER */}
+                            <Ticket size={20} color="#8b4513" />
 
-                        {/* ACTIVE LAYER (GLOWING) */}
-                        <Animated.View style={{
-                            position: 'absolute',
-                            opacity: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [1, 0]
-                            }),
-                            shadowColor: '#FFD700',
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 1,
-                            shadowRadius: 10,
-                            elevation: 5,
-                        }}>
-                            <Music size={20} color="#FFD700" />
-                        </Animated.View>
-                    </View>
+                            {/* ACTIVE LAYER (GLOWING) */}
+                            <Animated.View style={{
+                                position: 'absolute',
+                                opacity: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [0, 1]
+                                }),
+                                shadowColor: '#FFD700',
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 1,
+                                shadowRadius: 10,
+                                elevation: 5,
+                            }}>
+                                <Ticket size={20} color="#FFD700" />
+                            </Animated.View>
+                        </View>
 
-                    <Animated.Text style={[
-                        styles.tabBtnText,
-                        {
-                            color: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: ['#FFD700', '#8b4513']
-                            }),
-                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
-                            textShadowOffset: { width: 0, height: 0 },
-                            textShadowRadius: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [10, 0]
-                            })
-                        }
-                    ]}>
-                        CAMERINOS
-                    </Animated.Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => {
-                        horizontalScrollRef.current?.scrollTo({ x: width, animated: true });
-                    }}
-                >
-                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                        {/* INACTIVE LAYER */}
-                        <Ticket size={20} color="#8b4513" />
-
-                        {/* ACTIVE LAYER (GLOWING) */}
-                        <Animated.View style={{
-                            position: 'absolute',
-                            opacity: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [0, 1]
-                            }),
-                            shadowColor: '#FFD700',
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 1,
-                            shadowRadius: 10,
-                            elevation: 5,
-                        }}>
-                            <Ticket size={20} color="#FFD700" />
-                        </Animated.View>
-                    </View>
-
-                    <Animated.Text style={[
-                        styles.tabBtnText,
-                        {
-                            color: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: ['#8b4513', '#FFD700']
-                            }),
-                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
-                            textShadowOffset: { width: 0, height: 0 },
-                            textShadowRadius: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [0, 10]
-                            })
-                        }
-                    ]}>
-                        TAQUILLA
-                    </Animated.Text>
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView
-                ref={horizontalScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x;
-                    if (offsetX >= width / 2) {
-                        setViewMode('TAQUILLA');
-                    } else {
-                        setViewMode('CAMERINOS');
-                    }
-                }}
-            >
-                {/* CAMERINOS PANE */}
-                <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <CamerinosView
-                        activities={activities}
-                        stats={activityStats}
-                        onStartSession={startSession}
-                    />
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-
-                {/* TAQUILLA PANE */}
-                <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <TaquillaView
-                        movies={movies}
-                        series={series}
-                        expandedMovies={expandedMovies}
-                        expandedSeries={expandedSeries}
-                        toggleMovie={toggleMovie}
-                        toggleSeries={toggleSeries}
-                    />
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            </ScrollView>
-
-            {/* QUICK ADD MODAL */}
-            <Modal
-                visible={isQuickAddVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setIsQuickAddVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.modalContent}>
-
-
-                        {quickAddStep === 'TYPE_TAQUILLA' && (
-                            <View>
-                                <Text style={styles.modalTitle}>¿Qué deseas añadir?</Text>
-                                <MedievalButton
-                                    title="Película"
-                                    onPress={() => setQuickAddStep('MOVIE')}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Serie / Temporada"
-                                    onPress={() => setQuickAddStep('SERIES')}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Cancelar"
-                                    onPress={() => setIsQuickAddVisible(false)}
-                                    style={styles.modalBtn}
-                                />
-                            </View>
-                        )}
-
-                        {quickAddStep === 'ACTIVITY' && (
-                            <View>
-                                <Text style={styles.modalTitle}>Nueva Actividad</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nombre (ej. Piano, Malabares...)"
-                                    value={actName}
-                                    onChangeText={setActName}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <MedievalButton
-                                    title="Crear"
-                                    onPress={async () => {
-                                        if (!actName) return;
-                                        await addActivity(actName);
-                                        setActName('');
-                                        setIsQuickAddVisible(false);
-                                    }}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Cancelar"
-                                    onPress={() => setIsQuickAddVisible(false)}
-                                    style={styles.modalBtn}
-                                />
-                            </View>
-                        )}
-
-                        {quickAddStep === 'MOVIE' && (
-                            <ScrollView scrollEnabled={scrollEnabled}>
-                                <Text style={styles.modalTitle}>Nueva Película</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Título"
-                                    value={movTitle}
-                                    onChangeText={setMovTitle}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Director (opcional)"
-                                    value={movDirector}
-                                    onChangeText={setMovDirector}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Saga (opcional)"
-                                    value={movSaga}
-                                    onChangeText={setMovSaga}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <TextInput
-                                    style={[styles.input, { height: 80 }]}
-                                    placeholder="Comentario (opcional)"
-                                    multiline
-                                    value={movComment}
-                                    onChangeText={setMovComment}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <StarRatingSlider
-                                    value={formRating}
-                                    onChange={setFormRating}
-                                    onInteractionStart={() => setScrollEnabled(false)}
-                                    onInteractionEnd={() => setScrollEnabled(true)}
-                                />
-
-                                <MedievalButton
-                                    title="Añadir a Taquilla"
-                                    onPress={async () => {
-                                        if (!movTitle) {
-                                            Alert.alert('Información', 'La película necesita al menos un título.');
-                                            return;
-                                        }
-                                        try {
-                                            await addMovie(movTitle, movDirector, movSaga, movComment, formRating);
-                                            setMovTitle(''); setMovDirector(''); setMovSaga(''); setMovComment('');
-                                            setFormRating(0);
-                                            setIsQuickAddVisible(false);
-                                        } catch (error: any) {
-                                            Alert.alert('Error', 'No se pudo guardar la película: ' + error.message);
-                                        }
-                                    }}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Atrás"
-                                    onPress={() => setQuickAddStep('TYPE_TAQUILLA')}
-                                    style={styles.modalBtn}
-                                />
-                            </ScrollView>
-                        )}
-
-                        {quickAddStep === 'SERIES' && (
-                            <View>
-                                <Text style={styles.modalTitle}>Serie o Temporada</Text>
-                                <MedievalButton
-                                    title="Nueva Serie"
-                                    onPress={() => setQuickAddStep('SEASON_NEW_SERIES')}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Añadir Temporada"
-                                    onPress={() => setQuickAddStep('SEASON')}
-                                    style={styles.modalBtn}
-                                    disabled={series.length === 0}
-                                />
-                                <MedievalButton
-                                    title="Atrás"
-                                    onPress={() => setQuickAddStep('TYPE_TAQUILLA')}
-                                    style={styles.modalBtn}
-                                />
-                            </View>
-                        )}
-
-                        {quickAddStep === 'SEASON_NEW_SERIES' && (
-                            <View>
-                                <Text style={styles.modalTitle}>Nueva Serie</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nombre de la Serie"
-                                    value={serTitle}
-                                    onChangeText={setSerTitle}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <MedievalButton
-                                    title="Registrar"
-                                    onPress={async () => {
-                                        if (!serTitle) return;
-                                        await addSeries(serTitle);
-                                        setSerTitle('');
-                                        setIsQuickAddVisible(false);
-                                    }}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Atrás"
-                                    onPress={() => setQuickAddStep('SERIES')}
-                                    style={styles.modalBtn}
-                                />
-                            </View>
-                        )}
-
-                        {quickAddStep === 'SEASON' && (
-                            <ScrollView scrollEnabled={scrollEnabled}>
-                                <Text style={styles.modalTitle}>Nueva Temporada</Text>
-                                <Text style={styles.label}>Seleccionar Serie:</Text>
-                                {series.map(s => (
-                                    <TouchableOpacity
-                                        key={s.id}
-                                        onPress={() => setSelectedSerId(s.id)}
-                                        style={[styles.serPickerItem, selectedSerId === s.id && styles.serPickerItemActive]}
-                                    >
-                                        <Text style={[styles.serPickerText, selectedSerId === s.id && styles.serPickerTextActive]}>
-                                            {s.title}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nº Temporada"
-                                    keyboardType="numeric"
-                                    value={seasNum}
-                                    onChangeText={setSeasNum}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Nº Capítulos (opcional)"
-                                    keyboardType="numeric"
-                                    value={seasEps}
-                                    onChangeText={setSeasEps}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <TextInput
-                                    style={[styles.input, { height: 80 }]}
-                                    placeholder="Comentario (opcional)"
-                                    multiline
-                                    value={seasComment}
-                                    onChangeText={setSeasComment}
-                                    placeholderTextColor="#8b4513"
-                                />
-                                <StarRatingSlider
-                                    value={formRating}
-                                    onChange={setFormRating}
-                                    onInteractionStart={() => setScrollEnabled(false)}
-                                    onInteractionEnd={() => setScrollEnabled(true)}
-                                />
-
-                                <MedievalButton
-                                    title="Añadir Temporada"
-                                    onPress={async () => {
-                                        if (!selectedSerId) {
-                                            Alert.alert('Información', 'Por favor, selecciona una serie de la lista.');
-                                            return;
-                                        }
-                                        if (!seasNum) {
-                                            Alert.alert('Información', 'Introduce el número de la temporada.');
-                                            return;
-                                        }
-
-                                        try {
-                                            await addSeason(selectedSerId, parseInt(seasNum), seasEps ? parseInt(seasEps) : undefined, seasComment, formRating);
-                                            setSelectedSerId(''); setSeasNum(''); setSeasEps(''); setSeasComment('');
-                                            setFormRating(0);
-                                            setIsQuickAddVisible(false);
-                                        } catch (error: any) {
-                                            Alert.alert('Error', 'Hubo un problema al guardar: ' + error.message);
-                                        }
-                                    }}
-                                    style={styles.modalBtn}
-                                />
-                                <MedievalButton
-                                    title="Atrás"
-                                    onPress={() => setQuickAddStep('SERIES')}
-                                    style={styles.modalBtn}
-                                />
-                            </ScrollView>
-                        )}
-                    </ParchmentCard>
+                        <Animated.Text style={[
+                            styles.tabBtnText,
+                            {
+                                color: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: ['#8b4513', '#FFD700']
+                                }),
+                                textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [0, 10]
+                                })
+                            }
+                        ]}>
+                            TAQUILLA
+                        </Animated.Text>
+                    </TouchableOpacity>
                 </View>
-            </Modal>
 
-            {/* SESSION MODAL */}
-            <Modal
-                visible={isSessionActive}
-                animationType="fade"
-                transparent={false}
-            >
-                <View style={[styles.sessionOverlay, { backgroundColor: '#1a0f0a' }]}>
-                    <View style={styles.sessionContent}>
-                        <View style={styles.sessionHeaderBox}>
-                            <View style={styles.sessionSubjectBox}>
-                                <Drama size={24} color="#FFD700" />
-                                <Text style={styles.sessionSubjectName}>{selectedActivity?.name || 'Actividad'}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.sessionTimerBox}>
-                            <Text style={styles.sessionTimeText}>{formatElapsedTime(elapsedSeconds)}</Text>
-                        </View>
-
-                        <MedievalButton
-                            title="FINALIZAR"
-                            onPress={() => stopSession()}
-                            style={styles.stopBtn}
+                <ScrollView
+                    ref={horizontalScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        if (offsetX >= width / 2) {
+                            setViewMode('TAQUILLA');
+                        } else {
+                            setViewMode('CAMERINOS');
+                        }
+                    }}
+                >
+                    {/* CAMERINOS PANE */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <CamerinosView
+                            activities={activities}
+                            stats={activityStats}
+                            onStartSession={startSession}
                         />
-                        <TouchableOpacity
-                            onPress={() => {
-                                Alert.alert(
-                                    'Descartar Sesión',
-                                    '¿Estás seguro de que quieres borrar este tiempo?',
-                                    [
-                                        { text: 'No', style: 'cancel' },
-                                        { text: 'Sí, borrar', onPress: cancelSession }
-                                    ]
-                                );
-                            }}
-                            style={{ marginTop: 20 }}
-                        >
-                            <Text style={{ color: '#d4af37', textDecorationLine: 'underline' }}>Descartar</Text>
-                        </TouchableOpacity>
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
+
+                    {/* TAQUILLA PANE */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <TaquillaView
+                            movies={movies}
+                            series={series}
+                            expandedMovies={expandedMovies}
+                            expandedSeries={expandedSeries}
+                            toggleMovie={toggleMovie}
+                            toggleSeries={toggleSeries}
+                        />
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
+                </ScrollView>
+
+                {/* QUICK ADD MODAL */}
+                <Modal
+                    visible={isQuickAddVisible}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setIsQuickAddVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.modalContent}>
+
+
+                            {quickAddStep === 'TYPE_TAQUILLA' && (
+                                <View>
+                                    <Text style={styles.modalTitle}>¿Qué deseas añadir?</Text>
+                                    <MedievalButton
+                                        title="Película"
+                                        onPress={() => setQuickAddStep('MOVIE')}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Serie / Temporada"
+                                        onPress={() => setQuickAddStep('SERIES')}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Cancelar"
+                                        onPress={() => setIsQuickAddVisible(false)}
+                                        style={styles.modalBtn}
+                                    />
+                                </View>
+                            )}
+
+                            {quickAddStep === 'ACTIVITY' && (
+                                <View>
+                                    <Text style={styles.modalTitle}>Nueva Actividad</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Nombre (ej. Piano, Malabares...)"
+                                        value={actName}
+                                        onChangeText={setActName}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <MedievalButton
+                                        title="Crear"
+                                        onPress={async () => {
+                                            if (!actName) return;
+                                            await addActivity(actName);
+                                            setActName('');
+                                            setIsQuickAddVisible(false);
+                                        }}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Cancelar"
+                                        onPress={() => setIsQuickAddVisible(false)}
+                                        style={styles.modalBtn}
+                                    />
+                                </View>
+                            )}
+
+                            {quickAddStep === 'MOVIE' && (
+                                <ScrollView scrollEnabled={scrollEnabled}>
+                                    <Text style={styles.modalTitle}>Nueva Película</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Título"
+                                        value={movTitle}
+                                        onChangeText={setMovTitle}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Director (opcional)"
+                                        value={movDirector}
+                                        onChangeText={setMovDirector}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Saga (opcional)"
+                                        value={movSaga}
+                                        onChangeText={setMovSaga}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <TextInput
+                                        style={[styles.input, { height: 80 }]}
+                                        placeholder="Comentario (opcional)"
+                                        multiline
+                                        value={movComment}
+                                        onChangeText={setMovComment}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <StarRatingSlider
+                                        value={formRating}
+                                        onChange={setFormRating}
+                                        onInteractionStart={() => setScrollEnabled(false)}
+                                        onInteractionEnd={() => setScrollEnabled(true)}
+                                    />
+
+                                    <MedievalButton
+                                        title="Añadir a Taquilla"
+                                        onPress={async () => {
+                                            if (!movTitle) {
+                                                Alert.alert('Información', 'La película necesita al menos un título.');
+                                                return;
+                                            }
+                                            try {
+                                                await addMovie(movTitle, movDirector, movSaga, movComment, formRating);
+                                                setMovTitle(''); setMovDirector(''); setMovSaga(''); setMovComment('');
+                                                setFormRating(0);
+                                                setIsQuickAddVisible(false);
+                                            } catch (error: any) {
+                                                Alert.alert('Error', 'No se pudo guardar la película: ' + error.message);
+                                            }
+                                        }}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Atrás"
+                                        onPress={() => setQuickAddStep('TYPE_TAQUILLA')}
+                                        style={styles.modalBtn}
+                                    />
+                                </ScrollView>
+                            )}
+
+                            {quickAddStep === 'SERIES' && (
+                                <View>
+                                    <Text style={styles.modalTitle}>Serie o Temporada</Text>
+                                    <MedievalButton
+                                        title="Nueva Serie"
+                                        onPress={() => setQuickAddStep('SEASON_NEW_SERIES')}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Añadir Temporada"
+                                        onPress={() => setQuickAddStep('SEASON')}
+                                        style={styles.modalBtn}
+                                        disabled={series.length === 0}
+                                    />
+                                    <MedievalButton
+                                        title="Atrás"
+                                        onPress={() => setQuickAddStep('TYPE_TAQUILLA')}
+                                        style={styles.modalBtn}
+                                    />
+                                </View>
+                            )}
+
+                            {quickAddStep === 'SEASON_NEW_SERIES' && (
+                                <View>
+                                    <Text style={styles.modalTitle}>Nueva Serie</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Nombre de la Serie"
+                                        value={serTitle}
+                                        onChangeText={setSerTitle}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <MedievalButton
+                                        title="Registrar"
+                                        onPress={async () => {
+                                            if (!serTitle) return;
+                                            await addSeries(serTitle);
+                                            setSerTitle('');
+                                            setIsQuickAddVisible(false);
+                                        }}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Atrás"
+                                        onPress={() => setQuickAddStep('SERIES')}
+                                        style={styles.modalBtn}
+                                    />
+                                </View>
+                            )}
+
+                            {quickAddStep === 'SEASON' && (
+                                <ScrollView scrollEnabled={scrollEnabled}>
+                                    <Text style={styles.modalTitle}>Nueva Temporada</Text>
+                                    <Text style={styles.label}>Seleccionar Serie:</Text>
+                                    {series.map(s => (
+                                        <TouchableOpacity
+                                            key={s.id}
+                                            onPress={() => setSelectedSerId(s.id)}
+                                            style={[styles.serPickerItem, selectedSerId === s.id && styles.serPickerItemActive]}
+                                        >
+                                            <Text style={[styles.serPickerText, selectedSerId === s.id && styles.serPickerTextActive]}>
+                                                {s.title}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Nº Temporada"
+                                        keyboardType="numeric"
+                                        value={seasNum}
+                                        onChangeText={setSeasNum}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Nº Capítulos (opcional)"
+                                        keyboardType="numeric"
+                                        value={seasEps}
+                                        onChangeText={setSeasEps}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <TextInput
+                                        style={[styles.input, { height: 80 }]}
+                                        placeholder="Comentario (opcional)"
+                                        multiline
+                                        value={seasComment}
+                                        onChangeText={setSeasComment}
+                                        placeholderTextColor="#8b4513"
+                                    />
+                                    <StarRatingSlider
+                                        value={formRating}
+                                        onChange={setFormRating}
+                                        onInteractionStart={() => setScrollEnabled(false)}
+                                        onInteractionEnd={() => setScrollEnabled(true)}
+                                    />
+
+                                    <MedievalButton
+                                        title="Añadir Temporada"
+                                        onPress={async () => {
+                                            if (!selectedSerId) {
+                                                Alert.alert('Información', 'Por favor, selecciona una serie de la lista.');
+                                                return;
+                                            }
+                                            if (!seasNum) {
+                                                Alert.alert('Información', 'Introduce el número de la temporada.');
+                                                return;
+                                            }
+
+                                            try {
+                                                await addSeason(selectedSerId, parseInt(seasNum), seasEps ? parseInt(seasEps) : undefined, seasComment, formRating);
+                                                setSelectedSerId(''); setSeasNum(''); setSeasEps(''); setSeasComment('');
+                                                setFormRating(0);
+                                                setIsQuickAddVisible(false);
+                                            } catch (error: any) {
+                                                Alert.alert('Error', 'Hubo un problema al guardar: ' + error.message);
+                                            }
+                                        }}
+                                        style={styles.modalBtn}
+                                    />
+                                    <MedievalButton
+                                        title="Atrás"
+                                        onPress={() => setQuickAddStep('SERIES')}
+                                        style={styles.modalBtn}
+                                    />
+                                </ScrollView>
+                            )}
+                        </ParchmentCard>
                     </View>
-                </View>
-            </Modal>
-        </View>
+                </Modal>
+
+                {/* SESSION MODAL */}
+                <Modal
+                    visible={isSessionActive}
+                    animationType="fade"
+                    transparent={false}
+                >
+                    <View style={[styles.sessionOverlay, { backgroundColor: '#1a0f0a' }]}>
+                        <View style={styles.sessionContent}>
+                            <View style={styles.sessionHeaderBox}>
+                                <View style={styles.sessionSubjectBox}>
+                                    <Drama size={24} color="#FFD700" />
+                                    <Text style={styles.sessionSubjectName}>{selectedActivity?.name || 'Actividad'}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.sessionTimerBox}>
+                                <Text style={styles.sessionTimeText}>{formatElapsedTime(elapsedSeconds)}</Text>
+                            </View>
+
+                            <MedievalButton
+                                title="FINALIZAR"
+                                onPress={() => stopSession()}
+                                style={styles.stopBtn}
+                            />
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Alert.alert(
+                                        'Descartar Sesión',
+                                        '¿Estás seguro de que quieres borrar este tiempo?',
+                                        [
+                                            { text: 'No', style: 'cancel' },
+                                            { text: 'Sí, borrar', onPress: cancelSession }
+                                        ]
+                                    );
+                                }}
+                                style={{ marginTop: 20 }}
+                            >
+                                <Text style={{ color: '#d4af37', textDecorationLine: 'underline' }}>Descartar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+            </View>
+        </ScreenWrapper>
     );
 };
 

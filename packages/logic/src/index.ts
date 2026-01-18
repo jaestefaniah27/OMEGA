@@ -1,5 +1,6 @@
 export * from './context/GameContext';
 export * from './context/ToastContext';
+export * from './context/WorkoutContext';
 export * from './hooks/useActiveWorkout';
 export * from './hooks/useCalendar';
 export * from './hooks/useExercises';
@@ -14,6 +15,7 @@ export * from './hooks/useWorkout';
 export * from './hooks/useWorker';
 export * from './types/supabase';
 export * from './utils/formatTime';
+export * from './utils/PerformanceLogger';
 export { supabase } from './lib/supabase';
 export * from './services/PlatformInterfaces';
 export * from './services/PlatformContext';

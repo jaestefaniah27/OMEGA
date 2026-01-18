@@ -1,6 +1,10 @@
-import { useGame } from '../context/GameContext';
+import { useContext } from 'react';
+import { WorkoutContext } from '../context/WorkoutContext';
 
 export const useWorkout = () => {
-    const { workout, habits } = useGame();
-    return { ...workout, habits };
+    const context = useContext(WorkoutContext);
+    if (!context) {
+        throw new Error('useWorkout must be used within a WorkoutProvider');
+    }
+    return context;
 };

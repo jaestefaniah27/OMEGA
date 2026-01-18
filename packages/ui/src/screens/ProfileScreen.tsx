@@ -10,7 +10,7 @@ import {
     Dimensions,
     TouchableOpacity
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { supabase, useUserStats, useGame } from '@omega/logic';
 import { useNavigation } from '@react-navigation/native';
 import { User, Mail, Lock, LogOut, Save, Shield, Edit2, Star, Clock, Coins, Zap, BookOpen, Dumbbell, Scroll } from 'lucide-react-native';
@@ -101,7 +101,7 @@ export const ProfileScreen: React.FC = () => {
 
     if (!session) {
         return (
-            <View style={styles.container}>
+            <ScreenWrapper background="#1a1a1a">
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <Text style={styles.headerTitle}>📜 PORTAL DE ACCESO</Text>
 
@@ -166,12 +166,12 @@ export const ProfileScreen: React.FC = () => {
                     </ParchmentCard>
 
                 </ScrollView>
-            </View>
+            </ScreenWrapper>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper background="#1a1a1a">
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.headerTitle}>👤 PERFIL DEL HÉROE</Text>
 
@@ -237,9 +237,9 @@ export const ProfileScreen: React.FC = () => {
 
                 {/* HERO ATTRIBUTES CARD */}
                 <ParchmentCard style={styles.sectionCard}>
-                    <View style={styles.sectionHeader}>
+                    <View style={sectionHeaderStyles.container}>
                         <Shield size={20} color="#8b4513" />
-                        <Text style={styles.sectionTitle}>ATRIBUTOS DEL HÉROE</Text>
+                        <Text style={sectionHeaderStyles.title}>ATRIBUTOS DEL HÉROE</Text>
                     </View>
 
                     <AttributeProgressBar
@@ -302,9 +302,23 @@ export const ProfileScreen: React.FC = () => {
                     <ActivityIndicator size="large" color="#FFD700" />
                 </View>
             )}
-        </View>
+        </ScreenWrapper>
     );
 };
+
+const sectionHeaderStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#3d2b1f',
+        marginLeft: 10,
+    }
+});
 
 const styles = StyleSheet.create({
     container: {

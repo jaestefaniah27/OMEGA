@@ -14,7 +14,7 @@ import {
     Animated,
     DeviceEventEmitter
 } from 'react-native';
-import { MedievalButton, ParchmentCard } from '..';
+import { MedievalButton, ParchmentCard, ScreenWrapper } from '..';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     BookOpen,
@@ -879,508 +879,509 @@ export const LibraryScreen: React.FC = () => {
         </>
     );
 
-
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.topHeader}>
-                <Text style={styles.headerTitle}>GRAN BIBLIOTECA REAL</Text>
-                <Text style={styles.headerSubtitle}>"El conocimiento es el arma definitiva"</Text>
-            </View>
+        <ScreenWrapper background="#1a0f0a">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.topHeader}>
+                    <Text style={styles.headerTitle}>GRAN BIBLIOTECA REAL</Text>
+                    <Text style={styles.headerSubtitle}>"El conocimiento es el arma definitiva"</Text>
+                </View>
 
-            {/* Tab Selector */}
-            <View style={styles.tabSelector}>
-                {/* Animated Indicator Background */}
-                <Animated.View
-                    style={[
-                        styles.tabIndicator,
-                        {
-                            transform: [{
-                                translateX: scrollX.interpolate({
+                {/* Tab Selector */}
+                <View style={styles.tabSelector}>
+                    {/* Animated Indicator Background */}
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                transform: [{
+                                    translateX: scrollX.interpolate({
+                                        inputRange: [0, width],
+                                        outputRange: [4, ((width - 38) / 2) + 4]
+                                    })
+                                }],
+                                width: (width - 38) / 2
+                            }
+                        ]}
+                    />
+
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => {
+                            horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+                        }}
+                    >
+                        <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                            {/* INACTIVE LAYER */}
+                            <Sword size={20} color="#8b4513" />
+
+                            {/* ACTIVE LAYER (GLOWING) */}
+                            <Animated.View style={{
+                                position: 'absolute',
+                                opacity: scrollX.interpolate({
                                     inputRange: [0, width],
-                                    outputRange: [4, ((width - 38) / 2) + 4]
+                                    outputRange: [1, 0]
+                                }),
+                                shadowColor: '#FFD700',
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 1,
+                                shadowRadius: 10,
+                                elevation: 5,
+                            }}>
+                                <Sword size={20} color="#FFD700" />
+                            </Animated.View>
+                        </View>
+
+                        <Animated.Text style={[
+                            styles.tabBtnText,
+                            {
+                                color: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: ['#FFD700', '#8b4513']
+                                }),
+                                textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [10, 0]
                                 })
-                            }],
-                            width: (width - 38) / 2
-                        }
-                    ]}
-                />
+                            }
+                        ]}>
+                            FORJA DEL INTELECTO
+                        </Animated.Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => {
-                        horizontalScrollRef.current?.scrollTo({ x: 0, animated: true });
+                    <TouchableOpacity
+                        style={styles.tabBtn}
+                        onPress={() => {
+                            horizontalScrollRef.current?.scrollTo({ x: width, animated: true });
+                        }}
+                    >
+                        <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                            {/* INACTIVE LAYER */}
+                            <Scroll size={20} color="#8b4513" />
+
+                            {/* ACTIVE LAYER (GLOWING) */}
+                            <Animated.View style={{
+                                position: 'absolute',
+                                opacity: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [0, 1]
+                                }),
+                                shadowColor: '#FFD700',
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 1,
+                                shadowRadius: 10,
+                                elevation: 5,
+                            }}>
+                                <Scroll size={20} color="#FFD700" />
+                            </Animated.View>
+                        </View>
+
+                        <Animated.Text style={[
+                            styles.tabBtnText,
+                            {
+                                color: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: ['#8b4513', '#FFD700']
+                                }),
+                                textShadowColor: 'rgba(255, 215, 0, 0.5)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: scrollX.interpolate({
+                                    inputRange: [0, width],
+                                    outputRange: [0, 10]
+                                })
+                            }
+                        ]}>
+                            ATALAYA DEL CONOCIMIENTO
+                        </Animated.Text>
+                    </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                    ref={horizontalScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ width: width * 2 }}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        if (offsetX >= width / 2) {
+                            setViewMode('READING');
+                        } else {
+                            setViewMode('STUDY');
+                        }
                     }}
                 >
-                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                        {/* INACTIVE LAYER */}
-                        <Sword size={20} color="#8b4513" />
+                    {/* STUDY PANE */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <StudyView />
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
 
-                        {/* ACTIVE LAYER (GLOWING) */}
-                        <Animated.View style={{
-                            position: 'absolute',
-                            opacity: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [1, 0]
-                            }),
-                            shadowColor: '#FFD700',
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 1,
-                            shadowRadius: 10,
-                            elevation: 5,
-                        }}>
-                            <Sword size={20} color="#FFD700" />
-                        </Animated.View>
-                    </View>
-
-                    <Animated.Text style={[
-                        styles.tabBtnText,
-                        {
-                            color: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: ['#FFD700', '#8b4513']
-                            }),
-                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
-                            textShadowOffset: { width: 0, height: 0 },
-                            textShadowRadius: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [10, 0]
-                            })
-                        }
-                    ]}>
-                        FORJA DEL INTELECTO
-                    </Animated.Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.tabBtn}
-                    onPress={() => {
-                        horizontalScrollRef.current?.scrollTo({ x: width, animated: true });
-                    }}
-                >
-                    <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                        {/* INACTIVE LAYER */}
-                        <Scroll size={20} color="#8b4513" />
-
-                        {/* ACTIVE LAYER (GLOWING) */}
-                        <Animated.View style={{
-                            position: 'absolute',
-                            opacity: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [0, 1]
-                            }),
-                            shadowColor: '#FFD700',
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 1,
-                            shadowRadius: 10,
-                            elevation: 5,
-                        }}>
-                            <Scroll size={20} color="#FFD700" />
-                        </Animated.View>
-                    </View>
-
-                    <Animated.Text style={[
-                        styles.tabBtnText,
-                        {
-                            color: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: ['#8b4513', '#FFD700']
-                            }),
-                            textShadowColor: 'rgba(255, 215, 0, 0.5)',
-                            textShadowOffset: { width: 0, height: 0 },
-                            textShadowRadius: scrollX.interpolate({
-                                inputRange: [0, width],
-                                outputRange: [0, 10]
-                            })
-                        }
-                    ]}>
-                        ATALAYA DEL CONOCIMIENTO
-                    </Animated.Text>
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView
-                ref={horizontalScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ width: width * 2 }}
-                scrollEventThrottle={16}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                onMomentumScrollEnd={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x;
-                    if (offsetX >= width / 2) {
-                        setViewMode('READING');
-                    } else {
-                        setViewMode('STUDY');
-                    }
-                }}
-            >
-                {/* STUDY PANE */}
-                <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <StudyView />
-                    <View style={{ height: 100 }} />
+                    {/* READING PANE */}
+                    <ScrollView
+                        style={{ width }}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <ReadingView />
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
                 </ScrollView>
 
-                {/* READING PANE */}
-                <ScrollView
-                    style={{ width }}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <ReadingView />
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            </ScrollView>
+                {/* MODAL: Active Session (Unified) */}
+                <Modal visible={isSessionActive} transparent animationType="slide">
+                    <View style={styles.sessionOverlay}>
+                        <View style={styles.sessionContent}>
+                            {activeSessionType === 'BOOK' && isReadingStopModalVisible ? (
+                                // --- VIEW: STOP READING INPUT ---
+                                <View style={styles.stopReadingContainer}>
+                                    <Text style={styles.modalTitle}>FIN DE LECTURA</Text>
+                                    <Text style={styles.startBtn}>¿En qué página te has quedado?</Text>
+                                    <TextInput
+                                        style={[styles.modalInput, { textAlign: 'center', fontSize: 30, width: 100 }]}
+                                        value={endPageInput}
+                                        onChangeText={setEndPageInput}
+                                        keyboardType="number-pad"
+                                        autoFocus
+                                    />
+                                    <MedievalButton
+                                        title="GUARDAR PROGRESO"
+                                        onPress={confirmStopReading}
+                                        style={{ width: '100%', marginTop: 20 }}
+                                    />
+                                    <TouchableOpacity onPress={() => setIsReadingStopModalVisible(false)} style={{ marginTop: 20 }}>
+                                        <Text style={{ color: '#d4af37', textDecorationLine: 'underline' }}>Cancelar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                // --- VIEW: TIMER / STOPWATCH ---
+                                <>
+                                    <View style={styles.sessionHeaderBox}>
+                                        <View style={styles.sessionSubjectBox}>
+                                            {activeSessionType === 'BOOK' ? <Scroll size={20} color="#FFD700" /> : <BookOpen size={20} color="#FFD700" />}
+                                            <Text style={styles.sessionSubjectName}>
+                                                {activeSessionType === 'BOOK' ? selectedBook?.title : selectedSubject?.name}
+                                            </Text>
+                                        </View>
 
-            {/* MODAL: Active Session (Unified) */}
-            <Modal visible={isSessionActive} transparent animationType="slide">
-                <View style={styles.sessionOverlay}>
-                    <View style={styles.sessionContent}>
-                        {activeSessionType === 'BOOK' && isReadingStopModalVisible ? (
-                            // --- VIEW: STOP READING INPUT ---
-                            <View style={styles.stopReadingContainer}>
-                                <Text style={styles.modalTitle}>FIN DE LECTURA</Text>
-                                <Text style={styles.startBtn}>¿En qué página te has quedado?</Text>
-                                <TextInput
-                                    style={[styles.modalInput, { textAlign: 'center', fontSize: 30, width: 100 }]}
-                                    value={endPageInput}
-                                    onChangeText={setEndPageInput}
-                                    keyboardType="number-pad"
-                                    autoFocus
-                                />
-                                <MedievalButton
-                                    title="GUARDAR PROGRESO"
-                                    onPress={confirmStopReading}
-                                    style={{ width: '100%', marginTop: 20 }}
-                                />
-                                <TouchableOpacity onPress={() => setIsReadingStopModalVisible(false)} style={{ marginTop: 20 }}>
-                                    <Text style={{ color: '#d4af37', textDecorationLine: 'underline' }}>Cancelar</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            // --- VIEW: TIMER / STOPWATCH ---
-                            <>
-                                <View style={styles.sessionHeaderBox}>
-                                    <View style={styles.sessionSubjectBox}>
-                                        {activeSessionType === 'BOOK' ? <Scroll size={20} color="#FFD700" /> : <BookOpen size={20} color="#FFD700" />}
-                                        <Text style={styles.sessionSubjectName}>
-                                            {activeSessionType === 'BOOK' ? selectedBook?.title : selectedSubject?.name}
+                                        {activeSessionType === 'SUBJECT' && (
+                                            <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
+                                                {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
+                                                <Text style={styles.badgeText}>{difficulty}</Text>
+                                            </View>
+                                        )}
+
+                                        {activeSessionType === 'SUBJECT' && difficulty === 'CRUSADE' && (
+                                            <View style={styles.warnBox}>
+                                                <AlertTriangle size={14} color="#e74c3c" />
+                                                <Text style={styles.warnText}>Iron Will Activo</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    <View style={styles.sessionTimerBox}>
+                                        <Text style={styles.sessionTimeText}>
+                                            {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && activeSessionType === 'SUBJECT' ? '+' : ''}
+                                            {formatElapsedTime(elapsedSeconds)}
                                         </Text>
                                     </View>
 
-                                    {activeSessionType === 'SUBJECT' && (
-                                        <View style={[styles.difficultyBadge, difficulty === 'CRUSADE' ? styles.badgeCrusade : styles.badgeExplorer]}>
-                                            {difficulty === 'CRUSADE' ? <Shield size={12} color="#fff" /> : <Compass size={12} color="#fff" />}
-                                            <Text style={styles.badgeText}>{difficulty}</Text>
-                                        </View>
+                                    {activeSessionType === 'SUBJECT' && studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
+                                        <Text style={styles.overtimeText}>✨ ¡Objetivo Cumplido! Extra...</Text>
                                     )}
 
-                                    {activeSessionType === 'SUBJECT' && difficulty === 'CRUSADE' && (
-                                        <View style={styles.warnBox}>
-                                            <AlertTriangle size={14} color="#e74c3c" />
-                                            <Text style={styles.warnText}>Iron Will Activo</Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                <View style={styles.sessionTimerBox}>
-                                    <Text style={styles.sessionTimeText}>
-                                        {studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && activeSessionType === 'SUBJECT' ? '+' : ''}
-                                        {formatElapsedTime(elapsedSeconds)}
-                                    </Text>
-                                </View>
-
-                                {activeSessionType === 'SUBJECT' && studyMode === 'TIMER' && elapsedSeconds > parseInt(targetMinutes) * 60 && (
-                                    <Text style={styles.overtimeText}>✨ ¡Objetivo Cumplido! Extra...</Text>
-                                )}
-
-                                <MedievalButton
-                                    title={activeSessionType === 'BOOK' ? "FINALIZAR LECTURA" : (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60 ? "RENDIRSE" : "FINALIZAR")}
-                                    onPress={activeSessionType === 'BOOK' ? handleStopReadingPress : handleStopStudyPress}
-                                    variant={activeSessionType === 'SUBJECT' && ((studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE') ? "danger" : "primary"}
-                                    style={styles.stopBtn}
-                                />
-                            </>
-                        )}
+                                    <MedievalButton
+                                        title={activeSessionType === 'BOOK' ? "FINALIZAR LECTURA" : (studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60 ? "RENDIRSE" : "FINALIZAR")}
+                                        onPress={activeSessionType === 'BOOK' ? handleStopReadingPress : handleStopStudyPress}
+                                        variant={activeSessionType === 'SUBJECT' && ((studyMode === 'TIMER' && elapsedSeconds < parseInt(targetMinutes) * 60) || difficulty === 'CRUSADE') ? "danger" : "primary"}
+                                        style={styles.stopBtn}
+                                    />
+                                </>
+                            )}
 
 
 
+                        </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
 
-            {/* MODALS: Add Subject & Picker */}
-            <Modal visible={isAddModalVisible} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.addModal}>
-                        <Text style={styles.modalTitle}>NUEVO PERGAMINO</Text>
+                {/* MODALS: Add Subject & Picker */}
+                <Modal visible={isAddModalVisible} transparent animationType="fade">
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.addModal}>
+                            <Text style={styles.modalTitle}>NUEVO PERGAMINO</Text>
 
-                        <Text style={styles.inputLabel}>Asignatura:</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Nombre"
-                            value={newSubjectName}
-                            onChangeText={setNewSubjectName}
-                            autoFocus
-                        />
+                            <Text style={styles.inputLabel}>Asignatura:</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Nombre"
+                                value={newSubjectName}
+                                onChangeText={setNewSubjectName}
+                                autoFocus
+                            />
 
-                        <Text style={styles.inputLabel}>Curso:</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="ej: 1º Bach"
-                            value={newSubjectCourse}
-                            onChangeText={setNewSubjectCourse}
-                        />
+                            <Text style={styles.inputLabel}>Curso:</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="ej: 1º Bach"
+                                value={newSubjectCourse}
+                                onChangeText={setNewSubjectCourse}
+                            />
 
-                        <View style={styles.colorPalette}>
-                            {SUBJECT_COLORS.map(color => (
+                            <View style={styles.colorPalette}>
+                                {SUBJECT_COLORS.map(color => (
+                                    <TouchableOpacity
+                                        key={color}
+                                        style={[styles.colorOption, { backgroundColor: color }, selectedColor === color && styles.colorActive]}
+                                        onPress={() => setSelectedColor(color)}
+                                    />
+                                ))}
+                                {customColors.map(c => (
+                                    <TouchableOpacity
+                                        key={c.id}
+                                        style={[styles.colorOption, { backgroundColor: c.hex_code }, selectedColor === c.hex_code && styles.colorActive]}
+                                        onPress={() => setSelectedColor(c.hex_code)}
+                                    />
+                                ))}
                                 <TouchableOpacity
-                                    key={color}
-                                    style={[styles.colorOption, { backgroundColor: color }, selectedColor === color && styles.colorActive]}
-                                    onPress={() => setSelectedColor(color)}
-                                />
-                            ))}
-                            {customColors.map(c => (
-                                <TouchableOpacity
-                                    key={c.id}
-                                    style={[styles.colorOption, { backgroundColor: c.hex_code }, selectedColor === c.hex_code && styles.colorActive]}
-                                    onPress={() => setSelectedColor(c.hex_code)}
-                                />
-                            ))}
-                            <TouchableOpacity
-                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
-                                onPress={() => {
-                                    setColorPickerTarget('SUBJECT');
-                                    setIsAddModalVisible(false);
-                                    setTimeout(() => setIsCameraPickerVisible(true), 200);
-                                }}
-                            >
-                                <Camera size={16} color="#FFD700" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
-                                onPress={() => {
-                                    setColorPickerTarget('SUBJECT');
-                                    setIsAddModalVisible(false);
-                                    setTimeout(() => setIsManualPickerVisible(true), 200);
-                                }}
-                            >
-                                <Palette size={16} color="#FFD700" />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.modalBtns}>
-                            <MedievalButton title="AÑADIR" onPress={handleAddSubject} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
-                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddModalVisible(false)} style={{ flex: 1, minWidth: 0 }} />
-                        </View>
-                    </ParchmentCard>
-                </View>
-            </Modal>
-
-            {/* MODAL: Book Picker */}
-            <Modal visible={isBookPickerVisible} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.pickerModal}>
-                        <Text style={styles.modalTitle}>TOMOS DE PODER</Text>
-                        <FlatList
-                            data={activeBooks}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={styles.pickerItem}
+                                    style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
                                     onPress={() => {
-                                        setSelectedBook(item);
-                                        setIsBookPickerVisible(false);
+                                        setColorPickerTarget('SUBJECT');
+                                        setIsAddModalVisible(false);
+                                        setTimeout(() => setIsCameraPickerVisible(true), 200);
                                     }}
                                 >
-                                    <View style={[styles.colorDot, { backgroundColor: item.cover_color || '#8b4513' }]} />
-                                    <Text style={styles.pickerItemText}>
-                                        {item.title}
-                                        {item.saga ? ` - ${item.saga} ${toRoman(item.saga_index || 0)}` : ''}
-                                    </Text>
+                                    <Camera size={16} color="#FFD700" />
                                 </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
-                        />
-                        <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsBookPickerVisible(false)} />
-                    </ParchmentCard>
-                </View>
-            </Modal>
-
-            {/* MODAL: Subject Picker */}
-            <Modal visible={isSubjectPickerVisible} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.pickerModal}>
-                        <Text style={styles.modalTitle}>TUS ASIGNATURAS</Text>
-                        <FlatList
-                            data={activeSubjects}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
                                 <TouchableOpacity
-                                    style={styles.pickerItem}
+                                    style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
                                     onPress={() => {
-                                        setSelectedSubject(item);
-                                        setIsSubjectPickerVisible(false);
+                                        setColorPickerTarget('SUBJECT');
+                                        setIsAddModalVisible(false);
+                                        setTimeout(() => setIsManualPickerVisible(true), 200);
                                     }}
                                 >
-                                    <View style={[styles.colorDot, { backgroundColor: item.color }]} />
-                                    <Text style={styles.pickerItemText}>{item.name}</Text>
+                                    <Palette size={16} color="#FFD700" />
                                 </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
-                        />
-                        <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsSubjectPickerVisible(false)} />
-                    </ParchmentCard>
-                </View>
-            </Modal>
-
-            {/* MODAL: Add Book */}
-            <Modal visible={isAddBookVisible} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <ParchmentCard style={styles.addModal}>
-                        <Text style={styles.modalTitle}>NUEVO TOMO</Text>
-
-                        <Text style={styles.inputLabel}>Título:</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Título"
-                            value={newBookTitle}
-                            onChangeText={setNewBookTitle}
-                            autoFocus
-                        />
-
-                        <Text style={styles.inputLabel}>Autor:</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Autor (opcional)"
-                            value={newBookAuthor}
-                            onChangeText={setNewBookAuthor}
-                        />
-
-                        <View style={{ flexDirection: 'row' }}>
-                            <View style={{ flex: 2, marginRight: 10 }}>
-                                <Text style={styles.inputLabel}>Saga:</Text>
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="ej: El Archivo..."
-                                    value={newBookSaga}
-                                    onChangeText={setNewBookSaga}
-                                />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Libro #:</Text>
-                                <TextInput
-                                    style={styles.modalInput}
-                                    placeholder="1"
-                                    value={newBookSagaIndex}
-                                    onChangeText={setNewBookSagaIndex}
-                                    keyboardType="number-pad"
-                                />
+                            <View style={styles.modalBtns}>
+                                <MedievalButton title="AÑADIR" onPress={handleAddSubject} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
+                                <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddModalVisible(false)} style={{ flex: 1, minWidth: 0 }} />
                             </View>
-                        </View>
+                        </ParchmentCard>
+                    </View>
+                </Modal>
 
-                        <Text style={styles.inputLabel}>Páginas:</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            placeholder="Total"
-                            value={newBookTotalPages}
-                            onChangeText={setNewBookTotalPages}
-                            keyboardType="number-pad"
-                        />
+                {/* MODAL: Book Picker */}
+                <Modal visible={isBookPickerVisible} transparent animationType="fade">
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.pickerModal}>
+                            <Text style={styles.modalTitle}>TOMOS DE PODER</Text>
+                            <FlatList
+                                data={activeBooks}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.pickerItem}
+                                        onPress={() => {
+                                            setSelectedBook(item);
+                                            setIsBookPickerVisible(false);
+                                        }}
+                                    >
+                                        <View style={[styles.colorDot, { backgroundColor: item.cover_color || '#8b4513' }]} />
+                                        <Text style={styles.pickerItemText}>
+                                            {item.title}
+                                            {item.saga ? ` - ${item.saga} ${toRoman(item.saga_index || 0)}` : ''}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
+                            />
+                            <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsBookPickerVisible(false)} />
+                        </ParchmentCard>
+                    </View>
+                </Modal>
 
-                        <View style={styles.colorPalette}>
-                            {BOOK_COLORS.map(color => (
+                {/* MODAL: Subject Picker */}
+                <Modal visible={isSubjectPickerVisible} transparent animationType="fade">
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.pickerModal}>
+                            <Text style={styles.modalTitle}>TUS ASIGNATURAS</Text>
+                            <FlatList
+                                data={activeSubjects}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.pickerItem}
+                                        onPress={() => {
+                                            setSelectedSubject(item);
+                                            setIsSubjectPickerVisible(false);
+                                        }}
+                                    >
+                                        <View style={[styles.colorDot, { backgroundColor: item.color }]} />
+                                        <Text style={styles.pickerItemText}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={<Text style={styles.emptyText}>Vacío.</Text>}
+                            />
+                            <MedievalButton title="CERRAR" variant="danger" onPress={() => setIsSubjectPickerVisible(false)} />
+                        </ParchmentCard>
+                    </View>
+                </Modal>
+
+                {/* MODAL: Add Book */}
+                <Modal visible={isAddBookVisible} transparent animationType="fade">
+                    <View style={styles.modalOverlay}>
+                        <ParchmentCard style={styles.addModal}>
+                            <Text style={styles.modalTitle}>NUEVO TOMO</Text>
+
+                            <Text style={styles.inputLabel}>Título:</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Título"
+                                value={newBookTitle}
+                                onChangeText={setNewBookTitle}
+                                autoFocus
+                            />
+
+                            <Text style={styles.inputLabel}>Autor:</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Autor (opcional)"
+                                value={newBookAuthor}
+                                onChangeText={setNewBookAuthor}
+                            />
+
+                            <View style={{ flexDirection: 'row' }}>
+                                <View style={{ flex: 2, marginRight: 10 }}>
+                                    <Text style={styles.inputLabel}>Saga:</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="ej: El Archivo..."
+                                        value={newBookSaga}
+                                        onChangeText={setNewBookSaga}
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.inputLabel}>Libro #:</Text>
+                                    <TextInput
+                                        style={styles.modalInput}
+                                        placeholder="1"
+                                        value={newBookSagaIndex}
+                                        onChangeText={setNewBookSagaIndex}
+                                        keyboardType="number-pad"
+                                    />
+                                </View>
+                            </View>
+
+                            <Text style={styles.inputLabel}>Páginas:</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Total"
+                                value={newBookTotalPages}
+                                onChangeText={setNewBookTotalPages}
+                                keyboardType="number-pad"
+                            />
+
+                            <View style={styles.colorPalette}>
+                                {BOOK_COLORS.map(color => (
+                                    <TouchableOpacity
+                                        key={color}
+                                        style={[styles.colorOption, { backgroundColor: color }, newBookCoverColor === color && styles.colorActive]}
+                                        onPress={() => setNewBookCoverColor(color)}
+                                    />
+                                ))}
+                                {customColors.map(c => (
+                                    <TouchableOpacity
+                                        key={c.id}
+                                        style={[styles.colorOption, { backgroundColor: c.hex_code }, newBookCoverColor === c.hex_code && styles.colorActive]}
+                                        onPress={() => setNewBookCoverColor(c.hex_code)}
+                                    />
+                                ))}
                                 <TouchableOpacity
-                                    key={color}
-                                    style={[styles.colorOption, { backgroundColor: color }, newBookCoverColor === color && styles.colorActive]}
-                                    onPress={() => setNewBookCoverColor(color)}
-                                />
-                            ))}
-                            {customColors.map(c => (
+                                    style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
+                                    onPress={() => {
+                                        setColorPickerTarget('BOOK');
+                                        setIsAddBookVisible(false);
+                                        setTimeout(() => setIsCameraPickerVisible(true), 200);
+                                    }}
+                                >
+                                    <Camera size={16} color="#FFD700" />
+                                </TouchableOpacity>
                                 <TouchableOpacity
-                                    key={c.id}
-                                    style={[styles.colorOption, { backgroundColor: c.hex_code }, newBookCoverColor === c.hex_code && styles.colorActive]}
-                                    onPress={() => setNewBookCoverColor(c.hex_code)}
-                                />
-                            ))}
-                            <TouchableOpacity
-                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}
-                                onPress={() => {
-                                    setColorPickerTarget('BOOK');
-                                    setIsAddBookVisible(false);
-                                    setTimeout(() => setIsCameraPickerVisible(true), 200);
-                                }}
-                            >
-                                <Camera size={16} color="#FFD700" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
-                                onPress={() => {
-                                    setColorPickerTarget('BOOK');
-                                    setIsAddBookVisible(false);
-                                    setTimeout(() => setIsManualPickerVisible(true), 200);
-                                }}
-                            >
-                                <Palette size={16} color="#FFD700" />
-                            </TouchableOpacity>
-                        </View>
+                                    style={[styles.colorOption, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginLeft: 5 }]}
+                                    onPress={() => {
+                                        setColorPickerTarget('BOOK');
+                                        setIsAddBookVisible(false);
+                                        setTimeout(() => setIsManualPickerVisible(true), 200);
+                                    }}
+                                >
+                                    <Palette size={16} color="#FFD700" />
+                                </TouchableOpacity>
+                            </View>
 
 
-                        <View style={styles.modalBtns}>
-                            <MedievalButton title="AÑADIR" onPress={handleAddBook} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
-                            <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddBookVisible(false)} style={{ flex: 1, minWidth: 0 }} />
-                        </View>
-                    </ParchmentCard>
-                </View>
-            </Modal>
+                            <View style={styles.modalBtns}>
+                                <MedievalButton title="AÑADIR" onPress={handleAddBook} style={{ flex: 1, marginRight: 10, minWidth: 0 }} />
+                                <MedievalButton title="CANCELAR" variant="danger" onPress={() => setIsAddBookVisible(false)} style={{ flex: 1, minWidth: 0 }} />
+                            </View>
+                        </ParchmentCard>
+                    </View>
+                </Modal>
 
-            <CameraColorPicker
-                visible={isCameraPickerVisible}
-                onClose={() => {
-                    setIsCameraPickerVisible(false);
-                    // Restore original modal
-                    setTimeout(() => {
-                        if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
-                        else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
-                    }, 400);
-                }}
-                onColorSelect={(color) => {
-                    saveCustomColor(color); // Save to DB correctly
-                    if (colorPickerTarget === 'SUBJECT') {
-                        setSelectedColor(color);
-                    } else if (colorPickerTarget === 'BOOK') {
-                        setNewBookCoverColor(color);
-                    }
-                }}
-            />
+                <CameraColorPicker
+                    visible={isCameraPickerVisible}
+                    onClose={() => {
+                        setIsCameraPickerVisible(false);
+                        // Restore original modal
+                        setTimeout(() => {
+                            if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
+                            else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
+                        }, 400);
+                    }}
+                    onColorSelect={(color) => {
+                        saveCustomColor(color); // Save to DB correctly
+                        if (colorPickerTarget === 'SUBJECT') {
+                            setSelectedColor(color);
+                        } else if (colorPickerTarget === 'BOOK') {
+                            setNewBookCoverColor(color);
+                        }
+                    }}
+                />
 
-            <ManualColorPicker
-                visible={isManualPickerVisible}
-                onClose={() => {
-                    setIsManualPickerVisible(false);
-                    setTimeout(() => {
-                        if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
-                        else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
-                    }, 400);
-                }}
-                onColorSelect={(color) => {
-                    saveCustomColor(color);
-                    if (colorPickerTarget === 'SUBJECT') {
-                        setSelectedColor(color);
-                    } else if (colorPickerTarget === 'BOOK') {
-                        setNewBookCoverColor(color);
-                    }
-                }}
-            />
+                <ManualColorPicker
+                    visible={isManualPickerVisible}
+                    onClose={() => {
+                        setIsManualPickerVisible(false);
+                        setTimeout(() => {
+                            if (colorPickerTarget === 'SUBJECT') setIsAddModalVisible(true);
+                            else if (colorPickerTarget === 'BOOK') setIsAddBookVisible(true);
+                        }, 400);
+                    }}
+                    onColorSelect={(color) => {
+                        saveCustomColor(color);
+                        if (colorPickerTarget === 'SUBJECT') {
+                            setSelectedColor(color);
+                        } else if (colorPickerTarget === 'BOOK') {
+                            setNewBookCoverColor(color);
+                        }
+                    }}
+                />
 
-        </View>
+            </View>
+        </ScreenWrapper>
     );
 };
 

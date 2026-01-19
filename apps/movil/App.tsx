@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GameHUD } from '@omega/ui';
-import { GameProvider, useGame, ToastProvider, WorkoutProvider, useWorkout } from '@omega/logic';
+import { GameProvider, useGame, ToastProvider, WorkoutProvider, useWorkout, LibraryProvider } from '@omega/logic';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Timer, Castle, Calendar } from 'lucide-react-native';

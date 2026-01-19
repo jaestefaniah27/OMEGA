@@ -85,6 +85,8 @@ const WorkoutHeader: React.FC<{ onWorkoutPress: () => void; currentRoute: string
 };
 
 const AppContent = React.memo(({ currentRoute }: { currentRoute: string | undefined }) => {
+  const { forceMemoryCleanup } = useGame();
+
   const handleProfilePress = () => {
     if (navigationRef.isReady()) {
       if (currentRoute === 'Profile') {
@@ -97,7 +99,14 @@ const AppContent = React.memo(({ currentRoute }: { currentRoute: string | undefi
 
   const handleMapPress = () => {
     if (navigationRef.isReady()) {
-      navigationRef.navigate('Home' as any);
+      // OPTIMIZATION: Nuclear memory cleanup
+      forceMemoryCleanup();
+
+      // Reset navigation stack to prevent accumulation
+      navigationRef.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     }
   };
 

@@ -38,6 +38,10 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({ children, backgrou
                 : '🟢 [MONTAJE]';
 
             console.log(`${prefix} Pantalla "${screenName}" lista en ${latency}ms`);
+        } else {
+            // OPTIMIZATION: Hint to GC when screen loses focus
+            const screenName = (children as any)?.type?.name || 'Unknown Screen';
+            console.log(`🧹 [CLEANUP] Desmontando "${screenName}"`);
         }
     }, [isFocused]);
 

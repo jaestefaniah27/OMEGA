@@ -191,6 +191,7 @@ interface GameContextType {
     addXp: (amount: number) => Promise<void>;
     fetchAll: () => Promise<void>;
     checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<void>;
+    forceMemoryCleanup: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -902,8 +903,57 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 console.error('RPC add_gold failed (will sync later):', error);
             }
         } catch (e) {
-            console.error('RPC Error', e);
+            console.error('GameContext: addGold error', e);
         }
+    };
+
+    // OPTIMIZATION: Force aggressive memory cleanup (NUCLEAR VERSION)
+    const forceMemoryCleanup = () => {
+        console.log('🧹 [MEMORY] NUCLEAR cleanup initiated...');
+
+        // Cancel pending debounced save
+        if (saveDebounceRef.current) {
+            clearTimeout(saveDebounceRef.current);
+        }
+
+        // Clear ALL data arrays to force garbage collection
+        setSubjects([]);
+        setBooks([]);
+        setCustomColors([]);
+        setBookStats({});
+
+        setActivities([]);
+        setMovies([]);
+        setSeries([]);
+        setActivityStats({});
+
+        setRoutines([]);
+        setHistory([]);
+        setMuscleFatigue({});
+        setRecords([]);
+
+        setDecrees([]);
+        setThoughts([]);
+        setSleepRecords([]);
+        setWaterRecords([]);
+
+        setMageProjects([]);
+        setMageThemes([]);
+        setMageAppMappings([]);
+        setUnhandledAuraByTheme({});
+
+        // Force GC hint
+        if (typeof global !== 'undefined' && (global as any).gc) {
+            (global as any).gc();
+        }
+
+        // Re-fetch fresh data after cleanup
+        setTimeout(() => {
+            console.log('🔄 [MEMORY] Re-fetching data...');
+            fetchAll();
+        }, 100);
+
+        console.log('🧹 [MEMORY] Nuclear cleanup complete');
     };
 
     const addXp = async (amount: number) => {
@@ -1552,7 +1602,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         addGold,
         addXp,
         fetchAll,
-        checkDecreeProgress
+        checkDecreeProgress,
+        forceMemoryCleanup
     }), [
         subjects, books, customColors, bookStats, libraryLoading,
         activities, movies, series, activityStats, theatreLoading,

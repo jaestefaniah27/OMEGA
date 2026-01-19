@@ -254,6 +254,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const isHydrated = useRef(false);
     const lastProcessedSync = useRef<string | null>(null);
 
+    // OPTIMIZATION: Debounce ref for AsyncStorage writes
+    const saveDebounceRef = useRef<NodeJS.Timeout>();
+
     const {
         rituals: habitRituals,
         todayLogs: habitLogs,
@@ -347,6 +350,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('Offline Mode: Failed to save local data', e);
         }
+    };
+
+    // OPTIMIZATION: Debounced wrapper for saveToLocal
+    const debouncedSaveToLocal = (
+        libData: { subjects: any[], books: any[], customColors: any[], bookStats: any },
+        theatData: { activities: any[], movies: any[], series: any[], activityStats: any },
+        barracksData: { routines: any[], history: any[], muscleFatigue: any, records: any },
+        castleData: { decrees: RoyalDecree[] },
+        templeData: { thoughts: TempleThought[], sleepRecords: TempleSleep[] },
+        tavernData: { waterRecords: TavernWater[] },
+        mageData: { projects: MageProject[], themes: MageTheme[] },
+        profData: any
+    ) => {
+        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = setTimeout(() => {
+            saveToLocal(libData, theatData, barracksData, castleData, templeData, tavernData, mageData, profData);
+        }, 3000); // Wait 3 seconds before saving
     };
 
     const clearState = async () => {
@@ -583,9 +603,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setBookStats(bStats);
 
             // --- PROCESS THEATRE ---
+            // OPTIMIZATION: Limit seasons per series to last 10
             const seriesWithSeasons = serData.map((s: any) => ({
                 ...s,
-                seasons: seasData.filter((season: any) => season.series_id === s.id)
+                seasons: seasData
+                    .filter((season: any) => season.series_id === s.id)
+                    .slice(-10) // Only keep last 10 seasons
             }));
 
             const tStats: Record<string, { totalMinutes: number, daysCount: number }> = {};
@@ -611,8 +634,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
             // --- PROCESS TEMPLE ---
-            setThoughts(thoughtData);
-            setSleepRecords(sleepData);
+            // OPTIMIZATION: Limit thoughts to last 5
+            const recentThoughts = thoughtData.slice(-5);
+            setThoughts(recentThoughts);
+
+            // OPTIMIZATION: Limit sleep records to today only
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const recentSleep = sleepData.filter((s: any) =>
+                new Date(s.created_at) >= todayStart
+            );
+            setSleepRecords(recentSleep);
             setTempleLoading(false);
 
             // --- PROCESS BARRACKS ---
@@ -632,11 +664,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             });
 
             setRoutines(routineData);
-            setHistory(formattedHistory);
+            setHistory(formattedHistory.slice(0, 100)); // Keep last 100 battles
             setMuscleFatigue(fatigueData);
             setRecords(recordData);
             setDecrees(decreeData);
-            setWaterRecords(waterData);
+
+            // OPTIMIZATION: Limit water records to today only
+            const todayStartWater = new Date();
+            todayStartWater.setHours(0, 0, 0, 0);
+            const recentWater = waterData.filter((w: any) => {
+                const recordDate = new Date(w.created_at);
+                return recordDate >= todayStartWater;
+            });
+            setWaterRecords(recentWater);
             setMageProjects(mageData);
             setMageThemes(themeData);
             setMageLoading(false);

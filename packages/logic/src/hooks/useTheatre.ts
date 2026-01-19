@@ -9,13 +9,15 @@ import {
 } from '../types/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGame } from '../context/GameContext';
+import { useWorkout } from '../hooks/useWorkout';
 import { useToast } from '../context/ToastContext';
 
 const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
     // --- CONSUME CONTEXT ---
-    const { theatre, workout, castle, habits: habitCtx } = useGame();
+    const { theatre, castle, habits: habitCtx } = useGame();
+    const { isSessionActive: isWorkoutActive } = useWorkout();
     const { showToast } = useToast();
     const {
         activities,
@@ -105,7 +107,7 @@ export const useTheatre = () => {
 
     // Session Methods
     const startSession = async (activity: TheatreActivity) => {
-        if (workout.isSessionActive) {
+        if (isWorkoutActive) {
             Alert.alert("⚠️ Batalla en Curso", "No puedes realizar actividades en el Teatro mientras estás en la Forja Táctica. ¡Termina tu entrenamiento primero!");
             return;
         }

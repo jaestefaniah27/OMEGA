@@ -267,6 +267,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         checkHabitProgress: checkHabitProgressInternal
     } = useHabits(user?.id);
 
+    // Cleanup debounce timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (saveDebounceRef.current) {
+                clearTimeout(saveDebounceRef.current);
+            }
+        };
+    }, []);
+
     // --- PERSISTENCE HELPERS ---
     const loadFromLocal = async () => {
         try {
@@ -804,72 +813,64 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (!user) return;
 
-        let channel: any;
+        console.log(`GameContext: Setting up Realtime sync for user: ${user.id}`);
 
-        const setupChannel = async () => {
-            console.log(`GameContext: Setting up Realtime sync for user: ${user.id}`);
+        const channel = supabase.channel(`sync_${user.id}`)
+            .on('postgres_changes',
+                {
+                    event: '*', // Listen to INSERT/UPDATE to be safe
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${user.id}`
+                },
+                (payload: any) => {
+                    const newSync = payload.new?.last_synced_at || payload.new?.updated_at;
 
-            channel = supabase.channel(`sync_${user.id}`)
-                .on('postgres_changes',
-                    {
-                        event: '*', // Listen to INSERT/UPDATE to be safe
-                        schema: 'public',
-                        table: 'profiles',
-                        filter: `id=eq.${user.id}`
-                    },
-                    (payload: any) => {
-                        const newSync = payload.new?.last_synced_at || payload.new?.updated_at;
+                    if (newSync) {
+                        const newTime = new Date(newSync).getTime();
+                        const lastTime = lastProcessedSync.current ? new Date(lastProcessedSync.current).getTime() : 0;
 
-                        if (newSync) {
-                            const newTime = new Date(newSync).getTime();
-                            const lastTime = lastProcessedSync.current ? new Date(lastProcessedSync.current).getTime() : 0;
-
-                            // Only fetch if the new timestamp is physically different/newer
-                            if (newTime !== lastTime) {
-                                console.log(`GameContext: Sync triggered (${newTime} vs ${lastTime})`);
-                                fetchAll();
-                            }
+                        // Only fetch if the new timestamp is physically different/newer
+                        if (newTime !== lastTime) {
+                            console.log(`GameContext: Sync triggered (${newTime} vs ${lastTime})`);
+                            fetchAll();
                         }
                     }
-                )
-                // NEW: Listen for theme aura changes (Desktop Worker updates)
-                .on('postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'mage_themes',
-                        filter: `user_id=eq.${user.id}`
-                    },
-                    (payload) => {
-                        console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
-                        fetchAll();
-                    }
-                )
-                // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
-                .on('postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'user_stats',
-                        filter: `id=eq.${user.id}`
-                    },
-                    (payload) => {
-                        console.log('GameContext: Hero Stats updated via Realtime', payload.new);
-                        setHeroStats(payload.new as HeroStats);
-                    }
-                )
-                .subscribe((status) => {
-                    console.log(`GameContext: Realtime status: ${status}`);
-                });
-        };
-
-        setupChannel();
+                }
+            )
+            // NEW: Listen for theme aura changes (Desktop Worker updates)
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'mage_themes',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
+                    fetchAll();
+                }
+            )
+            // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
+            .on('postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'user_stats',
+                    filter: `id=eq.${user.id}`
+                },
+                (payload) => {
+                    console.log('GameContext: Hero Stats updated via Realtime', payload.new);
+                    setHeroStats(payload.new as HeroStats);
+                }
+            )
+            .subscribe((status) => {
+                console.log(`GameContext: Realtime status: ${status}`);
+            });
 
         return () => {
-            if (channel) {
-                console.log('GameContext: Cleaning up Realtime channel');
-                supabase.removeChannel(channel);
-            }
+            console.log('GameContext: Cleaning up Realtime channel');
+            supabase.removeChannel(channel);
         };
     }, [user]);
 

@@ -258,6 +258,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // OPTIMIZATION: Debounce ref for AsyncStorage writes
     const saveDebounceRef = useRef<NodeJS.Timeout>();
 
+    // OPTIMIZATION: Cleanup lock to prevent concurrent cleanups
+    const cleanupInProgress = useRef(false);
+
     const {
         rituals: habitRituals,
         todayLogs: habitLogs,
@@ -907,9 +910,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // OPTIMIZATION: Force aggressive memory cleanup (NUCLEAR VERSION)
+    // OPTIMIZATION: Force aggressive memory cleanup (MULTI-ROUND NUCLEAR)
     const forceMemoryCleanup = () => {
-        console.log('🧹 [MEMORY] NUCLEAR cleanup initiated...');
+        // Prevent concurrent cleanups
+        if (cleanupInProgress.current) {
+            console.log('⏭️ [MEMORY] Cleanup already in progress, skipping...');
+            return;
+        }
+
+        cleanupInProgress.current = true;
+        console.log('🧹 [MEMORY] NUCLEAR cleanup initiated (5 rounds)...');
 
         // Cancel pending debounced save
         if (saveDebounceRef.current) {
@@ -917,43 +927,63 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Clear ALL data arrays to force garbage collection
-        setSubjects([]);
-        setBooks([]);
-        setCustomColors([]);
-        setBookStats({});
+        const clearAllData = () => {
+            setSubjects([]);
+            setBooks([]);
+            setCustomColors([]);
+            setBookStats({});
 
-        setActivities([]);
-        setMovies([]);
-        setSeries([]);
-        setActivityStats({});
+            setActivities([]);
+            setMovies([]);
+            setSeries([]);
+            setActivityStats({});
 
-        setRoutines([]);
-        setHistory([]);
-        setMuscleFatigue({});
-        setRecords([]);
+            setRoutines([]);
+            setHistory([]);
+            setMuscleFatigue({});
+            setRecords([]);
 
-        setDecrees([]);
-        setThoughts([]);
-        setSleepRecords([]);
-        setWaterRecords([]);
+            setDecrees([]);
+            setThoughts([]);
+            setSleepRecords([]);
+            setWaterRecords([]);
 
-        setMageProjects([]);
-        setMageThemes([]);
-        setMageAppMappings([]);
-        setUnhandledAuraByTheme({});
+            setMageProjects([]);
+            setMageThemes([]);
+            setMageAppMappings([]);
+            setUnhandledAuraByTheme({});
 
-        // Force GC hint
-        if (typeof global !== 'undefined' && (global as any).gc) {
-            (global as any).gc();
-        }
+            // Force GC hint
+            if (typeof global !== 'undefined' && (global as any).gc) {
+                (global as any).gc();
+            }
+        };
 
-        // Re-fetch fresh data after cleanup
+        // Execute 5 rapid cleanup rounds
+        clearAllData(); // Round 1
         setTimeout(() => {
-            console.log('🔄 [MEMORY] Re-fetching data...');
-            fetchAll();
-        }, 100);
+            clearAllData(); // Round 2
+            setTimeout(() => {
+                clearAllData(); // Round 3
+                setTimeout(() => {
+                    clearAllData(); // Round 4
+                    setTimeout(() => {
+                        clearAllData(); // Round 5
 
-        console.log('🧹 [MEMORY] Nuclear cleanup complete');
+                        // After all cleanup rounds, re-fetch fresh data
+                        setTimeout(() => {
+                            console.log('🔄 [MEMORY] Re-fetching data after 5 cleanup rounds...');
+                            fetchAll().finally(() => {
+                                cleanupInProgress.current = false;
+                                console.log('✅ [MEMORY] Cleanup cycle complete');
+                            });
+                        }, 50);
+                    }, 20);
+                }, 20);
+            }, 20);
+        }, 20);
+
+        console.log('🧹 [MEMORY] Multi-round cleanup initiated');
     };
 
     const addXp = async (amount: number) => {

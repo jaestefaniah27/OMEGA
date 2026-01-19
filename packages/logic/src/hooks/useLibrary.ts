@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { Subject, StudySession, Book } from '../types/supabase';
 import { useGame } from '../context/GameContext';
+import { useWorkout } from '../hooks/useWorkout';
 import { useToast } from '../context/ToastContext';
 import { usePlatform } from '../services/PlatformContext';
 
@@ -12,7 +13,8 @@ const SESSION_STORAGE_KEY = '@omega_active_session';
 export const useLibrary = () => {
     const platform = usePlatform();
     // --- CONSUME CONTEXT ---
-    const { library, workout, castle, habits } = useGame();
+    const { library, castle, habits } = useGame();
+    const { isSessionActive: isWorkoutActive } = useWorkout();
     const { showToast } = useToast();
     const {
         subjects,
@@ -314,7 +316,7 @@ export const useLibrary = () => {
     };
 
     const startSession = async (type: 'SUBJECT' | 'BOOK' = 'SUBJECT') => {
-        if (workout.isSessionActive) {
+        if (isWorkoutActive) {
             Alert.alert("⚠️ Batalla en Curso", "No puedes estudiar ni leer mientras estás en la Forja Táctica. ¡Termina tu entrenamiento primero!");
             return;
         }

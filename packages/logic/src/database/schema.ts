@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-    version: 1,
+    version: 2,
     tables: [
         tableSchema({
             name: 'profiles',
@@ -49,6 +49,7 @@ export default appSchema({
                 { name: 'is_completed', type: 'boolean' },
                 { name: 'total_minutes_studied', type: 'number' },
                 { name: 'final_grade', type: 'number', isOptional: true },
+                { name: 'exams', type: 'string', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
             ],
@@ -65,6 +66,7 @@ export default appSchema({
                 { name: 'saga', type: 'string', isOptional: true },
                 { name: 'saga_index', type: 'number' },
                 { name: 'is_finished', type: 'boolean' },
+                { name: 'finished_at', type: 'string', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
             ],
@@ -238,6 +240,7 @@ export default appSchema({
                 { name: 'symbol', type: 'string' },
                 { name: 'color', type: 'string' },
                 { name: 'pending_aura', type: 'number', isOptional: true },
+                { name: 'active_project_id', type: 'string', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
             ],
@@ -248,8 +251,11 @@ export default appSchema({
                 { name: 'user_id', type: 'string', isIndexed: true },
                 { name: 'theme_id', type: 'string', isIndexed: true },
                 { name: 'name', type: 'string' },
+                { name: 'scope', type: 'string', isOptional: true },
                 { name: 'target_aura', type: 'number' },
                 { name: 'current_aura', type: 'number' },
+                { name: 'mana_amount', type: 'number' },
+                { name: 'status', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
             ],
@@ -259,11 +265,15 @@ export default appSchema({
             columns: [
                 { name: 'user_id', type: 'string', isIndexed: true },
                 { name: 'title', type: 'string' },
+                { name: 'description', type: 'string', isOptional: true },
                 { name: 'type', type: 'string' },
                 { name: 'status', type: 'string' },
                 { name: 'target_quantity', type: 'number' },
                 { name: 'current_quantity', type: 'number' },
+                { name: 'unit', type: 'string' },
+                { name: 'parent_id', type: 'string', isOptional: true },
                 { name: 'due_date', type: 'string', isOptional: true },
+                { name: 'completed_at', type: 'string', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
             ],

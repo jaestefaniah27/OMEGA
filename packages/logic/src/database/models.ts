@@ -44,6 +44,7 @@ export class Subject extends Model {
     @field('total_minutes_studied') total_minutes_studied!: number;
     @field('is_completed') is_completed!: boolean;
     @field('final_grade') final_grade?: number;
+    @text('exams') exams?: string; // JSON string
     @readonly @date('created_at') created_at!: Date;
     @readonly @date('updated_at') updated_at!: Date;
 }
@@ -59,6 +60,7 @@ export class Book extends Model {
     @text('saga') saga?: string;
     @field('saga_index') saga_index!: number;
     @field('is_finished') is_finished!: boolean;
+    @text('finished_at') finished_at?: string;
     @readonly @date('created_at') created_at!: Date;
     @readonly @date('updated_at') updated_at!: Date;
 }
@@ -225,6 +227,7 @@ export class MageTheme extends Model {
     @text('symbol') symbol!: string;
     @text('color') color!: string;
     @field('pending_aura') pending_aura!: number;
+    @text('active_project_id') active_project_id?: string;
     @readonly @date('created_at') created_at!: Date;
     @readonly @date('updated_at') updated_at!: Date;
 }
@@ -234,8 +237,11 @@ export class MageProject extends Model {
     @text('user_id') user_id!: string;
     @text('theme_id') theme_id!: string;
     @text('name') name!: string;
+    @text('scope') scope?: string;
     @field('target_aura') target_aura!: number;
     @field('current_aura') current_aura!: number;
+    @field('mana_amount') mana_amount!: number;
+    @text('status') status!: string;
     @readonly @date('created_at') created_at!: Date;
     @readonly @date('updated_at') updated_at!: Date;
 }

@@ -794,7 +794,7 @@ export const LibraryScreen: React.FC = () => {
             )}
 
             {activeSubjects.map(subject => (
-                <SubjectCard key={subject.id} item={subject} />
+                <SubjectCard key={`subject-${subject.id}`} item={subject} />
             ))}
 
             {completedSubjects.length > 0 && (
@@ -803,7 +803,7 @@ export const LibraryScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>ARTES MÍSTICAS DOMINADAS</Text>
                     </View>
                     {completedSubjects.map(subject => (
-                        <SubjectCard key={subject.id} item={subject} />
+                        <SubjectCard key={`subject-${subject.id}`} item={subject} />
                     ))}
                 </>
             )}

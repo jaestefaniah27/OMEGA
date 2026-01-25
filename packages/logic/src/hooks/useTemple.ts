@@ -18,12 +18,12 @@ export const useTemple = () => {
             .observe()
             .subscribe(records => {
                 const decrypted = records.map(r => ({
-                    ...r,
                     id: r.id,
-                    content: r.isEncrypted ? PrivacyUtils.decrypt(r.content, user.id) : r.content,
+                    content: r.is_encrypted ? PrivacyUtils.decrypt(r.content, user.id) : r.content,
                     type: r.type,
-                    isResolved: r.isResolved,
+                    is_resolved: r.is_resolved,
                     date: r.date,
+                    _raw: r._raw
                 }));
                 setThoughts(decrypted);
                 setLoading(false);
@@ -46,13 +46,12 @@ export const useTemple = () => {
 
         await database.write(async () => {
             await database.get<TempleThought>('temple_thoughts').create(record => {
-                record.userId = user.id;
+                record.user_id = user.id;
                 record.content = encryptedContent;
                 record.type = type;
-                record.isResolved = false;
-                record.isEncrypted = true;
+                record.is_resolved = false;
+                record.is_encrypted = true;
                 record.date = new Date().toISOString().split('T')[0];
-                record.createdAt = Date.now();
             });
         });
     };
@@ -61,7 +60,7 @@ export const useTemple = () => {
         await database.write(async () => {
             const record = await database.get<TempleThought>('temple_thoughts').find(id);
             await record.update(r => {
-                r.isResolved = true;
+                r.is_resolved = true;
             });
         });
     };
@@ -70,19 +69,18 @@ export const useTemple = () => {
         if (!user) return;
         await database.write(async () => {
             await database.get<TempleSleep>('temple_sleep').create(record => {
-                record.userId = user.id;
+                record.user_id = user.id;
                 record.hours = hours;
                 record.quality = quality || null;
                 record.date = new Date().toISOString().split('T')[0];
-                record.createdAt = Date.now();
             });
         });
     };
 
     return {
         positiveThoughts: thoughts.filter(t => t.type === 'POSITIVE'),
-        negativeThoughts: thoughts.filter(t => t.type === 'NEGATIVE' && !t.isResolved),
-        resolvedThoughts: thoughts.filter(t => t.type === 'NEGATIVE' && t.isResolved),
+        negativeThoughts: thoughts.filter(t => t.type === 'NEGATIVE' && !t.is_resolved),
+        resolvedThoughts: thoughts.filter(t => t.type === 'NEGATIVE' && t.is_resolved),
         todaySleep: sleepRecords.find(r => r.date === new Date().toISOString().split('T')[0]),
         loading,
         addGratitude: (content: string) => addThought(content, 'POSITIVE'),

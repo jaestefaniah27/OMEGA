@@ -29,6 +29,9 @@ export const useMageTower = () => {
         };
     }, [user]);
 
+    const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
+    const archivedProjects = projects.filter(p => p.status === 'ARCHIVED');
+
     const unhandledAuraByTheme = themes.reduce((acc, t) => {
         acc[t.id] = t.pending_aura || 0;
         return acc;
@@ -63,6 +66,8 @@ export const useMageTower = () => {
                 p.name = name;
                 p.target_aura = 36000;
                 p.current_aura = 0;
+                p.mana_amount = 0;
+                p.status = 'ACTIVE';
             });
         });
     };
@@ -70,8 +75,19 @@ export const useMageTower = () => {
     const updateProject = async (id: string, updates: any) => {
         await db.write(async () => {
             const project = await db.get<MageProject>('mage_projects').find(id);
-            await project.update(p => { Object.assign(p, updates); });
+            await project.update(p => {
+                if (updates.name !== undefined) p.name = updates.name;
+                if (updates.theme_id !== undefined) p.theme_id = updates.theme_id;
+                if (updates.target_aura !== undefined) p.target_aura = updates.target_aura;
+                if (updates.current_aura !== undefined) p.current_aura = updates.current_aura;
+                if (updates.mana_amount !== undefined) p.mana_amount = updates.mana_amount;
+                if (updates.status !== undefined) p.status = updates.status;
+            });
         });
+    };
+
+    const archiveProject = async (id: string) => {
+        await updateProject(id, { status: 'ARCHIVED' });
     };
 
     const deleteProject = async (id: string) => {
@@ -89,7 +105,10 @@ export const useMageTower = () => {
             if ((theme.pending_aura || 0) < amount) throw new Error("Aura insuficiente");
 
             await theme.update(t => { t.pending_aura = (t.pending_aura || 0) - amount; });
-            await project.update(p => { p.current_aura += amount; });
+            await project.update(p => {
+                p.current_aura = (p.current_aura || 0) + amount;
+                p.mana_amount = (p.mana_amount || 0) + amount;
+            });
         });
     };
 
@@ -101,13 +120,21 @@ export const useMageTower = () => {
     };
 
     const toggleChanneling = async (projectId: string, themeId: string) => {
-        // Implementation for toggling channeling if needed, or just canalize
-        await canalizeAura(themeId, projectId, unhandledAuraByTheme[themeId] || 0);
+        await db.write(async () => {
+            const theme = await db.get<MageTheme>('mage_themes').find(themeId);
+            const isCurrentlyActive = theme.active_project_id === projectId;
+
+            await theme.update(t => {
+                t.active_project_id = isCurrentlyActive ? undefined : projectId;
+            });
+        });
     };
 
     return {
         themes,
-        projects,
+        projects: activeProjects,
+        archivedProjects,
+        activeProjects,
         mappings,
         unhandledAuraByTheme,
         loading,
@@ -115,6 +142,7 @@ export const useMageTower = () => {
         deleteTheme,
         createProject,
         updateProject,
+        archiveProject,
         deleteProject,
         canalizeAura,
         deleteMapping,

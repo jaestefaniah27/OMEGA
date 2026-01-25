@@ -280,7 +280,9 @@ export const useTheatre = () => {
     }, [user]);
 
     const enrichedSeries = series.map(ser => ({
-        ...ser,
+        id: ser.id,
+        user_id: ser.user_id,
+        title: ser.title,
         seasons: seasons.filter(s => s.series_id === ser.id)
     }));
 

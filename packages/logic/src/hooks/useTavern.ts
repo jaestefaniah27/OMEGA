@@ -8,22 +8,29 @@ export const useTavern = () => {
     const [waterRecords, setWaterRecords] = useState<TavernWater[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     useEffect(() => {
         if (!user) return;
+        console.log('[useTavern] Setting up observer for user:', user.id, 'date:', today);
         const sub = db.get<TavernWater>('tavern_water')
             .query(Q.where('user_id', user.id), Q.where('date', today))
             .observe()
             .subscribe(records => {
+                console.log('[useTavern] Observer fired, records:', records.length, records.map(r => ({ id: r.id, amount: r.amount })));
                 setWaterRecords(records);
                 setLoading(false);
             });
-        return () => sub.unsubscribe();
-    }, [user]);
+        return () => {
+            console.log('[useTavern] Cleaning up observer');
+            sub.unsubscribe();
+        };
+    }, [user, db, today]);
 
     const todayWater = useMemo(() => {
-        return waterRecords.reduce((acc, r) => acc + (r.amount || 0), 0);
+        const total = waterRecords.reduce((acc, r) => acc + (r.amount || 0), 0);
+        console.log('[useTavern] Calculating todayWater:', total, 'from', waterRecords.length, 'records');
+        return total;
     }, [waterRecords]);
 
     const recommendedWater = 8;
@@ -32,7 +39,11 @@ export const useTavern = () => {
     const registerWater = async (amount: number = 1) => {
         if (!user) return;
         await db.write(async () => {
-            const existing = waterRecords[0];
+            const records = await db.get<TavernWater>('tavern_water')
+                .query(Q.where('user_id', user.id), Q.where('date', today))
+                .fetch();
+
+            const existing = records[0];
             if (existing) {
                 await existing.update(r => {
                     r.amount = (r.amount || 0) + amount;
@@ -45,6 +56,7 @@ export const useTavern = () => {
                 });
             }
         });
+        // Sync will happen automatically in the background
     };
 
     return {

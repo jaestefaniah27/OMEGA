@@ -776,7 +776,7 @@ const TaquillaView = ({ movies, series, expandedMovies, expandedSeries, toggleMo
     <View style={styles.viewContainer}>
         <Text style={styles.sectionTitle}>🎬 PELÍCULAS</Text>
         {movies.map((mov: TheatreMovie) => (
-            <ParchmentCard key={mov.id} style={styles.card}>
+            <ParchmentCard key={`movie-${mov.id}`} style={styles.card}>
                 <TouchableOpacity onPress={() => toggleMovie(mov.id)} style={styles.cardHeader}>
                     <View style={styles.cardInfo}>
                         <Text style={styles.cardTitle}>{mov.title}</Text>
@@ -803,7 +803,7 @@ const TaquillaView = ({ movies, series, expandedMovies, expandedSeries, toggleMo
                 : 0;
 
             return (
-                <ParchmentCard key={ser.id} style={styles.card}>
+                <ParchmentCard key={`series-${ser.id}`} style={styles.card}>
                     <TouchableOpacity onPress={() => toggleSeries(ser.id)} style={styles.cardHeader}>
                         <View style={styles.cardInfo}>
                             <Text style={styles.cardTitle}>{ser.title}</Text>
@@ -814,7 +814,7 @@ const TaquillaView = ({ movies, series, expandedMovies, expandedSeries, toggleMo
                     {expandedSeries.has(ser.id) && (
                         <View style={styles.expandedContent}>
                             {[...ser.seasons].sort((a, b) => b.season_number - a.season_number).map((seas: TheatreSeason) => (
-                                <View key={seas.id} style={styles.seasonRow}>
+                                <View key={`season-${seas.id}`} style={styles.seasonRow}>
                                     <View style={styles.seasonHeader}>
                                         <Text style={styles.seasonTitle}>Temporada {seas.season_number}</Text>
                                         <View style={{ alignItems: 'flex-end' }}>

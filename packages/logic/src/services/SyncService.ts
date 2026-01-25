@@ -23,12 +23,22 @@ export const SyncService = {
                 for (const table in changes) {
                     const { created, updated, deleted } = changes[table];
 
-                    // Helper to remove internal fields
+                    // Helper to remove internal fields and ensure valid timestamps
                     const sanitize = (record: any) => {
                         const { _status, _changed, ...cleanRecord } = record;
+                        const now = new Date().toISOString();
+
+                        // Convert WatermelonDB timestamps (milliseconds) to ISO strings
+                        // If timestamp is 0 or invalid, use current time
+                        const toISOString = (timestamp: number | undefined) => {
+                            if (!timestamp || timestamp === 0) return now;
+                            return new Date(timestamp).toISOString();
+                        };
+
                         return {
                             ...cleanRecord,
-                            updated_at: new Date().toISOString(),
+                            created_at: toISOString(cleanRecord.created_at),
+                            updated_at: toISOString(cleanRecord.updated_at),
                         };
                     };
 

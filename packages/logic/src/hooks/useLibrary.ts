@@ -47,7 +47,13 @@ export const useLibrary = () => {
         await db.write(async () => {
             const subject = await db.get<Subject>('subjects').find(id);
             await subject.update(s => {
-                Object.assign(s, updates);
+                if (updates.name !== undefined) s.name = updates.name;
+                if (updates.color !== undefined) s.color = updates.color;
+                if (updates.course !== undefined) s.course = updates.course;
+                if (updates.total_minutes_studied !== undefined) s.total_minutes_studied = updates.total_minutes_studied;
+                if (updates.is_completed !== undefined) s.is_completed = updates.is_completed;
+                if (updates.final_grade !== undefined) s.final_grade = updates.final_grade;
+                if (updates.exams !== undefined) s.exams = updates.exams;
             });
         });
     };
@@ -64,18 +70,19 @@ export const useLibrary = () => {
         });
     };
 
-    const ctxAddBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
+    const ctxAddBook = async (book: any) => {
         if (!user) return;
         return await db.write(async () => {
             return await db.get<Book>('books').create(b => {
                 b.user_id = user.id;
-                b.title = title;
-                b.author = author;
-                b.total_pages = total_pages;
-                b.cover_color = cover_color;
-                b.saga = saga || undefined;
-                b.saga_index = saga_index || 0;
+                b.title = book.title;
+                b.author = book.author || '';
+                b.total_pages = book.total_pages || 0;
                 b.current_page = 0;
+                b.cover_color = book.cover_color || '#8b4513';
+                b.saga = book.saga;
+                b.saga_index = book.saga_index || 0;
+                b.is_finished = false;
             });
         });
     };
@@ -253,14 +260,12 @@ export const useLibrary = () => {
         }
     };
 
-    const [customColors, setCustomColors] = useState<string[]>([]);
+    const [customColors, setCustomColors] = useState<CustomColor[]>([]);
     const [bookStats, setBookStats] = useState<Record<string, number>>({});
 
     useEffect(() => {
         if (!user) return;
-        const colorSub = db.get<{ hex_code: string }>('custom_colors').query(Q.where('user_id', user.id)).observe().subscribe(colors => {
-            setCustomColors(colors.map(c => c.hex_code));
-        });
+        const colorSub = db.get<CustomColor>('custom_colors').query(Q.where('user_id', user.id)).observe().subscribe(setCustomColors);
         const sessionSub = db.get<StudySession>('study_sessions').query(Q.where('user_id', user.id), Q.where('status', 'COMPLETED')).observe().subscribe(sessions => {
             const stats: Record<string, number> = {};
             sessions.forEach(s => {
@@ -279,27 +284,122 @@ export const useLibrary = () => {
     const saveCustomColor = async (color: string) => {
         if (!user) return;
         await db.write(async () => {
-            await db.get('custom_colors').create((c: any) => {
+            await db.get<CustomColor>('custom_colors').create(c => {
                 c.user_id = user.id;
                 c.hex_code = color;
             });
         });
     };
 
+    const completeSubject = async (id: string) => {
+        await ctxUpdateSubject(id, { is_completed: true });
+        showToast('🏆 ¡Asignatura Concluida!', 'success');
+    };
+
+    const reactivateSubject = async (id: string) => {
+        await ctxUpdateSubject(id, { is_completed: false });
+    };
+
+    const deleteSubject = async (id: string) => {
+        await db.write(async () => {
+            const subject = await db.get<Subject>('subjects').find(id);
+            await subject.markAsDeleted();
+        });
+    };
+
+    const completeBook = async (id: string) => {
+        const book = books.find(b => b.id === id);
+        if (book) await ctxUpdateBook(id, { is_finished: true, current_page: book.total_pages });
+        showToast('📖 ¡Libro Completado!', 'success');
+    };
+
+    const reactivateBook = async (id: string) => {
+        await ctxUpdateBook(id, { is_finished: false, current_page: 0 });
+    };
+
+    const deleteBook = async (id: string) => {
+        await db.write(async () => {
+            const book = await db.get<Book>('books').find(id);
+            await book.markAsDeleted();
+        });
+    };
+
+    const updateBookProgress = async (id: string, page: number) => {
+        const book = books.find(b => b.id === id);
+        if (book) {
+            await ctxUpdateBook(id, {
+                current_page: page,
+                is_finished: page >= book.total_pages
+            });
+        }
+    };
+
+    const updatePage = async (id: string, page: number) => {
+        await updateBookProgress(id, page);
+    };
+
+    const enrichedSubjects = subjects.map(s => {
+        if (!s || !s.id) return null;
+        let parsedExams = [];
+        try {
+            const rawExams = (s as any).exams || (s as any)._raw?.exams;
+            parsedExams = rawExams ? JSON.parse(rawExams) : [];
+        } catch (e) {
+            console.error('Failed to parse exams for subject', s.id, e);
+        }
+        return {
+            id: s.id,
+            user_id: s.user_id,
+            name: s.name,
+            color: s.color,
+            course: s.course,
+            total_minutes_studied: s.total_minutes_studied,
+            is_completed: s.is_completed,
+            final_grade: s.final_grade,
+            exams: parsedExams
+        };
+    }).filter(Boolean);
+
     return {
-        subjects, books,
-        activeSubjects: subjects.filter(s => !s.is_completed),
-        completedSubjects: subjects.filter(s => s.is_completed),
+        subjects: enrichedSubjects as any[],
+        books,
+        activeSubjects: enrichedSubjects.filter(s => !s.is_completed) as any[],
+        completedSubjects: enrichedSubjects.filter(s => s.is_completed) as any[],
         activeBooks: books.filter(b => !b.is_finished),
         finishedBooks: books.filter(b => b.is_finished),
-        loading, error,
+        loading,
+        error,
         addSubject: ctxAddSubject,
         updateSubject: ctxUpdateSubject,
+        completeSubject,
+        reactivateSubject,
+        deleteSubject,
         addBook: ctxAddBook,
         updateBook: ctxUpdateBook,
-        isSessionActive, startTime, elapsedSeconds, studyMode, setStudyMode, difficulty, setDifficulty,
-        selectedSubject, setSelectedSubject, selectedBook, setSelectedBook, activeSessionType,
-        startSession, stopSession, refresh: sync,
-        bookStats, customColors, saveCustomColor
+        completeBook,
+        reactivateBook,
+        deleteBook,
+        updateBookProgress,
+        updatePage,
+        isSessionActive,
+        startTime,
+        elapsedSeconds,
+        studyMode,
+        setStudyMode,
+        difficulty,
+        setDifficulty,
+        selectedSubject,
+        setSelectedSubject,
+        selectedBook,
+        setSelectedBook,
+        activeSessionType,
+        startSession,
+        stopSession,
+        refresh: sync,
+        bookStats,
+        customColors,
+        saveCustomColor,
+        targetMinutes,
+        setTargetMinutes
     };
 };

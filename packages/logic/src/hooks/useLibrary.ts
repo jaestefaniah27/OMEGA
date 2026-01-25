@@ -1,34 +1,84 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
-import { Subject, StudySession, Book } from '../types/supabase';
 import { useGame } from '../context/GameContext';
 import { useWorkout } from '../hooks/useWorkout';
 import { useToast } from '../context/ToastContext';
 import { usePlatform } from '../services/PlatformContext';
+import { Q } from '@nozbe/watermelondb';
+import { Book, Subject, StudySession, CustomColor } from '../database/models';
 
 const SESSION_STORAGE_KEY = '@omega_active_session';
 
 export const useLibrary = () => {
     const platform = usePlatform();
-    // --- CONSUME CONTEXT ---
-    const { library, castle, habits } = useGame();
+    const { user, database: db, sync } = useGame();
     const { isSessionActive: isWorkoutActive } = useWorkout();
     const { showToast } = useToast();
-    const {
-        subjects,
-        books,
-        customColors,
-        bookStats,
-        loading,
-        refresh,
-        addSubject: ctxAddSubject,
-        updateSubject: ctxUpdateSubject,
-        addBook: ctxAddBook,
-        updateBook: ctxUpdateBook,
-        saveCustomColor: ctxSaveCustomColor
-    } = library;
+
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [books, setBooks] = useState<Book[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Sync state with WatermelonDB
+    useEffect(() => {
+        if (!user) return;
+        const subSub = db.get<Subject>('subjects').query(Q.where('user_id', user.id)).observe().subscribe(s => {
+            setSubjects(s);
+            setLoading(false);
+        });
+        const bookSub = db.get<Book>('books').query(Q.where('user_id', user.id)).observe().subscribe(setBooks);
+        return () => {
+            subSub.unsubscribe();
+            bookSub.unsubscribe();
+        };
+    }, [user]);
+
+    const ctxUpdateBook = async (id: string, updates: any) => {
+        await db.write(async () => {
+            const book = await db.get<Book>('books').find(id);
+            await book.update(b => {
+                Object.assign(b, updates);
+            });
+        });
+    };
+
+    const ctxUpdateSubject = async (id: string, updates: any) => {
+        await db.write(async () => {
+            const subject = await db.get<Subject>('subjects').find(id);
+            await subject.update(s => {
+                Object.assign(s, updates);
+            });
+        });
+    };
+
+    const ctxAddSubject = async (name: string, color: string, course?: string) => {
+        if (!user) return;
+        return await db.write(async () => {
+            return await db.get<Subject>('subjects').create(s => {
+                s.user_id = user.id;
+                s.name = name;
+                s.color = color;
+                s.course = course || undefined;
+            });
+        });
+    };
+
+    const ctxAddBook = async (title: string, author: string, total_pages: number, cover_color: string, saga?: string, saga_index?: number) => {
+        if (!user) return;
+        return await db.write(async () => {
+            return await db.get<Book>('books').create(b => {
+                b.user_id = user.id;
+                b.title = title;
+                b.author = author;
+                b.total_pages = total_pages;
+                b.cover_color = cover_color;
+                b.saga = saga || undefined;
+                b.saga_index = saga_index || 0;
+                b.current_page = 0;
+            });
+        });
+    };
 
     const [error, setError] = useState<string | null>(null);
 
@@ -43,25 +93,11 @@ export const useLibrary = () => {
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
     const [activeSessionType, setActiveSessionType] = useState<'SUBJECT' | 'BOOK' | null>(null);
 
-    // --- IRON WILL HEURISTIC REFS ---
-    const appState = useRef(AppState.currentState);
-    const backgroundStart = useRef<number | null>(null);
-    const backgroundTicks = useRef<number>(0);
-    const tickInterval = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // iOS Timing Heuristic Refs
-    const inactiveStart = useRef<number | null>(null);
-    const isHonorableLock = useRef<boolean>(false);
-    const warningNotificationId = useRef<string | null>(null);
-
-    // 1. Initial Load (Recovery only, data comes from Context)
     useEffect(() => {
         const init = async () => {
-            // Permissions
             await platform.notifications.requestPermissions();
-
-            // Recovery
             const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
             if (saved) {
                 const sessionData = JSON.parse(saved);
@@ -70,12 +106,10 @@ export const useLibrary = () => {
                 setDifficulty(sessionData.difficulty);
                 setTargetMinutes(sessionData.targetMinutes);
                 setActiveSessionType(sessionData.type || null);
-
                 const now = Date.now();
                 setElapsedSeconds(Math.floor((now - sessionData.startTime) / 1000));
             }
         };
-
         init();
     }, []);
 
@@ -92,23 +126,16 @@ export const useLibrary = () => {
                 if (!isSessionActive) setIsSessionActive(true);
             }
 
-            // --- SUBJECT SELECTION ---
             if (!selectedSubject && subjects.length > 0) {
                 const sub = subjects.find(s => s.id === recoveredSubjectId);
-                if (sub) {
-                    setSelectedSubject(sub);
-                } else if (!isSessionActive) {
-                    setSelectedSubject(subjects.filter(s => !s.is_completed)[0] || null);
-                }
+                if (sub) setSelectedSubject(sub);
+                else if (!isSessionActive) setSelectedSubject(subjects.filter(s => !s.is_completed)[0] || null);
             }
 
-            // --- BOOK SELECTION ---
             if (!selectedBook && books.length > 0) {
                 const book = books.find(b => b.id === recoveredBookId);
-                if (book) {
-                    setSelectedBook(book);
-                } else if (!isSessionActive) {
-                    // Default to most advanced book
+                if (book) setSelectedBook(book);
+                else if (!isSessionActive) {
                     const activeBooks = books
                         .filter(b => !b.is_finished)
                         .sort((a, b) => {
@@ -120,23 +147,18 @@ export const useLibrary = () => {
                 }
             }
         };
-
         initSelection();
     }, [subjects, books, isSessionActive]);
 
-    // 2. Timer Heartbeat
     useEffect(() => {
         if (isSessionActive && startTime) {
             timerRef.current = setInterval(() => {
                 const now = Date.now();
                 const elapsed = Math.floor((now - startTime) / 1000);
                 setElapsedSeconds(elapsed);
-
                 if (studyMode === 'TIMER') {
                     const targetSecs = parseInt(targetMinutes) * 60;
-                    if (elapsed === targetSecs) {
-                        sendLocalNotification('⌛ ¡Tiempo Cumplido!', 'Has alcanzado tu objetivo de estudio.');
-                    }
+                    if (elapsed === targetSecs) platform.notifications.scheduleNotification('⌛ ¡Tiempo Cumplido!', 'Has alcanzado tu objetivo de estudio.');
                 }
             }, 1000);
         } else {
@@ -145,179 +167,31 @@ export const useLibrary = () => {
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }, [isSessionActive, startTime, studyMode, targetMinutes]);
 
-    // 3. Iron Will Refined Heuristic (AppState)
-    useEffect(() => {
-        const handleAppStateChange = (nextAppState: AppStateStatus) => {
-            if (!isSessionActive || difficulty !== 'CRUSADE') {
-                appState.current = nextAppState;
-                return;
-            }
+    const logStudySession = async (session: any) => {
+        if (!user) throw new Error('Usuario no autenticado');
+        await db.write(async () => {
+            await db.get<StudySession>('study_sessions').create(s => {
+                s.user_id = user.id;
+                s.subject_id = session.subjectId;
+                s.book_id = session.bookId;
+                s.start_time = session.startTime;
+                s.end_time = session.endTime;
+                s.duration_minutes = session.durationMinutes;
+                s.status = session.status;
+                s.difficulty = session.difficulty;
+                s.mode = session.mode;
+            });
+        });
 
-            // iOS Specific: active -> inactive (potential lock or switch start)
-            if (appState.current === 'active' && nextAppState === 'inactive') {
-                inactiveStart.current = Date.now();
-                console.log('Iron Will: Inactive start recorded (iOS)');
-            }
-
-            // Transition to Background (Judgement Day)
-            if (nextAppState === 'background') {
-                backgroundStart.current = Date.now();
-                backgroundTicks.current = 0;
-
-                // HEURISTIC A: iOS Timing (Transition Speed)
-                if (platform.os === 'ios' && inactiveStart.current) {
-                    const transitionDelay = Date.now() - inactiveStart.current;
-                    console.log(`Iron Will: Transition Delay = ${transitionDelay}ms`);
-
-                    // In iOS, a screen lock transitions almost instantly (< 100ms)
-                    // An app switch or minimization takes much longer (> 500ms)
-                    if (transitionDelay < 150) {
-                        isHonorableLock.current = true;
-                        console.log('Iron Will: Veredicto -> BLOQUEO HONRABLE');
-                    } else {
-                        isHonorableLock.current = false;
-                        console.log('Iron Will: Veredicto -> POSIBLE DISTRACCIÓN');
-                    }
-                } else {
-                    // Android or Fallback: Assume suspicious
-                    isHonorableLock.current = false;
-                }
-
-                // If not identified as a lock, start the tick heartbeat
-                if (!isHonorableLock.current) {
-                    tickInterval.current = setInterval(() => {
-                        backgroundTicks.current += 1;
-                    }, 1000);
-
-                    console.log('Iron Will [V5]: Enviando primer aviso (Unified ID)...');
-                    platform.notifications.scheduleNotification(
-                        '⚠️ ¡HONOR EN JUEGO!',
-                        'Mantente enfocado. Si usas otras apps, la cruzada fallará.',
-                        0,
-                        'iron-will-main-alert'
-                    );
-
-                    // Schedule Epic Warning
-                    console.log('Iron Will [V5]: Programando aviso épico (Unified ID) para dentro de 10s...');
-                    platform.notifications.scheduleNotification(
-                        '¡EL JUICIO FINAL SE ACERCA! ⚖️',
-                        '5 segundos para la deshonra eterna. ¡Vuelve ahora!',
-                        10,
-                        'iron-will-main-alert'
-                    ).then(id => {
-                        warningNotificationId.current = id;
-                        console.log('Iron Will [V5]: Aviso épico programado con ID Unificado:', id);
-                    }).catch(err => {
-                        console.error('Iron Will [V5]: Error programando aviso épico:', err);
-                    });
-                }
-            }
-
-            // Return to Active
-            if (nextAppState === 'active') {
-                // Cancel/Dismiss the unified identifier
-                platform.notifications.dismissNotification('iron-will-main-alert');
-                platform.notifications.cancelNotification('iron-will-main-alert');
-
-                if (warningNotificationId.current) {
-                    platform.notifications.cancelNotification(warningNotificationId.current);
-                    warningNotificationId.current = null;
-                }
-
-                if (tickInterval.current) {
-                    clearInterval(tickInterval.current);
-                    tickInterval.current = null;
-                }
-
-                if (backgroundStart.current) {
-                    const timeAway = (Date.now() - backgroundStart.current) / 1000;
-                    const ticks = backgroundTicks.current;
-
-                    // Apply penalty ONLY if it wasn't an honorable lock
-                    if (!isHonorableLock.current) {
-                        // NEW JUDGEMENT ALGORITHM:
-                        // 1. Grace Period (< 5s)
-                        if (timeAway < 5) {
-                            console.log('Iron Will: Perdonado (Periodo de gracia < 5s)');
-                        }
-                        // 2. Absolute Distraction (>= 15s)
-                        // Even if ticks are 0 (OS suspended), staying away 15s from a Crusade is a fail.
-                        else if (timeAway >= 15) {
-                            console.warn(`Iron Will: DESHONRA por tiempo excesivo fuera (>= 15s). TimeAway: ${timeAway}`);
-                            failSession();
-                        }
-                        // 3. Active Distraction (5s - 15s)
-                        // Check if the event loop was active during the interval.
-                        else if (ticks > 3) {
-                            console.warn(`Iron Will: DESHONRA por actividad en segundo plano. Ticks: ${ticks}, TimeAway: ${timeAway}`);
-                            failSession();
-                        }
-                        else {
-                            console.log(`Iron Will: Perdonado (Poca actividad fuera). Ticks: ${ticks}, TimeAway: ${timeAway}`);
-                        }
-                    } else {
-                        console.log('Iron Will: Bienvenido de vuelta, caballero honorable.');
-                    }
-                }
-
-                // Reset refs
-                backgroundStart.current = null;
-                backgroundTicks.current = 0;
-                inactiveStart.current = null;
-                isHonorableLock.current = false;
-            }
-            appState.current = nextAppState;
-        };
-
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
-        return () => subscription.remove();
-    }, [isSessionActive, difficulty, startTime]);
-
-    const sendLocalNotification = async (title: string, body: string) => {
-        try {
-            await platform.notifications.scheduleNotification(title, body);
-        } catch (e) {
-            console.error('Error sending notification:', e);
-        }
-    };
-
-    const failSession = async () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        const subId = selectedSubject?.id;
-        const start = startTime;
-
-        setIsSessionActive(false);
-        setElapsedSeconds(0);
-        setStartTime(null);
-        setActiveSessionType(null);
-        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-
-        if (subId && start) {
-            try {
-                await logStudySession({
-                    subject_id: subId,
-                    start_time: new Date(start).toISOString(),
-                    end_time: new Date().toISOString(),
-                    duration_minutes: 0,
-                    mode: studyMode,
-                    status: 'ABANDONED',
-                    difficulty: 'CRUSADE',
-                    notes: 'Sesión fallida por distracción (Heurística Iron Will V2).'
-                });
-                Alert.alert(
-                    '💀 Deshonra',
-                    'Has huido del campo de batalla. Tu honor ha sido manchado.',
-                    [{ text: 'Lamentable' }]
-                );
-            } catch (e) {
-                console.error('Error logging failed session:', e);
-            }
+        if (session.status === 'COMPLETED' && session.subjectId) {
+            const subject = subjects.find(s => s.id === session.subjectId);
+            if (subject) await ctxUpdateSubject(subject.id, { total_minutes_studied: (subject.total_minutes_studied || 0) + session.durationMinutes });
         }
     };
 
     const startSession = async (type: 'SUBJECT' | 'BOOK' = 'SUBJECT') => {
         if (isWorkoutActive) {
-            Alert.alert("⚠️ Batalla en Curso", "No puedes estudiar ni leer mientras estás en la Forja Táctica. ¡Termina tu entrenamiento primero!");
+            Alert.alert("⚠️ Batalla en Curso", "No puedes estudiar ni leer mientras estás en la Forja Táctica.");
             return;
         }
         if (type === 'SUBJECT' && !selectedSubject) return;
@@ -332,32 +206,19 @@ export const useLibrary = () => {
             startTime: now,
             subjectId: type === 'SUBJECT' ? selectedSubject?.id : undefined,
             bookId: type === 'BOOK' ? selectedBook?.id : undefined,
-            type,
-            mode: studyMode,
-            difficulty,
-            targetMinutes
+            type, mode: studyMode, difficulty, targetMinutes
         }));
     };
 
     const stopSession = async (abandoned = false, skipLog = false, endPage?: number) => {
         const totalMinutes = Math.floor(elapsedSeconds / 60);
-
         if (totalMinutes < 1 && !abandoned && !skipLog) {
-            Alert.alert(
-                "⏳ Tiempo Insuficiente",
-                "Las sesiones de menos de un minuto no se registran. ¿Deseas salir de todos modos?",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    {
-                        text: "Salir sin guardar",
-                        style: "destructive",
-                        onPress: () => finalizeStop(abandoned, true, endPage)
-                    }
-                ]
-            );
+            Alert.alert("⏳ Tiempo Insuficiente", "¿Deseas salir de todos modos?", [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Salir sin guardar", style: "destructive", onPress: () => finalizeStop(abandoned, true, endPage) }
+            ]);
             return;
         }
-
         await finalizeStop(abandoned, skipLog, endPage);
     };
 
@@ -367,148 +228,78 @@ export const useLibrary = () => {
         const start = startTime;
         const subId = selectedSubject?.id;
         const bookId = selectedBook?.id;
-        const isAbandoned = abandoned;
-        const finalMinutes = totalMinutes;
-
-        // --- OPTIMISTIC UI RESET ---
         setIsSessionActive(false);
         setElapsedSeconds(0);
         setStartTime(null);
         setActiveSessionType(null);
         AsyncStorage.removeItem(SESSION_STORAGE_KEY).catch(console.error);
 
-        try {
-            if (skipLog || (finalMinutes < 1 && !isAbandoned)) {
-                return;
+        if (!skipLog && start && (subId || bookId)) {
+            await logStudySession({
+                subjectId: subId,
+                bookId: bookId,
+                startTime: new Date(start).toISOString(),
+                endTime: new Date().toISOString(),
+                duration_minutes: abandoned ? 0 : totalMinutes,
+                mode: studyMode,
+                status: abandoned ? 'ABANDONED' : 'COMPLETED',
+                difficulty,
+                notes: abandoned ? 'Abandono' : 'Éxito'
+            });
+            if (bookId && endPage !== undefined) {
+                await ctxUpdateBook(bookId, { current_page: endPage, is_finished: endPage >= (selectedBook?.total_pages || 1) });
             }
-            if (start && (subId || bookId)) {
-                // Background process
-                logStudySession({
-                    subject_id: subId,
-                    book_id: bookId,
-                    start_time: new Date(start).toISOString(),
-                    end_time: new Date().toISOString(),
-                    duration_minutes: isAbandoned ? 0 : finalMinutes,
-                    mode: studyMode,
-                    status: isAbandoned ? 'ABANDONED' : 'COMPLETED',
-                    difficulty: difficulty,
-                    notes: isAbandoned ? 'Abandono voluntario' : 'Éxito'
-                }).then(async () => {
-                    // Update Book Progress if applicable
-                    if (bookId && endPage !== undefined) {
-                        await ctxUpdateBook(bookId, {
-                            current_page: endPage,
-                        });
-
-                        const liveBook = books.find(b => b.id === bookId);
-                        if (liveBook && endPage >= liveBook.total_pages) {
-                            await ctxUpdateBook(bookId, {
-                                is_finished: true,
-                                finished_at: liveBook.finished_at || new Date().toISOString()
-                            });
-                        }
-                    }
-
-                    if (!isAbandoned) {
-                        showToast(`✨ Misión Cumplida: +${finalMinutes} min`, 'success');
-                    }
-                }).catch(err => console.error('Background log session error:', err));
-            }
-        } catch (err) {
-            console.error('Error in finalizeStop logic:', err);
+            if (!abandoned) showToast(`✨ Misión Cumplida: +${totalMinutes} min`, 'success');
         }
     };
 
-    const logStudySession = async (session: Omit<StudySession, 'id' | 'user_id' | 'created_at'>) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Usuario no autenticado');
+    const [customColors, setCustomColors] = useState<string[]>([]);
+    const [bookStats, setBookStats] = useState<Record<string, number>>({});
 
-        const { error: sessionError } = await supabase.from('study_sessions').insert([{ ...session, user_id: user.id }]);
-        if (sessionError) throw sessionError;
+    useEffect(() => {
+        if (!user) return;
+        const colorSub = db.get<{ hex_code: string }>('custom_colors').query(Q.where('user_id', user.id)).observe().subscribe(colors => {
+            setCustomColors(colors.map(c => c.hex_code));
+        });
+        const sessionSub = db.get<StudySession>('study_sessions').query(Q.where('user_id', user.id), Q.where('status', 'COMPLETED')).observe().subscribe(sessions => {
+            const stats: Record<string, number> = {};
+            sessions.forEach(s => {
+                if (s.book_id) {
+                    stats[s.book_id] = (stats[s.book_id] || 0) + s.duration_minutes;
+                }
+            });
+            setBookStats(stats);
+        });
+        return () => {
+            colorSub.unsubscribe();
+            sessionSub.unsubscribe();
+        };
+    }, [user]);
 
-        if (session.status === 'COMPLETED' && session.subject_id) {
-            const subject = subjects.find(s => s.id === session.subject_id);
-            if (subject) {
-                const newTotalSubject = (subject.total_minutes_studied || 0) + session.duration_minutes;
-                await ctxUpdateSubject(session.subject_id, { total_minutes_studied: newTotalSubject });
-            }
-        }
-
-        if (session.status === 'ABANDONED') {
-            const { data: profile } = await supabase.from('profiles').select('shame_count').eq('id', user.id).single();
-            if (profile) {
-                await supabase.from('profiles').update({ shame_count: (profile.shame_count || 0) + 1 }).eq('id', user.id);
-            }
-        }
-
-        // Update Royal Decrees / Habits
-        if (session.status === 'COMPLETED') {
-            // Determine if this was primarily a reading or study session
-            // If book_id is present, we treat it as READING even if a subject is attached
-            const libraryTag = session.book_id ? 'READING' : 'STUDY';
-            const specificTag = session.book_id || session.subject_id || libraryTag;
-
-            await castle.checkDecreeProgress('LIBRARY', specificTag, 1, session.duration_minutes, libraryTag);
-        }
-
-        // Refresh context to pull new session data (for stats)
-        await refresh();
+    const saveCustomColor = async (color: string) => {
+        if (!user) return;
+        await db.write(async () => {
+            await db.get('custom_colors').create((c: any) => {
+                c.user_id = user.id;
+                c.hex_code = color;
+            });
+        });
     };
 
     return {
-        subjects, books, bookStats,
+        subjects, books,
         activeSubjects: subjects.filter(s => !s.is_completed),
         completedSubjects: subjects.filter(s => s.is_completed),
-        activeBooks: books
-            .filter(b => !b.is_finished)
-            .sort((a, b) => {
-                const progA = a.current_page / (a.total_pages || 1);
-                const progB = b.current_page / (b.total_pages || 1);
-                return progB - progA;
-            }),
-        finishedBooks: books
-            .filter(b => b.is_finished)
-            .sort((a, b) => {
-                const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
-                const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
-                return dateB - dateA;
-            }),
+        activeBooks: books.filter(b => !b.is_finished),
+        finishedBooks: books.filter(b => b.is_finished),
         loading, error,
         addSubject: ctxAddSubject,
         updateSubject: ctxUpdateSubject,
         addBook: ctxAddBook,
         updateBook: ctxUpdateBook,
-        saveCustomColor: ctxSaveCustomColor,
-        customColors,
-        // Wrappers or Aliases
-        completeSubject: (id: string) => ctxUpdateSubject(id, { is_completed: true }),
-        reactivateSubject: (id: string) => ctxUpdateSubject(id, { is_completed: false }),
-        completeBook: (id: string) => ctxUpdateBook(id, { is_finished: true, finished_at: new Date().toISOString() }),
-        reactivateBook: (id: string) => ctxUpdateBook(id, { is_finished: false, finished_at: null }),
-        updateBookProgress: (id: string, current_page: number) => {
-            const book = books.find(b => b.id === id);
-            if (!book) return Promise.resolve();
-            const isFinished = current_page >= book.total_pages;
-            const pagesRead = Math.max(0, current_page - book.current_page);
-
-            return ctxUpdateBook(id, {
-                current_page,
-                is_finished: isFinished,
-                finished_at: isFinished ? (book.finished_at || new Date().toISOString()) : null
-            }).then(() => {
-                if (pagesRead > 0) {
-                    castle.checkDecreeProgress('LIBRARY', id, pagesRead, 0, 'PAGES');
-                }
-            });
-        },
-        logStudySession,
-        refresh,
         isSessionActive, startTime, elapsedSeconds, studyMode, setStudyMode, difficulty, setDifficulty,
-        targetMinutes, setTargetMinutes,
-        selectedSubject, setSelectedSubject,
-        selectedBook, setSelectedBook,
-        activeSessionType,
-        startSession, stopSession, failSession,
-        habits
+        selectedSubject, setSelectedSubject, selectedBook, setSelectedBook, activeSessionType,
+        startSession, stopSession, refresh: sync,
+        bookStats, customColors, saveCustomColor
     };
 };

@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
-import { WorkoutSession, WorkoutSet } from '../types/supabase';
 import { useGame } from '../context/GameContext';
 import { usePlatform } from '../services/PlatformContext';
+import { WorkoutSession, WorkoutSet } from '../database/models';
 
 const ACTIVE_WORKOUT_KEY = '@omega_active_workout';
 
@@ -24,8 +23,7 @@ export interface ActiveWorkoutState {
 
 export const useActiveWorkout = () => {
     const platform = usePlatform();
-    const { profile, library } = useGame();
-    const { refresh } = library;
+    const { user, database: db, sync } = useGame();
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isResting, setIsResting] = useState(false);
@@ -35,7 +33,6 @@ export const useActiveWorkout = () => {
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // 1. Recovery Logic
     useEffect(() => {
         const recover = async () => {
             const saved = await AsyncStorage.getItem(ACTIVE_WORKOUT_KEY);
@@ -45,20 +42,16 @@ export const useActiveWorkout = () => {
                 setRoutineId(data.routineId);
                 setCurrentSets(data.sets);
                 setIsSessionActive(true);
-                
-                const now = Date.now();
-                setElapsedSeconds(Math.floor((now - data.startTime) / 1000));
+                setElapsedSeconds(Math.floor((Date.now() - data.startTime) / 1000));
             }
         };
         recover();
     }, []);
 
-    // 2. Timer Heartbeat
     useEffect(() => {
         if (isSessionActive && startTime) {
             timerRef.current = setInterval(() => {
-                const now = Date.now();
-                setElapsedSeconds(Math.floor((now - startTime) / 1000));
+                setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
             }, 1000);
         } else {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -66,14 +59,9 @@ export const useActiveWorkout = () => {
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }, [isSessionActive, startTime]);
 
-    // 3. Persist state changes
     useEffect(() => {
         if (isSessionActive && startTime) {
-            const state: ActiveWorkoutState = {
-                startTime,
-                routineId,
-                sets: currentSets
-            };
+            const state: ActiveWorkoutState = { startTime, routineId, sets: currentSets };
             AsyncStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify(state));
         }
     }, [currentSets, isSessionActive, startTime, routineId]);
@@ -86,76 +74,54 @@ export const useActiveWorkout = () => {
         setElapsedSeconds(0);
         setIsSessionActive(true);
         setIsResting(false);
-        
         platform.keepAwake.activate();
-        await AsyncStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify({
-            startTime: now,
-            routineId: selectedRoutineId,
-            sets: []
-        }));
     }, [platform]);
 
     const addSet = useCallback((exerciseId: string, weight: number, reps: number, rpe?: number, type: 'warmup' | 'normal' | 'failure' = 'normal') => {
         const newSet: LocalWorkoutSet = { exerciseId, weight, reps, rpe, type };
         setCurrentSets(prev => [...prev, newSet]);
-        // Trigger rest timer logic here if UI needs it
         setIsResting(true);
         platform.haptics.vibrate();
     }, [platform]);
 
     const finishSession = useCallback(async (note?: string) => {
-        if (!isSessionActive || !startTime) return;
+        if (!isSessionActive || !startTime || !user) return;
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Usuario no autenticado');
+            await db.write(async () => {
+                const session = await db.get<WorkoutSession>('workout_sessions').create(s => {
+                    s.user_id = user.id;
+                    s.routine_id = routineId;
+                    s.started_at = startTime;
+                    s.ended_at = Date.now();
+                    s.note = note || '';
+                });
 
-            // 1. Create Session
-            const { data: session, error: sessionError } = await supabase
-                .from('workout_sessions')
-                .insert([{
-                    user_id: user.id,
-                    routine_id: routineId,
-                    started_at: new Date(startTime).toISOString(),
-                    ended_at: new Date().toISOString(),
-                    bodyweight: profile?.hp_current || 0, // Fallback if no specific bodyweight captured
-                    note: note || ''
-                }])
-                .select()
-                .single();
+                for (let i = 0; i < currentSets.length; i++) {
+                    const s = currentSets[i];
+                    await db.get<WorkoutSet>('workout_sets').create(set => {
+                        set.session_id = session.id;
+                        set.exercise_id = s.exerciseId;
+                        set.set_number = i + 1;
+                        set.weight_kg = s.weight;
+                        set.reps = s.reps;
+                        set.rpe = s.rpe;
+                        set.type = s.type;
+                    });
+                }
+            });
 
-            if (sessionError) throw sessionError;
-
-            // 2. Create Sets
-            const setsToInsert = currentSets.map((s, idx) => ({
-                session_id: session.id,
-                exercise_id: s.exerciseId,
-                set_number: idx + 1,
-                weight_kg: s.weight,
-                reps: s.reps,
-                rpe: s.rpe,
-                type: s.type
-            }));
-
-            const { error: setsError } = await supabase
-                .from('workout_sets')
-                .insert(setsToInsert);
-
-            if (setsError) throw setsError;
-
-            // 3. Clear and Refresh
             await AsyncStorage.removeItem(ACTIVE_WORKOUT_KEY);
             setIsSessionActive(false);
             setStartTime(null);
             setCurrentSets([]);
             platform.keepAwake.deactivate();
-            await refresh(); // Refresh muscle heatmap and other stats
-            
+            await sync();
         } catch (error) {
             console.error('Error finishing session:', error);
             throw error;
         }
-    }, [isSessionActive, startTime, routineId, currentSets, profile, refresh]);
+    }, [isSessionActive, startTime, routineId, currentSets, user, sync]);
 
     return {
         isSessionActive,

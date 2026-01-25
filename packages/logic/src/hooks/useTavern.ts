@@ -1,23 +1,50 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../context/GameContext';
+import { Q } from '@nozbe/watermelondb';
+import { TavernWater } from '../database/models';
 
 export const useTavern = () => {
-    const { tavern, profile } = useGame();
+    const { user, database: db, sync } = useGame();
+    const [waterRecords, setWaterRecords] = useState<TavernWater[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const today = new Date().toISOString().split('T')[0];
 
-    const todayWater = useMemo(() => {
-        const record = tavern.waterRecords.find(r => r.date === today);
-        return record ? record.amount : 0;
-    }, [tavern.waterRecords, today]);
+    useEffect(() => {
+        if (!user) return;
+        const sub = db.get<TavernWater>('tavern_water')
+            .query(Q.where('user_id', user.id), Q.where('date', today))
+            .observe()
+            .subscribe(records => {
+                setWaterRecords(records);
+                setLoading(false);
+            });
+        return () => sub.unsubscribe();
+    }, [user]);
 
-    // Recommended water: Expert recommendation
-    // Standard: 8 glasses (aprox 2L). For a gameified experience, we'll stick with 8.
+    const todayWater = useMemo(() => {
+        return waterRecords.reduce((acc, r) => acc + (r.amount || 0), 0);
+    }, [waterRecords]);
+
     const recommendedWater = 8;
     const isGoalReached = todayWater >= recommendedWater;
 
     const registerWater = async (amount: number = 1) => {
-        return await tavern.addWater(amount);
+        if (!user) return;
+        await db.write(async () => {
+            const existing = waterRecords[0];
+            if (existing) {
+                await existing.update(r => {
+                    r.amount = (r.amount || 0) + amount;
+                });
+            } else {
+                await db.get<TavernWater>('tavern_water').create(r => {
+                    r.user_id = user.id;
+                    r.amount = amount;
+                    r.date = today;
+                });
+            }
+        });
     };
 
     return {
@@ -25,7 +52,7 @@ export const useTavern = () => {
         recommendedWater,
         isGoalReached,
         registerWater,
-        loading: tavern.loading,
-        refresh: tavern.refresh
+        loading,
+        refresh: sync
     };
 };

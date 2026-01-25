@@ -1,10 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
 import { useGame } from './GameContext';
-import { showGlobalToast } from './ToastContext';
+import { useToast } from './ToastContext';
+import { WorkoutSession, WorkoutSet } from '../database/models';
 
 const WORKOUT_STORAGE_KEY = '@omega_active_workout_v2';
 
@@ -23,16 +22,16 @@ interface WorkoutContextType {
 export const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
-    const { user, profile, checkDecreeProgress, fetchAll } = useGame();
+    const { user, database: db, sync } = useGame();
+    const { showToast } = useToast();
 
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
-    const [startTime, setStartTime] = useState<string | null>(null);
+    const [startTime, setStartTime] = useState<number | null>(null);
     const [workoutRoutineId, setWorkoutRoutineId] = useState<string | null>(null);
     const [setsLog, setSetsLog] = useState<any[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Persistence: Load
     useEffect(() => {
         const loadWorkout = async () => {
             const saved = await AsyncStorage.getItem(WORKOUT_STORAGE_KEY);
@@ -42,19 +41,16 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
                 setWorkoutRoutineId(data.routineId);
                 setSetsLog(data.sets);
                 setIsSessionActive(true);
-                const start = new Date(data.startTime).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+                setElapsedSeconds(Math.floor((Date.now() - data.startTime) / 1000));
             }
         };
         loadWorkout();
     }, []);
 
-    // Timer Logic
     useEffect(() => {
         if (isSessionActive && startTime) {
             timerRef.current = setInterval(() => {
-                const start = new Date(startTime).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+                setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
             }, 1000);
         } else {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -62,7 +58,6 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }, [isSessionActive, startTime]);
 
-    // Persistence: Save
     useEffect(() => {
         if (isSessionActive && startTime) {
             const state = { startTime, routineId: workoutRoutineId, sets: setsLog };
@@ -71,7 +66,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     }, [isSessionActive, startTime, workoutRoutineId, setsLog]);
 
     const startSession = async (routineId: string | null = null, initialExercises: any[] = []) => {
-        const now = new Date().toISOString();
+        const now = Date.now();
         setStartTime(now);
         setWorkoutRoutineId(routineId);
         setElapsedSeconds(0);
@@ -97,12 +92,12 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const finishSession = async () => {
-        if (!isSessionActive || !startTime) return false;
+        if (!isSessionActive || !startTime || !user) return false;
         const completedSets = setsLog.filter(s => s.completed);
 
         if (completedSets.length === 0) {
             return new Promise<boolean>((resolve) => {
-                Alert.alert("Aviso", "¿Terminar sin registrar ninguna serie?", [
+                Alert.alert("Aviso", "¿Terminar sin registrar nada?", [
                     { text: "No", style: "cancel", onPress: () => resolve(false) },
                     {
                         text: "Sí, abandonar", style: "destructive", onPress: async () => {
@@ -118,51 +113,36 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
         }
 
         try {
-            if (!user) throw new Error('No user logged in');
-
             const totalVolume = completedSets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
 
-            const { data: session, error: sError } = await supabase.from('workout_sessions').insert([{
-                user_id: user.id,
-                routine_id: workoutRoutineId,
-                started_at: startTime,
-                ended_at: new Date().toISOString(),
-                bodyweight: profile?.hp_current || 0,
-                note: `Volumen total: ${totalVolume}kg`
-            }]).select().single();
+            await db.write(async () => {
+                const session = await db.get<WorkoutSession>('workout_sessions').create(s => {
+                    s.user_id = user.id;
+                    s.routine_id = workoutRoutineId || undefined;
+                    s.started_at = startTime;
+                    s.ended_at = Date.now();
+                    s.note = `Volumen: ${totalVolume}kg`;
+                });
 
-            if (sError) throw sError;
-
-            const setsToInsert = completedSets.map((s, idx) => ({
-                session_id: session.id,
-                exercise_id: s.exercise_id,
-                set_number: idx + 1,
-                weight_kg: s.weight,
-                reps: s.reps,
-                type: s.type
-            }));
-
-            const { error: setsError } = await supabase.from('workout_sets').insert(setsToInsert);
-            if (setsError) throw setsError;
+                for (let i = 0; i < completedSets.length; i++) {
+                    const s = completedSets[i];
+                    await db.get<WorkoutSet>('workout_sets').create(set => {
+                        set.session_id = session.id;
+                        set.exercise_id = s.exercise_id;
+                        set.set_number = i + 1;
+                        set.weight_kg = s.weight;
+                        set.reps = s.reps;
+                        set.type = s.type;
+                    });
+                }
+            });
 
             await AsyncStorage.removeItem(WORKOUT_STORAGE_KEY);
             setIsSessionActive(false);
             setStartTime(null);
             setSetsLog([]);
 
-            // Trigger progress in GameContext
-            const durationSec = startTime ? Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) : 0;
-            const durationMin = Math.round(durationSec / 60);
-
-            if (checkDecreeProgress) {
-                await checkDecreeProgress('BARRACKS', '', 1, durationMin);
-            }
-
-            if (fetchAll) {
-                await fetchAll();
-            }
-
-            showGlobalToast(`¡Batalla Concluida! Daño: ${totalVolume}kg`, 'success');
+            showToast(`¡Batalla Concluida! Daño: ${totalVolume}kg`, 'success');
             return true;
         } catch (e: any) {
             Alert.alert("Error al guardar", e.message);
@@ -187,7 +167,7 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
         setSetsLog(prev => prev.filter(s => s.id !== id));
     };
 
-    const _formatTime = (seconds: number) => {
+    const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
@@ -196,13 +176,11 @@ export const WorkoutProvider = ({ children }: { children: ReactNode }) => {
             : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const formatTime = _formatTime(elapsedSeconds);
-
     return (
         <WorkoutContext.Provider value={{
             isSessionActive,
             elapsedSeconds,
-            formatTime,
+            formatTime: formatTime(elapsedSeconds),
             setsLog,
             startSession,
             finishSession,

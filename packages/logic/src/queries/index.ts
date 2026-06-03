@@ -6,3 +6,4 @@ export * from './tavern';
 export * from './temple';
 export * from './library';
 export * from './theatre';
+export * from './barracks';

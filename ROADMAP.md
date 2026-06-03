@@ -30,19 +30,15 @@
 
 ## 3. P0 — Cimientos (desbloquean todo lo demás) 🅢
 
-### 3.1 Offline-first real (escrituras sin red) — Impacto 5 / Esfuerzo 4
-Hoy las mutaciones fallan sin conexión. Objetivo: registrar agua/serie/comida/tarea **siempre**, y sincronizar al volver la red.
-- [ ] Añadir `@react-native-community/netinfo` + `onlineManager` de React Query (detección de red).
-- [ ] `networkMode: 'offlineFirst'` en queries; mutaciones que **pausan** offline y **reanudan** online (`resumePausedMutations`).
-- [ ] Convertir las mutaciones de `packages/logic/src/queries/*` a `useMutation` con `setMutationDefaults` (mutation keys estables) para que sobrevivan a cierre de app (persistencia de la cola).
-- [ ] Optimistic update + rollback en todas (patrón ya hecho en tavern/temple).
-- [ ] Resolución de conflictos: **last-write-wins** (suficiente sin sync instantáneo).
-- [ ] Indicador visual "sin conexión / cambios pendientes de sincronizar".
+### 3.1 Offline-first real (escrituras sin red) — Impacto 5 / Esfuerzo 4 — ✅ base hecha (S1)
+- [x] `@react-native-community/netinfo` + `onlineManager` + `networkMode: 'offlineFirst'` + gcTime 24h.
+- [x] **Cola de escrituras** (`packages/logic/src/offline/outbox.ts`) persistida en AsyncStorage; reenvía al recuperar red; sobrevive a cierre de app. Hook `usePendingSyncCount` + indicador en Hoy.
+- [x] Optimistic + last-write-wins. Convertidas: agua, sueño, gratitud, XP/oro, toggle hábitos.
+- [ ] **Pendiente (S2):** rutar por la cola las escrituras complejas: sesiones de estudio (`useLibrary.logStudySession`), sesión de gym (`WorkoutContext.finishSession`), tareas/decretos (GameContext), y creación de entidades con id de retorno (subject/book/routine/project con remapeo de ids temporales).
 
-### 3.2 Sesión única / expulsar dispositivo — Impacto 4 / Esfuerzo 2
-- [ ] Migración SQL: `profiles.active_session_id uuid`, `active_session_at timestamptz`.
-- [ ] En login: generar `session_id` local (uuid) + escribirlo en el perfil (último gana).
-- [ ] Al abrir/enfocar la app (y vía realtime de `profiles` que ya escuchamos): si `active_session_id` del server ≠ local → cerrar sesión con aviso *"Tu cuenta se abrió en otro dispositivo"*.
+### 3.2 Sesión única / expulsar dispositivo — Impacto 4 / Esfuerzo 2 — ✅ HECHO (S1)
+- [x] Migración `profiles.active_session_id`/`active_session_at` + policy UPDATE del propietario.
+- [x] Login reclama la cuenta; foreground comprueba y expulsa al dispositivo anterior con aviso. (`offline/session.ts`)
 
 ### 3.3 Completar features diferidas del rediseño que rompen utilidad básica — Impacto 4 / Esfuerzo 3
 - [ ] Gimnasio: precargar ejercicios de la rutina al iniciar sesión; editar contenido de rutina.

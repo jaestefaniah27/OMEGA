@@ -256,7 +256,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const lastProcessedSync = useRef<string | null>(null);
 
     // OPTIMIZATION: Debounce ref for AsyncStorage writes
-    const saveDebounceRef = useRef<NodeJS.Timeout>();
+    const saveDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     // OPTIMIZATION: Cleanup lock to prevent concurrent cleanups
     const cleanupInProgress = useRef(false);

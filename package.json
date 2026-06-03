@@ -18,6 +18,9 @@
     "turbo": "latest"
   },
   "packageManager": "npm@10.2.4",
+  "overrides": {
+    "@types/react": "~19.1.0"
+  },
   "dependencies": {
     "expo-background-fetch": "~14.0.9",
     "expo-calendar": "~15.0.8",

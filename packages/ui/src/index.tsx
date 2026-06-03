@@ -16,17 +16,14 @@ export * from './components/MuscleHeatMap';
 export * from './components/AuraChannelingModal';
 export * from './components/ScreenWrapper';
 
-// Screens
-export * from './screens/BarracksScreen';
-export * from './screens/CastleScreen';
-export * from './screens/HomeScreen';
-export * from './screens/LibraryScreen';
-export * from './screens/MarketScreen';
-export * from './screens/ProfileScreen';
-export * from './screens/TavernScreen';
-export * from './screens/TempleScreen';
-export * from './screens/TheatreScreen';
-export * from './screens/SettingsScreen';
-export * from './screens/WarTableScreen';
-export * from './screens/WizardTowerScreen';
-export * from './screens/ZenFireplaceScreen';
+// Screens (rediseño minimalista)
+export * from './screens/TodayScreen';
+export * from './screens/FocusScreen';
+export * from './screens/GymScreen';
+export * from './screens/HealthScreen';
+export * from './screens/AccountScreen';
+export * from './screens/AgendaScreen';
+export * from './screens/LeisureScreen';
+export * from './screens/RewardsScreen';
+export * from './screens/AppSettingsScreen';
+

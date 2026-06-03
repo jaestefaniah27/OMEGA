@@ -9,14 +9,16 @@ import {
 } from '../types/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGame } from '../context/GameContext';
+import { useTheatreData } from '../queries/theatre';
 import { useWorkout } from '../hooks/useWorkout';
 import { useToast } from '../context/ToastContext';
 
 const THEATRE_SESSION_STORAGE_KEY = 'theatre_active_session';
 
 export const useTheatre = () => {
-    // --- CONSUME CONTEXT ---
-    const { theatre, castle, habits: habitCtx } = useGame();
+    // --- CONSUME DATA (React Query) + cross-cutting (Context) ---
+    const theatre = useTheatreData();
+    const { castle, habits: habitCtx } = useGame();
     const { isSessionActive: isWorkoutActive } = useWorkout();
     const { showToast } = useToast();
     const {

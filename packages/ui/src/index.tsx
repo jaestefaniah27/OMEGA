@@ -1,3 +1,7 @@
+// Design system (nuevo)
+export * from './theme';
+export * from './components/ui';
+
 export * from './MedievalButton';
 export * from './ParchmentCard';
 export * from './GameHUD';

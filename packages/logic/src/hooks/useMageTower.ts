@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useGame } from '../context/GameContext';
+import { useMageData } from '../queries/mage';
 
 export const useMageTower = () => {
-    const { mageTower } = useGame();
+    const mageTower = useMageData();
 
 
 

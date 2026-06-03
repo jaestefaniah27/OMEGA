@@ -1,13 +1,14 @@
 import { useGame } from '../context/GameContext';
+import { useBarracksData } from '../queries/barracks';
 
 export const useUserStats = () => {
-    const { profile, user, barracks, heroStats } = useGame();
+    const { profile, user, heroStats } = useGame();
     const {
         muscleFatigue,
         records,
         loading: barracksLoading,
         refresh
-    } = barracks;
+    } = useBarracksData();
 
     return {
         profile,

@@ -1,8 +1,8 @@
-import { useGame } from '../context/GameContext';
+import { useTempleData } from '../queries/temple';
 import { ThoughtType } from '../types/supabase';
 
 export const useTemple = () => {
-    const { temple } = useGame();
+    const temple = useTempleData();
     const {
         thoughts,
         sleepRecords,

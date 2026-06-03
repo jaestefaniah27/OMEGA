@@ -1,8 +1,8 @@
-import { useGame } from '../context/GameContext';
+import { useBarracksData } from '../queries/barracks';
 import { Routine, RoutineExercise, Exercise, RoutineWithExercises } from '../types/supabase';
 
 export const useRoutines = () => {
-    const { barracks } = useGame();
+    const barracks = useBarracksData();
     const {
         routines,
         history,

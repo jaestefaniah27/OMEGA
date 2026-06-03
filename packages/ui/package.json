@@ -8,9 +8,8 @@
         "lint": "tsc --noEmit"
     },
     "devDependencies": {
-        "react": "^18.0.0",
-        "react-native": "^0.73.11",
-        "typescript": "^5.0.0"
+        "typescript": "^5.0.0",
+        "@types/react": "~19.1.0"
     },
     "peerDependencies": {
         "react": "*",

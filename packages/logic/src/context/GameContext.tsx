@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryClient } from '../queries/queryClient';
+import { qk } from '../queries/keys';
 import {
     Subject,
     Book,
@@ -84,24 +86,6 @@ interface GameContextType {
         updateSeason: (id: string, updates: Partial<TheatreSeason>) => Promise<void>;
     };
 
-    // --- BARRACKS DATA ---
-    barracks: {
-        routines: RoutineWithExercises[];
-        history: WorkoutHistoryItem[];
-        muscleFatigue: MuscleFatigue;
-        records: PersonalRecord[];
-        loading: boolean;
-        refresh: () => Promise<void>;
-
-        // Mutations
-        createRoutine: (name: string, category?: string) => Promise<any>;
-        deleteRoutine: (id: string) => Promise<void>;
-        addExerciseToRoutine: (routineId: string, exerciseId: string, orderIndex: number) => Promise<void>;
-        removeExerciseFromRoutine: (routineExerciseId: string) => Promise<void>;
-        updateRoutineExercise: (id: string, updates: { target_sets?: number, target_reps?: number }) => Promise<void>;
-    };
-
-
     // --- CASTLE DATA ---
     castle: {
         decrees: RoyalDecree[];
@@ -115,47 +99,6 @@ interface GameContextType {
         checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<void>;
     };
 
-    // --- TEMPLE DATA ---
-    temple: {
-        thoughts: TempleThought[];
-        sleepRecords: TempleSleep[];
-        loading: boolean;
-        refresh: () => Promise<void>;
-
-        // Mutations
-        addThought: (content: string, type: ThoughtType) => Promise<any>;
-        resolveThought: (id: string) => Promise<void>;
-        addSleep: (hours: number, quality?: string) => Promise<any>;
-    };
-
-    // --- TAVERN DATA ---
-    tavern: {
-        waterRecords: TavernWater[];
-        loading: boolean;
-        refresh: () => Promise<void>;
-
-        // Mutations
-        addWater: (amount: number) => Promise<any>;
-    };
-
-    mageTower: {
-        projects: MageProject[];
-        themes: MageTheme[];
-        loading: boolean;
-        refresh: () => Promise<void>;
-
-        // Mutations
-        addProject: (name: string, themeId: string) => Promise<any>;
-        updateProject: (id: string, updates: Partial<MageProject>) => Promise<void>;
-        deleteProject: (id: string) => Promise<void>;
-        addTheme: (name: string, symbol: string, color: string) => Promise<any>;
-        deleteTheme: (id: string) => Promise<void>;
-        mappings: MageAppMapping[];
-        unhandledAuraByTheme: Record<string, number>;
-        deleteMapping: (id: string) => Promise<void>;
-        canalizeAura: (projectId: string, themeId: string) => Promise<void>;
-        toggleChanneling: (projectId: string, themeId: string) => Promise<void>;
-    };
 
     // --- CALENDAR INTEGRATION ---
     calendar: {
@@ -191,7 +134,6 @@ interface GameContextType {
     addXp: (amount: number) => Promise<void>;
     fetchAll: () => Promise<void>;
     checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<void>;
-    forceMemoryCleanup: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -256,10 +198,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const lastProcessedSync = useRef<string | null>(null);
 
     // OPTIMIZATION: Debounce ref for AsyncStorage writes
-    const saveDebounceRef = useRef<NodeJS.Timeout>();
+    const saveDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-    // OPTIMIZATION: Cleanup lock to prevent concurrent cleanups
-    const cleanupInProgress = useRef(false);
 
     const {
         rituals: habitRituals,
@@ -347,22 +287,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         mageData: { projects: MageProject[], themes: MageTheme[] },
         profData: any
     ) => {
-        try {
-            const dump = {
-                lib: libData,
-                theat: theatData,
-                barracks: barracksData,
-                castle: castleData,
-                temple: templeData,
-                tavern: tavernData,
-                mageTower: mageData,
-                prof: profData,
-                timestamp: Date.now()
-            };
-            await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(dump));
-        } catch (e) {
-            console.error('Offline Mode: Failed to save local data', e);
-        }
+        // NO-OP: el god-dump de estado completo a AsyncStorage en cada mutación
+        // era la causa #1 de la lentitud progresiva (JSON.stringify de todo el
+        // estado, creciendo sin tope, en el hilo principal). La persistencia
+        // ahora la cubre el persister de React Query, acotada y en background.
+        // Se conserva la firma para no tocar los ~20 call sites (código muerto
+        // de dominios ya migrados a React Query).
     };
 
     // OPTIMIZATION: Debounced wrapper for saveToLocal
@@ -512,95 +442,43 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             if (!isHydrated.current) {
                 setLibraryLoading(true);
                 setTheatreLoading(true);
-                setBarracksLoading(true);
-                setMageLoading(true);
             }
 
             const { data: { user: currentUser } } = await supabase.auth.getUser();
             setUser(currentUser);
             if (!currentUser) return;
 
-            // PARALLEL FETCH
-            const results = await Promise.all([
-                // 0: subjects
+            // PARALLEL FETCH (solo dominios que aún viven en GameContext;
+            // barracks/temple/tavern/mage se sirven desde React Query).
+            const [
+                subjectsRes, booksRes, colorsRes, sessionsRes,
+                actRes, movRes, serRes, seasRes,
+                profileRes, decreesRes, statsRes,
+            ] = await Promise.all([
                 supabase.from('subjects').select('*').order('created_at', { ascending: false }),
-                // 1: books
                 supabase.from('books').select('*').order('created_at', { ascending: false }),
-                // 2: custom_colors
                 supabase.from('custom_colors').select('*').order('created_at', { ascending: false }),
-                // 3: study_sessions
                 supabase.from('study_sessions').select('book_id, duration_minutes').eq('user_id', currentUser.id).not('book_id', 'is', null),
-                // 4: theatre_activities
                 supabase.from('theatre_activities').select('*').order('created_at', { ascending: false }),
-                // 5: theatre_movies
                 supabase.from('theatre_movies').select('*').order('created_at', { ascending: false }),
-                // 6: theatre_series
                 supabase.from('theatre_series').select('*').order('created_at', { ascending: false }),
-                // 7: theatre_seasons
                 supabase.from('theatre_seasons').select('*').order('season_number', { ascending: true }),
-                // 8: profiles
                 supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
-                // 9: routines
-                supabase.from('routines').select(`*, exercises:routine_exercises(*, exercise:exercises(*))`).eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 10: workout_history
-                supabase.from('workout_sessions').select(`*, routine:routines(name), sets:workout_sets(weight_kg, reps)`).eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(5),
-                // 11: muscle_fatigue
-                supabase.rpc('get_muscle_heat_map', { user_uuid: currentUser.id }),
-                // 12: personal_records
-                supabase.rpc('get_personal_records', { user_uuid: currentUser.id }),
-                // 13: royal_decrees
                 supabase.from('royal_decrees').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 14: temple_thoughts
-                supabase.from('temple_thoughts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 15: temple_sleep
-                supabase.from('temple_sleep').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 16: tavern_water
-                supabase.from('tavern_water').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }),
-                // 17: mage_projects
-                supabase.from('mage_projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 18: mage_themes
-                supabase.from('mage_themes').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-                // 19: mage_app_mappings
-                supabase.from('app_aura_mappings').select('*').eq('user_id', currentUser.id),
-                // 20: user_stats
-                supabase.from('user_stats').select('*').eq('id', currentUser.id).single()
+                supabase.from('user_stats').select('*').eq('id', currentUser.id).single(),
             ]);
 
-            const subData = results[0].data || [];
-            const bookData = results[1].data || [];
-            const colData = results[2].data || [];
-            const sessData = results[3].data || [];
-            const actData = results[4].data || [];
-            const movData = results[5].data || [];
-            const serData = results[6].data || [];
-            const seasData = results[7].data || [];
-            const profData = results[8].data;
-            const routineData = results[9].data || [];
-            const rawHistory = results[10].data || [];
-            const fatigueData = results[11].data || {};
-            const recordData = results[12].data || [];
-            const decreeData = results[13].data || [];
-            const thoughtData = results[14].data || [];
-            const sleepData = results[15].data || [];
-            const waterData = results[16].data || [];
-            const mageData = results[17].data || [];
-            const themeData = results[18].data || [];
-            const mappingData = results[19].data || [];
-            const statsData = results[20].data;
-
-            // --- CALCULATE PENDING AURA ---
-            // Now reading directly from mage_themes as the worker updates it there directly
-            const auraByTheme: Record<string, number> = {};
-            themeData.forEach((t: any) => {
-                if (t.pending_aura > 0) {
-                    auraByTheme[t.id] = t.pending_aura;
-                }
-            });
-
-
-
-            setUnhandledAuraByTheme(auraByTheme);
-            setMageAppMappings(mappingData);
+            const subData = subjectsRes.data || [];
+            const bookData = booksRes.data || [];
+            const colData = colorsRes.data || [];
+            const sessData = sessionsRes.data || [];
+            const actData = actRes.data || [];
+            const movData = movRes.data || [];
+            const serData = serRes.data || [];
+            const seasData = seasRes.data || [];
+            const profData = profileRes.data;
+            const decreeData = decreesRes.data || [];
+            const statsData = statsRes.data;
 
             // --- PROCESS LIBRARY ---
             const bStats: Record<string, number> = {};
@@ -646,72 +524,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 setHeroStats(statsData as HeroStats);
             }
 
-            // --- PROCESS TEMPLE ---
-            // OPTIMIZATION: Limit thoughts to last 5
-            const recentThoughts = thoughtData.slice(-5);
-            setThoughts(recentThoughts);
-
-            // OPTIMIZATION: Limit sleep records to today only
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const recentSleep = sleepData.filter((s: any) =>
-                new Date(s.created_at) >= todayStart
-            );
-            setSleepRecords(recentSleep);
-            setTempleLoading(false);
-
-            // --- PROCESS BARRACKS ---
-            const formattedHistory: WorkoutHistoryItem[] = rawHistory.map((session: any) => {
-                const totalTonnage = session.sets.reduce((acc: number, set: any) => acc + (set.weight_kg * set.reps), 0);
-                const duration = session.ended_at
-                    ? Math.floor((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000) + 'm'
-                    : 'En curso';
-
-                return {
-                    id: session.id,
-                    date: new Date(session.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
-                    routine: session.routine?.name || 'Misión Libre',
-                    duration,
-                    tonnage: totalTonnage.toLocaleString() + 'kg'
-                };
-            });
-
-            setRoutines(routineData);
-            setHistory(formattedHistory.slice(0, 100)); // Keep last 100 battles
-            setMuscleFatigue(fatigueData);
-            setRecords(recordData);
+            // --- PROCESS CASTLE ---
             setDecrees(decreeData);
-
-            // OPTIMIZATION: Limit water records to today only
-            const todayStartWater = new Date();
-            todayStartWater.setHours(0, 0, 0, 0);
-            const recentWater = waterData.filter((w: any) => {
-                const recordDate = new Date(w.created_at);
-                return recordDate >= todayStartWater;
-            });
-            setWaterRecords(recentWater);
-            setMageProjects(mageData);
-            setMageThemes(themeData);
-            setMageLoading(false);
-
-            if (results[17].error) console.error('MageTower: Projects fetch error', results[17].error);
-            if (results[18].error) console.error('MageTower: Themes fetch error', results[18].error);
 
             if (profData?.last_synced_at) {
                 lastProcessedSync.current = profData.last_synced_at;
             }
-
-            // --- PERSIST ---
-            saveToLocal(
-                { subjects: subData, books: bookData, customColors: colData, bookStats: bStats },
-                { activities: actData, movies: movData, series: seriesWithSeasons, activityStats: tStats },
-                { routines: routineData, history: formattedHistory, muscleFatigue: fatigueData, records: recordData },
-                { decrees: decreeData },
-                { thoughts: thoughtData, sleepRecords: sleepData },
-                { waterRecords: waterData },
-                { projects: mageData, themes: themeData },
-                profData
-            );
 
             // --- AUTO-FAIL MAINTENANCE ---
             // If any pending decree is more than 24h past its due_date, mark it as FAILED
@@ -752,35 +570,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLibraryLoading(false);
             setTheatreLoading(false);
-            setBarracksLoading(false);
             setCastleLoading(false);
-            setMageLoading(false);
             isHydrated.current = true;
         }
     };
 
     // --- INIT ---
     useEffect(() => {
-        // 1. Load Local Immediately
-        loadFromLocal();
-
-        // 2. Fetch Remote (Background Sync)
+        // 1. Fetch Remote (Background Sync). La persistencia offline la cubre
+        //    el persister de React Query; ya no hay god-dump de AsyncStorage.
         fetchAll();
 
-        // 3. Refresh on Focus (AppState)
+        // 2. Refresh on Focus (AppState). El poll de 2min se eliminó:
+        //    React Query (staleTime) + realtime cubren el frescor.
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
-                console.log('GameContext: App active, refreshing data...');
                 fetchAll();
             }
         });
-
-        const intervalId = setInterval(() => {
-            if (AppState.currentState === 'active') {
-                console.log('GameContext: Periodic Poll...');
-                fetchAll();
-            }
-        }, 120000); // 2 minutes
 
         // 6. Auth State Changes
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -807,7 +614,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         return () => {
             subscription.remove();
-            clearInterval(intervalId);
             authListener.subscription.unsubscribe();
         };
     }, []);
@@ -842,7 +648,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             )
-            // NEW: Listen for theme aura changes (Desktop Worker updates)
+            // Aura de la Torre del Mago (worker de escritorio). Mage vive en
+            // React Query -> invalidación dirigida en vez de fetchAll global.
             .on('postgres_changes',
                 {
                     event: 'UPDATE',
@@ -850,24 +657,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     table: 'mage_themes',
                     filter: `user_id=eq.${user.id}`
                 },
-                (payload) => {
-                    console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
-                    fetchAll();
+                () => {
+                    queryClient.invalidateQueries({ queryKey: qk.mage });
                 }
             )
-            // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
-            .on('postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'user_stats',
-                    filter: `id=eq.${user.id}`
-                },
-                (payload) => {
-                    console.log('GameContext: Hero Stats updated via Realtime', payload.new);
-                    setHeroStats(payload.new as HeroStats);
-                }
-            )
+            // user_stats: lo gestiona useHeroStats (React Query) con su propio
+            // canal -> aquí ya no se suscribe (evita doble canal).
             .subscribe((status) => {
                 console.log(`GameContext: Realtime status: ${status}`);
             });
@@ -908,82 +703,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('GameContext: addGold error', e);
         }
-    };
-
-    // OPTIMIZATION: Force aggressive memory cleanup (MULTI-ROUND NUCLEAR)
-    const forceMemoryCleanup = () => {
-        // Prevent concurrent cleanups
-        if (cleanupInProgress.current) {
-            console.log('⏭️ [MEMORY] Cleanup already in progress, skipping...');
-            return;
-        }
-
-        cleanupInProgress.current = true;
-        console.log('🧹 [MEMORY] NUCLEAR cleanup initiated (5 rounds)...');
-
-        // Cancel pending debounced save
-        if (saveDebounceRef.current) {
-            clearTimeout(saveDebounceRef.current);
-        }
-
-        // Clear ALL data arrays to force garbage collection
-        const clearAllData = () => {
-            setSubjects([]);
-            setBooks([]);
-            setCustomColors([]);
-            setBookStats({});
-
-            setActivities([]);
-            setMovies([]);
-            setSeries([]);
-            setActivityStats({});
-
-            setRoutines([]);
-            setHistory([]);
-            setMuscleFatigue({});
-            setRecords([]);
-
-            setDecrees([]);
-            setThoughts([]);
-            setSleepRecords([]);
-            setWaterRecords([]);
-
-            setMageProjects([]);
-            setMageThemes([]);
-            setMageAppMappings([]);
-            setUnhandledAuraByTheme({});
-
-            // Force GC hint
-            if (typeof global !== 'undefined' && (global as any).gc) {
-                (global as any).gc();
-            }
-        };
-
-        // Execute 5 rapid cleanup rounds
-        clearAllData(); // Round 1
-        setTimeout(() => {
-            clearAllData(); // Round 2
-            setTimeout(() => {
-                clearAllData(); // Round 3
-                setTimeout(() => {
-                    clearAllData(); // Round 4
-                    setTimeout(() => {
-                        clearAllData(); // Round 5
-
-                        // After all cleanup rounds, re-fetch fresh data
-                        setTimeout(() => {
-                            console.log('🔄 [MEMORY] Re-fetching data after 5 cleanup rounds...');
-                            fetchAll().finally(() => {
-                                cleanupInProgress.current = false;
-                                console.log('✅ [MEMORY] Cleanup cycle complete');
-                            });
-                        }, 50);
-                    }, 20);
-                }, 20);
-            }, 20);
-        }, 20);
-
-        console.log('🧹 [MEMORY] Multi-round cleanup initiated');
     };
 
     const addXp = async (amount: number) => {
@@ -1497,19 +1216,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             addSeason,
             updateSeason
         },
-        barracks: {
-            routines,
-            history,
-            muscleFatigue,
-            records,
-            loading: barracksLoading,
-            refresh: fetchAll,
-            createRoutine,
-            deleteRoutine,
-            addExerciseToRoutine,
-            removeExerciseFromRoutine,
-            updateRoutineExercise
-        },
         castle: {
             decrees,
             loading: castleLoading,
@@ -1518,103 +1224,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             updateDecree,
             deleteDecree,
             checkDecreeProgress
-        },
-        temple: {
-            thoughts,
-            sleepRecords,
-            loading: templeLoading,
-            refresh: fetchAll,
-            addThought,
-            resolveThought,
-            addSleep
-        },
-        tavern: {
-            waterRecords,
-            loading: tavernLoading,
-            refresh: fetchAll,
-            addWater
-        },
-        mageTower: {
-            projects: mageProjects,
-            themes: mageThemes,
-            loading: mageLoading,
-            refresh: fetchAll,
-            addProject,
-            updateProject,
-            deleteProject,
-            addTheme,
-            deleteTheme,
-            mappings: mageAppMappings,
-            unhandledAuraByTheme,
-            deleteMapping,
-            canalizeAura: async (projectId: string, themeId: string) => {
-                if (!profile) return;
-                const aura = unhandledAuraByTheme[themeId] || 0;
-                if (aura <= 0) return;
-
-                const project = mageProjects.find(p => p.id === projectId);
-                if (!project) return;
-
-                // 1. Update project mana
-                const { error: pError } = await supabase
-                    .from('mage_projects')
-                    .update({ mana_amount: project.mana_amount + aura })
-                    .eq('id', projectId);
-
-                if (pError) throw pError;
-
-                // 2. Reset theme pending_aura to 0
-                const { error: themeError } = await supabase
-                    .from('mage_themes')
-                    .update({ pending_aura: 0 })
-                    .eq('id', themeId);
-
-                if (themeError) throw themeError;
-
-                await fetchAll();
-                showGlobalToast(`¡${aura} de Aura canalizada con éxito!`, 'success');
-            },
-            toggleChanneling: async (projectId: string, themeId: string) => {
-                if (!profile) return;
-                const theme = mageThemes.find(t => t.id === themeId);
-                if (!theme) return;
-
-                // Toggle logic: If currently active, disable. If different or null, enable.
-                const isCurrentlyActive = theme.active_project_id === projectId;
-                const newActiveId = isCurrentlyActive ? null : projectId;
-
-                // 1. Update theme active_project_id
-                const { error } = await supabase
-                    .from('mage_themes')
-                    .update({ active_project_id: newActiveId })
-                    .eq('id', themeId);
-
-                if (error) {
-                    showGlobalToast('Error al cambiar canalización', 'error');
-                    return;
-                }
-
-                // 2. If Activating, FLUSH pending aura immediately to this project
-                if (newActiveId) {
-                    const aura = unhandledAuraByTheme[themeId] || 0;
-                    if (aura > 0) {
-                        const project = mageProjects.find(p => p.id === newActiveId);
-                        if (project) {
-                            await supabase.from('mage_projects').update({ mana_amount: project.mana_amount + aura }).eq('id', newActiveId);
-                            await supabase.from('mage_themes').update({ pending_aura: 0 }).eq('id', themeId);
-                            showGlobalToast(`Conexión establecida. +${aura} Aura transferida.`, 'success');
-                        } else {
-                            showGlobalToast('Conexión establecida', 'success');
-                        }
-                    } else {
-                        showGlobalToast('Conexión establecida', 'success');
-                    }
-                } else {
-                    showGlobalToast('Canalización detenida', 'info');
-                }
-
-                await fetchAll();
-            }
         },
         calendar,
         habits: {
@@ -1632,16 +1241,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         addGold,
         addXp,
         fetchAll,
-        checkDecreeProgress,
-        forceMemoryCleanup
+        checkDecreeProgress
     }), [
         subjects, books, customColors, bookStats, libraryLoading,
         activities, movies, series, activityStats, theatreLoading,
-        routines, history, muscleFatigue, records, barracksLoading,
         decrees, castleLoading,
-        thoughts, sleepRecords, templeLoading,
-        waterRecords, tavernLoading,
-        mageProjects, mageThemes, mageAppMappings, unhandledAuraByTheme, mageLoading,
         calendar,
         habitRituals, habitLogs, habitsLoading,
         user, profile, heroStats

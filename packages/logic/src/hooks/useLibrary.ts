@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { Subject, StudySession, Book } from '../types/supabase';
 import { useGame } from '../context/GameContext';
+import { useLibraryData } from '../queries/library';
 import { useWorkout } from '../hooks/useWorkout';
 import { useToast } from '../context/ToastContext';
 import { usePlatform } from '../services/PlatformContext';
@@ -12,8 +13,9 @@ const SESSION_STORAGE_KEY = '@omega_active_session';
 
 export const useLibrary = () => {
     const platform = usePlatform();
-    // --- CONSUME CONTEXT ---
-    const { library, castle, habits } = useGame();
+    // --- CONSUME DATA (React Query) + cross-cutting (Context) ---
+    const library = useLibraryData();
+    const { castle, habits } = useGame();
     const { isSessionActive: isWorkoutActive } = useWorkout();
     const { showToast } = useToast();
     const {

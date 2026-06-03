@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { AppState, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryClient } from '../queries/queryClient';
+import { qk } from '../queries/keys';
 import {
     Subject,
     Book,
@@ -191,7 +193,6 @@ interface GameContextType {
     addXp: (amount: number) => Promise<void>;
     fetchAll: () => Promise<void>;
     checkDecreeProgress: (type: DecreeType, tag: string, amount: number, durationMinutes?: number, genericTag?: string) => Promise<void>;
-    forceMemoryCleanup: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -258,8 +259,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // OPTIMIZATION: Debounce ref for AsyncStorage writes
     const saveDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-    // OPTIMIZATION: Cleanup lock to prevent concurrent cleanups
-    const cleanupInProgress = useRef(false);
 
     const {
         rituals: habitRituals,
@@ -347,22 +346,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         mageData: { projects: MageProject[], themes: MageTheme[] },
         profData: any
     ) => {
-        try {
-            const dump = {
-                lib: libData,
-                theat: theatData,
-                barracks: barracksData,
-                castle: castleData,
-                temple: templeData,
-                tavern: tavernData,
-                mageTower: mageData,
-                prof: profData,
-                timestamp: Date.now()
-            };
-            await AsyncStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(dump));
-        } catch (e) {
-            console.error('Offline Mode: Failed to save local data', e);
-        }
+        // NO-OP: el god-dump de estado completo a AsyncStorage en cada mutación
+        // era la causa #1 de la lentitud progresiva (JSON.stringify de todo el
+        // estado, creciendo sin tope, en el hilo principal). La persistencia
+        // ahora la cubre el persister de React Query, acotada y en background.
+        // Se conserva la firma para no tocar los ~20 call sites (código muerto
+        // de dominios ya migrados a React Query).
     };
 
     // OPTIMIZATION: Debounced wrapper for saveToLocal
@@ -761,26 +750,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // --- INIT ---
     useEffect(() => {
-        // 1. Load Local Immediately
-        loadFromLocal();
-
-        // 2. Fetch Remote (Background Sync)
+        // 1. Fetch Remote (Background Sync). La persistencia offline la cubre
+        //    el persister de React Query; ya no hay god-dump de AsyncStorage.
         fetchAll();
 
-        // 3. Refresh on Focus (AppState)
+        // 2. Refresh on Focus (AppState). El poll de 2min se eliminó:
+        //    React Query (staleTime) + realtime cubren el frescor.
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
-                console.log('GameContext: App active, refreshing data...');
                 fetchAll();
             }
         });
-
-        const intervalId = setInterval(() => {
-            if (AppState.currentState === 'active') {
-                console.log('GameContext: Periodic Poll...');
-                fetchAll();
-            }
-        }, 120000); // 2 minutes
 
         // 6. Auth State Changes
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -807,7 +787,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         return () => {
             subscription.remove();
-            clearInterval(intervalId);
             authListener.subscription.unsubscribe();
         };
     }, []);
@@ -842,7 +821,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             )
-            // NEW: Listen for theme aura changes (Desktop Worker updates)
+            // Aura de la Torre del Mago (worker de escritorio). Mage vive en
+            // React Query -> invalidación dirigida en vez de fetchAll global.
             .on('postgres_changes',
                 {
                     event: 'UPDATE',
@@ -850,24 +830,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     table: 'mage_themes',
                     filter: `user_id=eq.${user.id}`
                 },
-                (payload) => {
-                    console.log('GameContext: Mage Theme updated (Aura increase?), refreshing...');
-                    fetchAll();
+                () => {
+                    queryClient.invalidateQueries({ queryKey: qk.mage });
                 }
             )
-            // NEW: Hero Soul Realtime Subscription (Consolidated here for proper cleanup)
-            .on('postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'user_stats',
-                    filter: `id=eq.${user.id}`
-                },
-                (payload) => {
-                    console.log('GameContext: Hero Stats updated via Realtime', payload.new);
-                    setHeroStats(payload.new as HeroStats);
-                }
-            )
+            // user_stats: lo gestiona useHeroStats (React Query) con su propio
+            // canal -> aquí ya no se suscribe (evita doble canal).
             .subscribe((status) => {
                 console.log(`GameContext: Realtime status: ${status}`);
             });
@@ -908,82 +876,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) {
             console.error('GameContext: addGold error', e);
         }
-    };
-
-    // OPTIMIZATION: Force aggressive memory cleanup (MULTI-ROUND NUCLEAR)
-    const forceMemoryCleanup = () => {
-        // Prevent concurrent cleanups
-        if (cleanupInProgress.current) {
-            console.log('⏭️ [MEMORY] Cleanup already in progress, skipping...');
-            return;
-        }
-
-        cleanupInProgress.current = true;
-        console.log('🧹 [MEMORY] NUCLEAR cleanup initiated (5 rounds)...');
-
-        // Cancel pending debounced save
-        if (saveDebounceRef.current) {
-            clearTimeout(saveDebounceRef.current);
-        }
-
-        // Clear ALL data arrays to force garbage collection
-        const clearAllData = () => {
-            setSubjects([]);
-            setBooks([]);
-            setCustomColors([]);
-            setBookStats({});
-
-            setActivities([]);
-            setMovies([]);
-            setSeries([]);
-            setActivityStats({});
-
-            setRoutines([]);
-            setHistory([]);
-            setMuscleFatigue({});
-            setRecords([]);
-
-            setDecrees([]);
-            setThoughts([]);
-            setSleepRecords([]);
-            setWaterRecords([]);
-
-            setMageProjects([]);
-            setMageThemes([]);
-            setMageAppMappings([]);
-            setUnhandledAuraByTheme({});
-
-            // Force GC hint
-            if (typeof global !== 'undefined' && (global as any).gc) {
-                (global as any).gc();
-            }
-        };
-
-        // Execute 5 rapid cleanup rounds
-        clearAllData(); // Round 1
-        setTimeout(() => {
-            clearAllData(); // Round 2
-            setTimeout(() => {
-                clearAllData(); // Round 3
-                setTimeout(() => {
-                    clearAllData(); // Round 4
-                    setTimeout(() => {
-                        clearAllData(); // Round 5
-
-                        // After all cleanup rounds, re-fetch fresh data
-                        setTimeout(() => {
-                            console.log('🔄 [MEMORY] Re-fetching data after 5 cleanup rounds...');
-                            fetchAll().finally(() => {
-                                cleanupInProgress.current = false;
-                                console.log('✅ [MEMORY] Cleanup cycle complete');
-                            });
-                        }, 50);
-                    }, 20);
-                }, 20);
-            }, 20);
-        }, 20);
-
-        console.log('🧹 [MEMORY] Multi-round cleanup initiated');
     };
 
     const addXp = async (amount: number) => {
@@ -1632,8 +1524,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         addGold,
         addXp,
         fetchAll,
-        checkDecreeProgress,
-        forceMemoryCleanup
+        checkDecreeProgress
     }), [
         subjects, books, customColors, bookStats, libraryLoading,
         activities, movies, series, activityStats, theatreLoading,

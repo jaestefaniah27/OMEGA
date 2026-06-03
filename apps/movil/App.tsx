@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GameHUD } from '@omega/ui';
-import { GameProvider, useGame, ToastProvider, WorkoutProvider, useWorkout, queryClient, persistOptions, wireFocusManager } from '@omega/logic';
+import { GameProvider, useGame, ToastProvider, WorkoutProvider, useWorkout, queryClient, persistOptions, wireFocusManager, wireAuthSync } from '@omega/logic';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
 import { DeviceEventEmitter, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
@@ -27,6 +27,7 @@ export default function App() {
 
   useEffect(() => {
     wireFocusManager();
+    wireAuthSync();
     const loadTime = Date.now() - appStartTime;
     console.log(`\n🚀 [LATENCIA] Móvil: App cargada en ${loadTime}ms\n`);
   }, []);

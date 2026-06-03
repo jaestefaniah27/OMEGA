@@ -2,6 +2,7 @@ import { AppState, Platform } from 'react-native';
 import { QueryClient, focusManager } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { supabase } from '../lib/supabase';
 
 // QueryClient único de la app. Sustituye al estado del God Context.
 // staleTime alto + dedup de React Query elimina la tormenta de fetchAll.
@@ -28,6 +29,28 @@ export const asyncStoragePersister = createAsyncStoragePersister({
 export const persistOptions = {
     persister: asyncStoragePersister,
     maxAge: 24 * 60 * 60 * 1000, // 24h
+};
+
+// Mantiene la query ['authUser'] sincronizada con la sesión de Supabase.
+// Sin esto, useAuthUser cachea null al arrancar (sin sesión) y nunca se
+// reejecuta tras login -> userId queda null -> las mutaciones no escriben.
+let authSubscription: { unsubscribe: () => void } | null = null;
+export const wireAuthSync = () => {
+    if (authSubscription) return;
+    // Hidrata el estado actual de inmediato.
+    supabase.auth.getSession().then(({ data }) => {
+        queryClient.setQueryData(['authUser'], data.session?.user ?? null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        queryClient.setQueryData(['authUser'], session?.user ?? null);
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+            // Usuario conocido -> refresca todos los dominios (queries enabled).
+            queryClient.invalidateQueries();
+        } else if (event === 'SIGNED_OUT') {
+            queryClient.clear();
+        }
+    });
+    authSubscription = data.subscription;
 };
 
 // Conecta el "focus" de React Query al ciclo de vida de la app (AppState),

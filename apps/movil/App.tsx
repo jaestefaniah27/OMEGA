@@ -7,7 +7,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { MobilePlatformProvider } from './src/services/MobilePlatformProvider';
 import {
   GameProvider, ToastProvider, WorkoutProvider,
-  queryClient, persistOptions, wireFocusManager, wireAuthSync, initOutbox,
+  queryClient, persistOptions, wireFocusManager, wireAuthSync, initOutbox, wireSessionGuard,
 } from '@omega/logic';
 import { colors } from '@omega/ui';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -30,6 +30,7 @@ export default function App() {
   useEffect(() => {
     wireFocusManager();
     wireAuthSync();
+    wireSessionGuard();
     initOutbox();
   }, []);
 

@@ -21,3 +21,4 @@ export * from './services/PlatformInterfaces';
 export * from './services/PlatformContext';
 export * from './queries';
 export * from './offline/outbox';
+export * from './offline/session';

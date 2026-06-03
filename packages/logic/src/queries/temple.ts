@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { qk } from './keys';
 import { useAuthUser } from './useAuthUser';
 import { awardXp } from './rewards';
+import { enqueue } from '../offline/outbox';
 import { showGlobalToast } from '../context/ToastContext';
 import { TempleThought, TempleSleep, ThoughtType } from '../types/supabase';
 
@@ -45,18 +46,16 @@ export const useTempleData = () => {
         queryClient.setQueryData<TempleData>(qk.temple, (old = { thoughts: [], sleepRecords: [] }) => ({
             ...old, thoughts: [optimistic, ...old.thoughts],
         }));
-        await supabase.from('temple_thoughts').insert([{ content, type, user_id: userId }]);
-        invalidate();
+        enqueue({ kind: 'insert', table: 'temple_thoughts', values: { content, type, user_id: userId }, invalidate: qk.temple });
     };
 
     const resolveThought = async (id: string) => {
         queryClient.setQueryData<TempleData>(qk.temple, (old = { thoughts: [], sleepRecords: [] }) => ({
             ...old, thoughts: old.thoughts.map(t => t.id === id ? { ...t, is_resolved: true } : t),
         }));
-        await supabase.from('temple_thoughts').update({ is_resolved: true }).eq('id', id);
+        enqueue({ kind: 'update', table: 'temple_thoughts', values: { is_resolved: true }, match: { id }, invalidate: qk.temple });
         showGlobalToast('✨ Pensamiento Liberado', 'success');
-        await awardXp(10);
-        invalidate();
+        awardXp(10);
     };
 
     const addSleep = async (hours: number, quality?: string) => {
@@ -68,9 +67,8 @@ export const useTempleData = () => {
         queryClient.setQueryData<TempleData>(qk.temple, (old = { thoughts: [], sleepRecords: [] }) => ({
             ...old, sleepRecords: [optimistic, ...old.sleepRecords],
         }));
-        await supabase.from('temple_sleep').insert([{ hours, quality, user_id: userId }]);
-        await awardXp(20);
-        invalidate();
+        enqueue({ kind: 'insert', table: 'temple_sleep', values: { hours, quality, user_id: userId }, invalidate: qk.temple });
+        awardXp(20);
     };
 
     return {

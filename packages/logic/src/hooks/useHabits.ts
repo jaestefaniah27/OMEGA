@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { enqueue } from '../offline/outbox';
 import { DailyRitual, RitualLog } from '../types/supabase';
 
 export const useHabits = (userId: string | undefined) => {
@@ -100,30 +101,14 @@ export const useHabits = (userId: string | undefined) => {
     }, [userId]);
 
     const toggleHabit = async (logId: number, completed: boolean) => {
-        try {
-            const { error } = await supabase
-                .from('ritual_logs')
-                .update({
-                    completed,
-                    current_value: completed ? 1 : 0
-                })
-                .eq('id', logId);
+        // Optimistic local (instantáneo, funciona offline).
+        const log = todayLogs.find(l => l.id === logId);
+        setTodayLogs(prev => prev.map(l => l.id === logId ? { ...l, completed, current_value: completed ? 1 : 0 } : l));
 
-            if (error) throw error;
-
-            // Updated local state
-            setTodayLogs(prev => prev.map(l => l.id === logId ? { ...l, completed, current_value: completed ? 1 : 0 } : l));
-
-            // Logic for racha (streak) update
-            if (completed) {
-                const log = todayLogs.find(l => l.id === logId);
-                if (log?.ritual_id) {
-                    await supabase.rpc('increment_ritual_streak', { r_id: log.ritual_id });
-                    await fetchHabits(true);
-                }
-            }
-        } catch (error) {
-            console.error('Error toggling habit:', error);
+        // Encolar escritura (se reenvía al recuperar red).
+        enqueue({ kind: 'update', table: 'ritual_logs', values: { completed, current_value: completed ? 1 : 0 }, match: { id: logId } });
+        if (completed && log?.ritual_id) {
+            enqueue({ kind: 'rpc', fn: 'increment_ritual_streak', args: { r_id: log.ritual_id } });
         }
     };
 

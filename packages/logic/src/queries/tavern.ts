@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { qk } from './keys';
 import { useAuthUser } from './useAuthUser';
+import { enqueue } from '../offline/outbox';
 import { TavernWater } from '../types/supabase';
 
 // Datos de la Taberna vía React Query. Reemplaza el slice de tavern del
@@ -47,11 +48,10 @@ export const useTavernData = () => {
         });
 
         if (existing) {
-            await supabase.from('tavern_water').update({ amount: existing.amount + amount }).eq('id', existing.id);
+            enqueue({ kind: 'update', table: 'tavern_water', values: { amount: existing.amount + amount }, match: { id: existing.id }, invalidate: qk.tavern });
         } else {
-            await supabase.from('tavern_water').insert([{ amount, user_id: userId }]);
+            enqueue({ kind: 'insert', table: 'tavern_water', values: { amount, user_id: userId }, invalidate: qk.tavern });
         }
-        queryClient.invalidateQueries({ queryKey: qk.tavern });
     };
 
     return {

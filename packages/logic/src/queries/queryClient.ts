@@ -1,8 +1,16 @@
 import { AppState, Platform } from 'react-native';
-import { QueryClient, focusManager } from '@tanstack/react-query';
+import { QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { supabase } from '../lib/supabase';
+
+// Estado de red (NetInfo) -> React Query. Base del modo offline-first.
+onlineManager.setEventListener((setOnline) => {
+    return NetInfo.addEventListener((state) => {
+        setOnline(!!state.isConnected);
+    });
+});
 
 // QueryClient único de la app. Sustituye al estado del God Context.
 // staleTime alto + dedup de React Query elimina la tormenta de fetchAll.
@@ -10,10 +18,11 @@ export const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             staleTime: 60 * 1000,        // 60s: evita refetch en cascada
-            gcTime: 5 * 60 * 1000,       // 5min en caché tras quedar sin uso
+            gcTime: 24 * 60 * 60 * 1000, // 24h: la caché persiste para uso offline
             retry: false,                // móvil: no reintentar en bucle
             refetchOnReconnect: true,
             refetchOnWindowFocus: true,  // gestionado por focusManager (AppState)
+            networkMode: 'offlineFirst', // sirve caché aunque no haya red
         },
     },
 });

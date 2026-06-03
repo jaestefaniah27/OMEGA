@@ -1,22 +1,15 @@
-import { supabase } from '../lib/supabase';
-import { queryClient } from './queryClient';
 import { qk } from './keys';
+import { enqueue } from '../offline/outbox';
 
 // Helpers de recompensa reutilizables por las mutaciones de cada dominio.
-// Llaman a la RPC y refrescan el alma del héroe (user_stats) + perfil.
-// Sustituyen a las llamadas addXp/addGold acopladas al God Context.
+// Encolan la RPC (offline-first): se aplica al recuperar red e invalida el
+// alma del héroe (user_stats) + perfil.
 export const awardXp = async (amount: number) => {
     if (amount <= 0) return;
-    const { error } = await supabase.rpc('add_xp', { amount });
-    if (error) console.error('awardXp: add_xp falló', error);
-    queryClient.invalidateQueries({ queryKey: qk.heroStats });
-    queryClient.invalidateQueries({ queryKey: qk.profile });
+    enqueue({ kind: 'rpc', fn: 'add_xp', args: { amount }, invalidate: qk.heroStats });
 };
 
 export const awardGold = async (amount: number) => {
     if (amount <= 0) return;
-    const { error } = await supabase.rpc('add_gold', { amount });
-    if (error) console.error('awardGold: add_gold falló', error);
-    queryClient.invalidateQueries({ queryKey: qk.heroStats });
-    queryClient.invalidateQueries({ queryKey: qk.profile });
+    enqueue({ kind: 'rpc', fn: 'add_gold', args: { amount }, invalidate: qk.heroStats });
 };

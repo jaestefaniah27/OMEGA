@@ -67,15 +67,10 @@ Hoy las mutaciones fallan sin conexión. Objetivo: registrar agua/serie/comida/t
 - [ ] Plate calculator (qué discos poner). Impacto 2/E 1 🅒
 - [ ] Medidas corporales + peso (gráfica). Impacto 3/E 2 🅑
 
-### 4.2 🍽️ Nutrición (NUEVO — referencia: MyFitnessPal / Cronometer) — pedido explícito
-- [ ] Objetivo diario calorías + macros (proteína/carb/grasa), calculado desde peso/altura/actividad (TDEE). Impacto 5/E 3 🅢
-- [ ] **Log de comidas** por momento (desayuno/comida/cena/snack) con kcal+macros. Impacto 5/E 3 🅢
-- [ ] **Base de alimentos** propia + alimentos personalizados/recetas reutilizables. Impacto 5/E 4 🅐
-- [ ] **Escaneo de código de barras** (Open Food Facts API, gratis). Impacto 4/E 3 🅐
-- [ ] Anillo/barra diaria de progreso (kcal restantes, macros). Impacto 4/E 2 🅐
-- [ ] Registro de peso corporal + tendencia. Impacto 3/E 2 🅑
-- [ ] Agua (ya existe) → integrar en panel nutrición. Impacto 2/E 1 🅑
-- [ ] Recetas (suma de ingredientes → macros por ración). Impacto 3/E 3 🅒
+### 4.2 🍽️ Nutrición — PRIORIDAD BAJA (decisión: se usa otra app)
+El dueño usará una app de nutrición externa. Solo interesa **integración** ligera más adelante.
+- [ ] (Baja) Importar/leer datos de la app externa (ej. Apple Health/HealthKit como puente) → peso, kcal. Impacto 2/E 3 🅒
+- [ ] (Baja) Registro de peso corporal + tendencia (ligero, dentro de Salud). Impacto 2/E 2 🅒
 
 ### 4.3 🎯 Enfoque / Estudio (referencia: Forest)
 - [ ] Modo Pomodoro (sesiones + descansos) además de cronómetro. Impacto 4/E 2 🅐
@@ -125,18 +120,18 @@ Sprints cortos, cada uno deja la app usable + tsc verde + commit. Tras cada spri
 |---|---|---|
 | **S1 — Autonomía** | App funciona sin red + sesión única | §3.1 offline-first, §3.2 sesión única |
 | **S2 — Cerrar rediseño** | Sin agujeros de utilidad | §3.3 features diferidas |
-| **S3 — Nutrición** | Llevar la alimentación a raya | §4.2 (objetivo macros, log comidas, base alimentos, barcode) |
+| **S3 — Notificaciones + Hábitos** | "App encima de ti" | §4.7 notif. **locales**, §4.4 recordatorios+recurrencia+captura rápida |
 | **S4 — Gimnasio pro** | Tracker de verdad | §4.1 (historial+última vez, PR auto, rest timer, plantillas) |
-| **S5 — Notificaciones + Hábitos** | Retención diaria | §4.7 push, §4.4 recordatorios+recurrencia+captura rápida |
-| **S6 — Enfoque** | Forest-like | §4.3 (pomodoro, stats, rachas, tags) |
-| **S7 — Gamificación + Proyectos** | Recompensa y diferenciador | §4.6 tienda recompensas, §4.5 visualización maná |
-| **S8 — Producción** | Listo para usar a diario / store | §4.7 onboarding, EAS build/update, errores, limpieza |
+| **S5 — Enfoque** | Forest-like | §4.3 (pomodoro, stats, rachas, tags) |
+| **S6 — Gamificación + Proyectos** | Recompensa y diferenciador | §4.6 tienda recompensas, §4.5 visualización maná |
+| **S7 — Producción / iOS** | Usable a diario en tu iPhone | onboarding, errores, **EAS Build dev + SideStore**, limpieza |
+| **S8 — Nutrición (integración)** | Baja prioridad | §4.2 puente con app externa |
 
-> **ROI alto y temprano:** S1 (autonomía) y S3 (nutrición) primero porque desbloquean el uso diario real. Notificaciones (S5) por retención. Gym (S4) por ser uso recurrente. Lo "bonito" (árbol talentos, crónica IA, widgets) al final.
+> **ROI alto y temprano:** S1 (autonomía) primero (base de todo). S3 (notificaciones locales) por el objetivo "encima de ti". Gym (S4) por uso recurrente. Lo "bonito" (árbol talentos, crónica IA, widgets) y nutrición al final.
 
 ---
 
-## 6. Decisiones abiertas (rellenar cuando se aborden)
-- Nutrición: ¿base de alimentos propia desde cero o integrar Open Food Facts (gratis, barcode)? → recomendado Open Food Facts.
-- Notificaciones: locales (offline, gratis) vs push server. → empezar locales.
-- Build: ¿iOS vía EAS + cuenta Apple Dev, o solo Android APK de momento?
+## 6. Decisiones tomadas
+- **Nutrición:** se usa app externa. Solo integración ligera, prioridad baja (§4.2, S8).
+- **Notificaciones:** **locales** (offline, gratis). Objetivo: app que recuerda obligaciones/objetivos de forma proactiva. Push remota descartada (requiere Apple Dev de pago).
+- **Build iOS sin pagar 99€/año:** **EAS Build (perfil development, compila en la nube desde Windows) + SideStore** (instala con Apple ID gratis y auto-renueva la firma de 7 días en el propio iPhone). Notificaciones locales funcionan con firma gratis. Límites: máx 3 apps, sin push remota. (S7).

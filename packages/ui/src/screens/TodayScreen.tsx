@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Check, Calendar, Dumbbell, Target, ChevronRight, Flame, Timer } from 'lucide-react-native';
-import { useGame, useWorkout } from '@omega/logic';
+import { useGame, useWorkout, usePendingSyncCount } from '@omega/logic';
 import { Screen, Header, Card, Section, ProgressBar, EmptyState, ListRow } from '../components/ui';
 import { colors, space, radius, font, domainColor } from '../theme/tokens';
 
@@ -12,6 +12,7 @@ export const TodayScreen: React.FC = () => {
     const nav = useNavigation<any>();
     const { castle, habits, profile, heroStats } = useGame();
     const workout = useWorkout();
+    const pendingSync = usePendingSyncCount();
 
     const today = todayStr();
     const dueToday = (castle.decrees || []).filter(d => {
@@ -47,6 +48,12 @@ export const TodayScreen: React.FC = () => {
                     </Pressable>
                 }
             />
+
+            {pendingSync > 0 && (
+                <View style={styles.syncPill}>
+                    <Text style={styles.syncText}>{pendingSync} cambio{pendingSync > 1 ? 's' : ''} sin sincronizar · se guardará al volver la conexión</Text>
+                </View>
+            )}
 
             {/* XP */}
             <Card style={{ marginTop: space.sm }}>
@@ -149,4 +156,6 @@ const styles = StyleSheet.create({
     habitText: { color: colors.text, fontSize: font.size.md },
     habitTextDone: { textDecorationLine: 'line-through', color: colors.textMuted },
     dot: { width: 10, height: 10, borderRadius: 5 },
+    syncPill: { marginTop: space.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.warning, paddingVertical: space.sm, paddingHorizontal: space.md },
+    syncText: { color: colors.warning, fontSize: font.size.xs, fontWeight: font.weight.medium },
 });

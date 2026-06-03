@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useGame } from '../context/GameContext';
+import { useTavernData } from '../queries/tavern';
 
 export const useTavern = () => {
-    const { tavern, profile } = useGame();
+    const tavern = useTavernData();
 
     const today = new Date().toISOString().split('T')[0];
 

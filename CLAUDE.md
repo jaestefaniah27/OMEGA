@@ -1,7 +1,7 @@
 # OMEGA — Life RPG
 
 App de gamificación de vida (RPG medieval). Uso personal del dueño; plan B = App Store.
-Contexto funcional completo: **[AI_CONTEXT.md](AI_CONTEXT.md)** y **[README.md](README.md)** (roadmap por fases).
+Contexto funcional completo: **[AI_CONTEXT.md](AI_CONTEXT.md)**. **[ROADMAP.md](ROADMAP.md)** = backlog vivo priorizado por ROI + plan de ataque (sustituye el roadmap medieval de README.md).
 
 ## Stack
 

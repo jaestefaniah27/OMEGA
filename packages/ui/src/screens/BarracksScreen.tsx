@@ -214,19 +214,35 @@ export const BarracksScreen: React.FC = () => {
         }
     };
 
+    const loadDefaultExercises = async () => {
+        const { data } = await supabase
+            .from('exercises')
+            .select('id, name, name_es')
+            .order('name_es', { ascending: true })
+            .limit(30);
+        setSearchResults(data || []);
+    };
+
     const handleSearchExercise = async (text: string) => {
         setSearchText(text);
         if (text.length < 2) {
-            setSearchResults([]);
+            loadDefaultExercises();
             return;
         }
         const { data } = await supabase
             .from('exercises')
             .select('id, name, name_es')
             .or(`name.ilike.%${text}%,name_es.ilike.%${text}%`)
-            .limit(10);
+            .limit(20);
         setSearchResults(data || []);
     };
+
+    // Mostrar lista por defecto al abrir el selector (sin teclear).
+    useEffect(() => {
+        if (exerciseSearchVisible && searchText.length < 2) {
+            loadDefaultExercises();
+        }
+    }, [exerciseSearchVisible]);
 
     const handleSelectExercise = async (ex: any) => {
         if (searchMode === 'WORKOUT') {
